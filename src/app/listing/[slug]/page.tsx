@@ -6,11 +6,14 @@ import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import Gallery from "./gallery";
 import BookingSidebar from "./booking-sidebar";
-import { listings, getListingBySlug, getReviewsByListingId } from "@/lib/mock-data";
+import { getListings, getListingBySlug, getReviewsByListingId } from "@/lib/api";
 import { CITY_LABELS, SPACE_TYPE_LABELS, ACTIVITY_TYPE_LABELS } from "@/lib/types";
 import { formatPrice, formatRating } from "@/lib/utils";
 
-export function generateStaticParams() {
+export const revalidate = 60;
+
+export async function generateStaticParams() {
+  const listings = await getListings();
   return listings.map((l) => ({ slug: l.slug }));
 }
 
@@ -20,7 +23,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const listing = getListingBySlug(slug);
+  const listing = await getListingBySlug(slug);
   if (!listing) return { title: "Не найдено — LOKACIA.KZ" };
   return {
     title: `${listing.title} — LOKACIA.KZ`,
@@ -34,10 +37,10 @@ export default async function ListingPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const listing = getListingBySlug(slug);
+  const listing = await getListingBySlug(slug);
   if (!listing) notFound();
 
-  const reviews = getReviewsByListingId(listing.id);
+  const reviews = await getReviewsByListingId(listing.id);
 
   return (
     <div className="flex flex-col min-h-screen">

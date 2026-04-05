@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import CatalogClient from "./catalog-client";
-import { listings } from "@/lib/mock-data";
+import { getListings } from "@/lib/api";
 
 export const metadata: Metadata = {
   title: "Каталог локаций — LOKACIA.KZ",
@@ -10,7 +10,11 @@ export const metadata: Metadata = {
     "Найдите идеальное пространство для съёмок, мероприятий и встреч в Алматы, Астане и других городах Казахстана.",
 };
 
-export default function CatalogPage() {
+export const revalidate = 60; // Revalidate every 60 seconds
+
+export default async function CatalogPage() {
+  const listings = await getListings();
+
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
