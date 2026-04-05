@@ -1,0 +1,90 @@
+import Image from "next/image";
+import Link from "next/link";
+import type { Listing } from "@/lib/types";
+import { CITY_LABELS, SPACE_TYPE_LABELS } from "@/lib/types";
+import { formatPrice, formatRating } from "@/lib/utils";
+
+export default function ListingCard({ listing }: { listing: Listing }) {
+  return (
+    <Link
+      href={`/listing/${listing.slug}`}
+      className="group block bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20 transition-all duration-300"
+    >
+      {/* Image */}
+      <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
+        <Image
+          src={listing.images[0]}
+          alt={listing.title}
+          fill
+          className="object-cover group-hover:scale-105 transition-transform duration-500"
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+        />
+        {/* Badges */}
+        <div className="absolute top-3 left-3 flex gap-2">
+          {listing.instantBook && (
+            <span className="bg-accent text-gray-900 text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M11.3 1.046A1 1 0 0 0 9.514.757l-6 9A1 1 0 0 0 4.348 11.5h3.735l-.73 6.454a1 1 0 0 0 1.786.71l6-9a1 1 0 0 0-.835-1.614H10.57l.73-6.004Z" />
+              </svg>
+              Мгновенно
+            </span>
+          )}
+          {listing.superhost && (
+            <span className="bg-white/90 backdrop-blur-sm text-primary text-xs font-bold px-2.5 py-1 rounded-full">
+              Суперхост
+            </span>
+          )}
+        </div>
+        {/* Price badge */}
+        <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm text-gray-900 text-sm font-bold px-3 py-1.5 rounded-full">
+          {formatPrice(listing.pricePerHour)}/час
+        </div>
+      </div>
+
+      {/* Info */}
+      <div className="p-4">
+        <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+          <span className="bg-gray-100 px-2 py-0.5 rounded-full font-medium">
+            {SPACE_TYPE_LABELS[listing.spaceType]}
+          </span>
+          <span>
+            {CITY_LABELS[listing.city]}, {listing.district}
+          </span>
+        </div>
+
+        <h3 className="font-semibold text-gray-900 line-clamp-1 group-hover:text-primary transition-colors">
+          {listing.title}
+        </h3>
+
+        <p className="mt-1 text-sm text-gray-500 line-clamp-2">
+          {listing.description}
+        </p>
+
+        {/* Bottom row */}
+        <div className="mt-3 flex items-center justify-between">
+          <div className="flex items-center gap-3 text-sm text-gray-500">
+            <span className="flex items-center gap-1">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+              </svg>
+              {listing.area}м²
+            </span>
+            <span className="flex items-center gap-1">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+              </svg>
+              до {listing.capacity}
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            <svg className="w-4 h-4 text-accent" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 0 0 .95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 0 0-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 0 0-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 0 0-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 0 0 .951-.69l1.07-3.292Z" />
+            </svg>
+            <span className="text-sm font-semibold">{formatRating(listing.rating)}</span>
+            <span className="text-xs text-gray-400">({listing.reviewCount})</span>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
