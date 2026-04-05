@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { supabase } from "@/lib/supabase";
 
 const spaceTypes = [
   "Фотостудия",
@@ -24,13 +25,17 @@ export default function HostForm() {
     e.preventDefault();
     setLoading(true);
 
-    // Collect form data for future backend integration
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
-    console.log("Host application:", data);
 
-    // Simulate submission delay
-    await new Promise((r) => setTimeout(r, 800));
+    await supabase.from("host_applications").insert({
+      name: data.name as string,
+      phone: data.phone as string,
+      city: data.city as string,
+      space_type: data.spaceType as string,
+      area: data.area ? Number(data.area) : null,
+      description: (data.description as string) || null,
+    });
 
     setSubmitted(true);
     setLoading(false);

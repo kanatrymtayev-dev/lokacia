@@ -47,8 +47,12 @@ export default function Navbar() {
                 <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                 </svg>
-                <div className="relative w-7 h-7 rounded-full overflow-hidden bg-gray-200">
-                  <Image src={user.avatar} alt={user.name} fill className="object-cover" sizes="28px" />
+                <div className="relative w-7 h-7 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center">
+                  {user.avatar_url ? (
+                    <Image src={user.avatar_url} alt={user.name} fill className="object-cover" sizes="28px" />
+                  ) : (
+                    <span className="text-xs font-bold text-primary">{user.name[0]}</span>
+                  )}
                 </div>
               </button>
 

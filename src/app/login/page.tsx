@@ -18,12 +18,12 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const ok = await login(email, password);
+    const result = await login(email, password);
     setLoading(false);
-    if (ok) {
+    if (result.ok) {
       router.push("/dashboard");
     } else {
-      setError("Неверный email или пароль");
+      setError(result.error || "Неверный email или пароль");
     }
   }
 
@@ -94,26 +94,6 @@ export default function LoginPage() {
               </Link>
             </p>
 
-            {/* Demo credentials */}
-            <div className="border-t border-gray-100 pt-4">
-              <p className="text-xs text-gray-400 text-center mb-3">Демо-аккаунты для тестирования:</p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => { setEmail("host@lokacia.kz"); setPassword("host123"); }}
-                  className="text-xs bg-gray-50 hover:bg-gray-100 rounded-lg px-3 py-2 text-gray-600 transition-colors"
-                >
-                  Хост: host@lokacia.kz
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setEmail("renter@lokacia.kz"); setPassword("renter123"); }}
-                  className="text-xs bg-gray-50 hover:bg-gray-100 rounded-lg px-3 py-2 text-gray-600 transition-colors"
-                >
-                  Арендатор: renter@lokacia.kz
-                </button>
-              </div>
-            </div>
           </form>
         </div>
       </main>

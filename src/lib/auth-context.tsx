@@ -1,93 +1,97 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { supabase } from "./supabase";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 export interface User {
   id: string;
   name: string;
   email: string;
-  phone: string;
+  phone: string | null;
   role: "host" | "renter";
-  avatar: string;
-  createdAt: string;
+  avatar_url: string | null;
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (data: { name: string; email: string; phone: string; password: string; role: "host" | "renter" }) => Promise<boolean>;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  register: (data: {
+    name: string;
+    email: string;
+    phone: string;
+    password: string;
+    role: "host" | "renter";
+  }) => Promise<{ ok: boolean; error?: string }>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const STORAGE_KEY = "lokacia_user";
+async function fetchProfile(supabaseUser: SupabaseUser): Promise<User | null> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", supabaseUser.id)
+    .single();
 
-// Demo accounts
-const DEMO_USERS: (User & { password: string })[] = [
-  {
-    id: "h1",
-    name: "Алия К.",
-    email: "host@lokacia.kz",
-    phone: "+7 777 111 2233",
-    role: "host",
-    avatar: "https://picsum.photos/seed/lokacia101/200/200",
-    password: "host123",
-    createdAt: "2025-09-15",
-  },
-  {
-    id: "r1",
-    name: "Марат К.",
-    email: "renter@lokacia.kz",
-    phone: "+7 707 999 8877",
-    role: "renter",
-    avatar: "https://picsum.photos/seed/lokacia201/200/200",
-    password: "renter123",
-    createdAt: "2025-11-01",
-  },
-];
+  if (!data) return null;
+
+  const profile = data as {
+    id: string;
+    name: string;
+    phone: string | null;
+    role: string;
+    avatar_url: string | null;
+  };
+
+  return {
+    id: profile.id,
+    name: profile.name,
+    email: supabaseUser.email ?? "",
+    phone: profile.phone,
+    role: profile.role as "host" | "renter",
+    avatar_url: profile.avatar_url,
+  };
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored));
-      } catch {
-        localStorage.removeItem(STORAGE_KEY);
+    // Get initial session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const profile = await fetchProfile(session.user);
+        setUser(profile);
       }
-    }
-    setLoading(false);
+      setLoading(false);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        if (session?.user) {
+          const profile = await fetchProfile(session.user);
+          setUser(profile);
+        } else {
+          setUser(null);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  async function login(email: string, password: string): Promise<boolean> {
-    // Check demo accounts
-    const found = DEMO_USERS.find((u) => u.email === email && u.password === password);
-    if (found) {
-      const { password: _, ...userData } = found;
-      setUser(userData);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
-      return true;
-    }
-
-    // Check registered users in localStorage
-    const registeredRaw = localStorage.getItem("lokacia_registered");
-    if (registeredRaw) {
-      const registered = JSON.parse(registeredRaw) as (User & { password: string })[];
-      const found2 = registered.find((u) => u.email === email && u.password === password);
-      if (found2) {
-        const { password: _, ...userData } = found2;
-        setUser(userData);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
-        return true;
-      }
-    }
-
-    return false;
+  async function login(
+    email: string,
+    password: string
+  ): Promise<{ ok: boolean; error?: string }> {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
   }
 
   async function register(data: {
@@ -96,34 +100,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     phone: string;
     password: string;
     role: "host" | "renter";
-  }): Promise<boolean> {
-    const newUser: User & { password: string } = {
-      id: `u_${Date.now()}`,
-      name: data.name,
+  }): Promise<{ ok: boolean; error?: string }> {
+    const { error, data: authData } = await supabase.auth.signUp({
       email: data.email,
-      phone: data.phone,
-      role: data.role,
-      avatar: `https://picsum.photos/seed/${Date.now()}/200/200`,
       password: data.password,
-      createdAt: new Date().toISOString().split("T")[0],
-    };
+      options: {
+        data: {
+          name: data.name,
+          role: data.role,
+        },
+      },
+    });
 
-    // Save to registered users list
-    const registeredRaw = localStorage.getItem("lokacia_registered");
-    const registered = registeredRaw ? JSON.parse(registeredRaw) : [];
-    registered.push(newUser);
-    localStorage.setItem("lokacia_registered", JSON.stringify(registered));
+    if (error) return { ok: false, error: error.message };
 
-    // Auto login
-    const { password: _, ...userData } = newUser;
-    setUser(userData);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
-    return true;
+    // Update profile with phone
+    if (authData.user) {
+      await supabase
+        .from("profiles")
+        .update({ phone: data.phone })
+        .eq("id", authData.user.id);
+    }
+
+    return { ok: true };
   }
 
-  function logout() {
+  async function logout() {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem(STORAGE_KEY);
   }
 
   return (

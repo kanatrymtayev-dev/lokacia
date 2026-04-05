@@ -15,13 +15,19 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"host" | "renter">("host");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    setError("");
     setLoading(true);
-    await register({ name, email, phone, password, role });
+    const result = await register({ name, email, phone, password, role });
     setLoading(false);
-    router.push(role === "host" ? "/dashboard" : "/catalog");
+    if (result.ok) {
+      router.push(role === "host" ? "/dashboard" : "/catalog");
+    } else {
+      setError(result.error || "Ошибка регистрации");
+    }
   }
 
   return (
@@ -40,6 +46,11 @@ export default function RegisterPage() {
             onSubmit={handleSubmit}
             className="bg-white rounded-2xl border border-gray-200 p-8 space-y-5"
           >
+            {error && (
+              <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">
+                {error}
+              </div>
+            )}
             {/* Role toggle */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Я хочу</label>
