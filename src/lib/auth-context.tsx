@@ -36,7 +36,31 @@ async function fetchProfile(supabaseUser: SupabaseUser): Promise<User | null> {
     .eq("id", supabaseUser.id)
     .single();
 
-  if (!data) return null;
+  if (!data) {
+    // Profile doesn't exist — create it from user metadata
+    const meta = supabaseUser.user_metadata ?? {};
+    const { data: newProfile } = await supabase
+      .from("profiles")
+      .upsert({
+        id: supabaseUser.id,
+        name: (meta.name as string) ?? "Пользователь",
+        role: (meta.role as string) ?? "renter",
+        phone: null,
+      })
+      .select()
+      .single();
+
+    if (!newProfile) return null;
+
+    return {
+      id: supabaseUser.id,
+      name: (newProfile as Record<string, unknown>).name as string,
+      email: supabaseUser.email ?? "",
+      phone: (newProfile as Record<string, unknown>).phone as string | null,
+      role: ((newProfile as Record<string, unknown>).role as string) as "host" | "renter",
+      avatar_url: (newProfile as Record<string, unknown>).avatar_url as string | null,
+    };
+  }
 
   const profile = data as {
     id: string;
@@ -72,7 +96,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
+        if (event === "PASSWORD_RECOVERY") {
+          // Set session but don't redirect — let reset-password page handle it
+          if (session?.user) {
+            const profile = await fetchProfile(session.user);
+            setUser(profile);
+          }
+          return;
+        }
         if (session?.user) {
           const profile = await fetchProfile(session.user);
           setUser(profile);

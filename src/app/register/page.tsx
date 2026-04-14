@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import Navbar from "@/components/navbar";
 
 export default function RegisterPage() {
   const { register } = useAuth();
-  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -16,6 +14,7 @@ export default function RegisterPage() {
   const [role, setRole] = useState<"host" | "renter">("host");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [emailSent, setEmailSent] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -24,7 +23,7 @@ export default function RegisterPage() {
     const result = await register({ name, email, phone, password, role });
     setLoading(false);
     if (result.ok) {
-      router.push(role === "host" ? "/dashboard" : "/catalog");
+      setEmailSent(true);
     } else {
       setError(result.error || "Ошибка регистрации");
     }
@@ -42,6 +41,28 @@ export default function RegisterPage() {
             </p>
           </div>
 
+          {emailSent ? (
+            <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
+              <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto">
+                <svg className="w-7 h-7 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                </svg>
+              </div>
+              <h3 className="mt-3 text-lg font-bold">Подтвердите email</h3>
+              <p className="mt-2 text-sm text-gray-600">
+                Мы отправили письмо на <strong>{email}</strong>. Нажмите на ссылку в письме чтобы активировать аккаунт.
+              </p>
+              <p className="mt-4 text-xs text-gray-400">
+                Не получили письмо? Проверьте папку «Спам».
+              </p>
+              <Link
+                href="/login"
+                className="inline-block mt-4 text-primary text-sm font-medium hover:underline"
+              >
+                Перейти к входу
+              </Link>
+            </div>
+          ) : (
           <form
             onSubmit={handleSubmit}
             className="bg-white rounded-2xl border border-gray-200 p-8 space-y-5"
@@ -156,6 +177,7 @@ export default function RegisterPage() {
               </Link>
             </p>
           </form>
+          )}
         </div>
       </main>
     </div>

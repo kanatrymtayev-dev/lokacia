@@ -6,11 +6,11 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "picsum.photos",
+        hostname: "hwukpfqiiszaokgzhbfk.supabase.co",
       },
       {
         protocol: "https",
-        hostname: "hwukpfqiiszaokgzhbfk.supabase.co",
+        hostname: "api.dicebear.com",
       },
     ],
   },

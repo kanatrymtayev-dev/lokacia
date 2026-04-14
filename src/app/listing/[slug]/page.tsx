@@ -33,10 +33,13 @@ export async function generateMetadata({
 
 export default async function ListingPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ ref?: string }>;
 }) {
   const { slug } = await params;
+  const { ref: referralCode } = await searchParams;
   const listing = await getListingBySlug(slug);
   if (!listing) notFound();
 
@@ -80,7 +83,13 @@ export default async function ListingPage({
                     </svg>
                     {formatRating(listing.rating)} ({listing.reviewCount} отзывов)
                   </span>
-                  <span>{CITY_LABELS[listing.city]}, {listing.district}</span>
+                  <span>
+                    <svg className="w-3.5 h-3.5 inline mr-0.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                    </svg>
+                    {CITY_LABELS[listing.city]}, {listing.district}
+                  </span>
                   <span>{listing.area}м²</span>
                   <span>до {listing.capacity} чел.</span>
                   {listing.ceilingHeight && <span>Потолки {listing.ceilingHeight}м</span>}
@@ -123,6 +132,22 @@ export default async function ListingPage({
                   <div className="font-semibold">{listing.hostName}</div>
                   <div className="text-sm text-gray-500">
                     {listing.superhost ? "Суперхост" : "Хост"} · На платформе с {new Date(listing.createdAt).toLocaleDateString("ru-RU", { month: "long", year: "numeric" })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Location hint */}
+              <div className="flex items-start gap-3 p-4 bg-amber-50 rounded-xl border border-amber-100">
+                <svg className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                </svg>
+                <div>
+                  <div className="text-sm font-medium text-amber-800">
+                    {CITY_LABELS[listing.city]}, {listing.district}
+                  </div>
+                  <div className="text-xs text-amber-600 mt-0.5">
+                    Точный адрес будет доступен после подтверждения бронирования. Напишите хосту, чтобы договориться о просмотре.
                   </div>
                 </div>
               </div>
@@ -270,7 +295,7 @@ export default async function ListingPage({
 
             {/* Right — Booking sidebar */}
             <div className="lg:col-span-1">
-              <BookingSidebar listing={listing} />
+              <BookingSidebar listing={listing} referralCode={referralCode} />
             </div>
           </div>
         </div>

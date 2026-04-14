@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import { useAuth } from "@/lib/auth-context";
-import { listings as allListings } from "@/lib/mock-data";
-import { getBookingsByRenter } from "@/lib/bookings-store";
+import { getRenterBookings } from "@/lib/api";
 import { ACTIVITY_TYPE_LABELS } from "@/lib/types";
 import type { BookingRequest } from "@/lib/types";
 import { formatPrice } from "@/lib/utils";
@@ -32,15 +31,21 @@ const STATUS_COLORS: Record<BookingRequest["status"], string> = {
 export default function BookingsPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [bookings, setBookings] = useState<BookingRequest[]>([]);
+  const [bookings, setBookings] = useState<Array<Record<string, unknown>>>([]);
 
   useEffect(() => {
     if (!authLoading && !user) router.push("/login");
   }, [user, authLoading, router]);
 
-  useEffect(() => {
-    if (user) setBookings(getBookingsByRenter(user.id));
+  const loadBookings = useCallback(async () => {
+    if (!user) return;
+    const data = await getRenterBookings(user.id);
+    setBookings(data as Array<Record<string, unknown>>);
   }, [user]);
+
+  useEffect(() => {
+    loadBookings();
+  }, [loadBookings]);
 
   if (authLoading || !user) {
     return (
@@ -73,37 +78,42 @@ export default function BookingsPage() {
           ) : (
             <div className="space-y-4">
               {bookings.map((booking) => {
-                const listing = allListings.find((l) => l.id === booking.listingId);
+                const bl = booking.listings as Record<string, unknown> | null;
+                const images = (bl?.images as string[]) ?? [];
+                const title = (bl?.title as string) ?? "";
+                const slug = (bl?.slug as string) ?? "";
+                const status = booking.status as BookingRequest["status"];
+                const activityType = (booking.activity_type as string) ?? "production";
                 return (
-                  <div key={booking.id} className="bg-white rounded-xl border border-gray-200 p-5">
+                  <div key={booking.id as string} className="bg-white rounded-xl border border-gray-200 p-5">
                     <div className="flex flex-col sm:flex-row gap-4">
-                      {listing && (
-                        <Link href={`/listing/${listing.slug}`} className="relative w-full sm:w-28 h-32 sm:h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                          <Image src={listing.images[0]} alt={listing.title} fill className="object-cover" sizes="112px" />
+                      {images[0] && (
+                        <Link href={`/listing/${slug}`} className="relative w-full sm:w-28 h-32 sm:h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                          <Image src={images[0]} alt={title} fill className="object-cover" sizes="112px" />
                         </Link>
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <div>
-                            <Link href={`/listing/${listing?.slug}`} className="font-semibold hover:text-primary transition-colors">
-                              {listing?.title}
+                            <Link href={`/listing/${slug}`} className="font-semibold hover:text-primary transition-colors">
+                              {title}
                             </Link>
                             <div className="flex flex-wrap items-center gap-2 mt-1 text-sm text-gray-500">
-                              <span>{booking.date}</span>
+                              <span>{booking.date as string}</span>
                               <span>•</span>
-                              <span>{booking.startTime} — {booking.endTime}</span>
+                              <span>{booking.start_time as string} — {booking.end_time as string}</span>
                               <span>•</span>
-                              <span>{booking.guestCount} чел.</span>
+                              <span>{booking.guest_count as number} чел.</span>
                               <span>•</span>
-                              <span>{ACTIVITY_TYPE_LABELS[booking.activityType]}</span>
+                              <span>{ACTIVITY_TYPE_LABELS[activityType as keyof typeof ACTIVITY_TYPE_LABELS] ?? activityType}</span>
                             </div>
                           </div>
-                          <span className={`text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 ${STATUS_COLORS[booking.status]}`}>
-                            {STATUS_LABELS[booking.status]}
+                          <span className={`text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 ${STATUS_COLORS[status]}`}>
+                            {STATUS_LABELS[status]}
                           </span>
                         </div>
-                        <p className="mt-2 text-sm text-gray-600 line-clamp-2">{booking.description}</p>
-                        <div className="mt-3 font-bold">{formatPrice(booking.totalPrice)}</div>
+                        <p className="mt-2 text-sm text-gray-600 line-clamp-2">{booking.description as string}</p>
+                        <div className="mt-3 font-bold">{formatPrice(booking.total_price as number)}</div>
                       </div>
                     </div>
                   </div>

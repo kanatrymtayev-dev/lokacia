@@ -1,16 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import { useAuth } from "@/lib/auth-context";
-import { listings as allListings } from "@/lib/mock-data";
-import { getBookingsByListingIds, updateBookingStatus } from "@/lib/bookings-store";
+import { getHostListings, getHostBookings, updateBookingStatus } from "@/lib/api";
 import { ACTIVITY_TYPE_LABELS } from "@/lib/types";
-import type { BookingRequest } from "@/lib/types";
+import type { Listing, BookingRequest } from "@/lib/types";
 import { formatPrice } from "@/lib/utils";
 
 const STATUS_LABELS: Record<BookingRequest["status"], string> = {
@@ -32,12 +31,9 @@ const STATUS_COLORS: Record<BookingRequest["status"], string> = {
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [bookings, setBookings] = useState<BookingRequest[]>([]);
+  const [bookings, setBookings] = useState<Array<Record<string, unknown>>>([]);
+  const [myListings, setMyListings] = useState<Listing[]>([]);
   const [tab, setTab] = useState<"listings" | "bookings">("bookings");
-
-  // Host's listings (in real app, filter by user.id)
-  const myListings = user?.role === "host" ? allListings.filter((l) => l.hostId === user.id) : [];
-  const myListingIds = myListings.map((l) => l.id);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -45,15 +41,23 @@ export default function DashboardPage() {
     }
   }, [user, authLoading, router]);
 
-  useEffect(() => {
-    if (myListingIds.length > 0) {
-      setBookings(getBookingsByListingIds(myListingIds));
-    }
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+  const loadData = useCallback(async () => {
+    if (!user) return;
+    const [listings, bookingsData] = await Promise.all([
+      getHostListings(user.id),
+      getHostBookings(user.id),
+    ]);
+    setMyListings(listings);
+    setBookings(bookingsData as Array<Record<string, unknown>>);
+  }, [user]);
 
-  function handleBookingAction(bookingId: string, status: "confirmed" | "rejected") {
-    const updated = updateBookingStatus(bookingId, status);
-    setBookings(updated.filter((b) => myListingIds.includes(b.listingId)));
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  async function handleBookingAction(bookingId: string, status: "confirmed" | "rejected") {
+    await updateBookingStatus(bookingId, status);
+    await loadData();
   }
 
   if (authLoading || !user) {
@@ -70,7 +74,7 @@ export default function DashboardPage() {
   const pendingCount = bookings.filter((b) => b.status === "pending").length;
   const totalRevenue = bookings
     .filter((b) => b.status === "confirmed" || b.status === "completed")
-    .reduce((sum, b) => sum + b.totalPrice, 0);
+    .reduce((sum, b) => sum + (b.total_price as number), 0);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -148,61 +152,66 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 bookings.map((booking) => {
-                  const listing = allListings.find((l) => l.id === booking.listingId);
+                  const bl = booking.listings as Record<string, unknown> | null;
+                  const images = (bl?.images as string[]) ?? [];
+                  const title = (bl?.title as string) ?? "";
+                  const slug = (bl?.slug as string) ?? "";
+                  const status = booking.status as BookingRequest["status"];
+                  const activityType = (booking.activity_type as string) ?? "production";
                   return (
                     <div
-                      key={booking.id}
+                      key={booking.id as string}
                       className="bg-white rounded-xl border border-gray-200 p-5"
                     >
                       <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                         {/* Listing thumbnail */}
-                        {listing && (
-                          <div className="relative w-full sm:w-24 h-32 sm:h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                        {images[0] && (
+                          <Link href={`/listing/${slug}`} className="relative w-full sm:w-24 h-32 sm:h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                             <Image
-                              src={listing.images[0]}
-                              alt={listing.title}
+                              src={images[0]}
+                              alt={title}
                               fill
                               className="object-cover"
                               sizes="96px"
                             />
-                          </div>
+                          </Link>
                         )}
 
                         {/* Info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
                             <div>
-                              <h3 className="font-semibold line-clamp-1">{listing?.title}</h3>
+                              <h3 className="font-semibold line-clamp-1">{title}</h3>
                               <div className="flex flex-wrap items-center gap-2 mt-1 text-sm text-gray-500">
-                                <span>{booking.date}</span>
+                                <span>{booking.date as string}</span>
                                 <span>•</span>
-                                <span>{booking.startTime} — {booking.endTime}</span>
+                                <span>{booking.start_time as string} — {booking.end_time as string}</span>
                                 <span>•</span>
-                                <span>{booking.guestCount} чел.</span>
+                                <span>{booking.guest_count as number} чел.</span>
                                 <span>•</span>
-                                <span>{ACTIVITY_TYPE_LABELS[booking.activityType]}</span>
+                                <span>{ACTIVITY_TYPE_LABELS[activityType as keyof typeof ACTIVITY_TYPE_LABELS] ?? activityType}</span>
                               </div>
                             </div>
-                            <span className={`text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 ${STATUS_COLORS[booking.status]}`}>
-                              {STATUS_LABELS[booking.status]}
+                            <span className={`text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 ${STATUS_COLORS[status]}`}>
+                              {STATUS_LABELS[status]}
                             </span>
                           </div>
 
-                          <p className="mt-2 text-sm text-gray-600 line-clamp-2">{booking.description}</p>
+                          <p className="mt-2 text-sm text-gray-600 line-clamp-2">{booking.description as string}</p>
 
                           <div className="mt-3 flex items-center justify-between">
-                            <span className="font-bold">{formatPrice(booking.totalPrice)}</span>
+                            <span className="font-bold">{formatPrice(booking.total_price as number)}</span>
 
-                            {booking.status === "pending" && (
+                            {status === "pending" && (
                               <div className="flex gap-2">
                                 <button
-                                  onClick={() => handleBookingAction(booking.id, "confirmed")}
+                                  onClick={() => handleBookingAction(booking.id as string, "confirmed")}
                                   className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors"
                                 >
                                   Принять
                                 </button>
                                 <button
-                                  onClick={() => handleBookingAction(booking.id, "rejected")}
+                                  onClick={() => handleBookingAction(booking.id as string, "rejected")}
                                   className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors"
                                 >
                                   Отклонить

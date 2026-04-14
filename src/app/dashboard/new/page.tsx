@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import Navbar from "@/components/navbar";
 import { useAuth } from "@/lib/auth-context";
+import { createListing, uploadListingImages } from "@/lib/api";
 import { SPACE_TYPE_LABELS, ACTIVITY_TYPE_LABELS, CITY_LABELS, STYLE_LABELS } from "@/lib/types";
 import type { SpaceType, ActivityType, City, Style } from "@/lib/types";
 
@@ -23,6 +25,10 @@ export default function NewListingPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [submitted, setSubmitted] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -48,18 +54,72 @@ export default function NewListingPage() {
     return arr.includes(item) ? arr.filter((x) => x !== item) : [...arr, item];
   }
 
-  function handleSubmit(e: FormEvent) {
+  function handleImageChange(e: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length + imageFiles.length > 10) {
+      setError("Максимум 10 фото");
+      return;
+    }
+    setImageFiles((prev) => [...prev, ...files]);
+    files.forEach((f) => {
+      const url = URL.createObjectURL(f);
+      setImagePreviews((prev) => [...prev, url]);
+    });
+  }
+
+  function removeImage(index: number) {
+    setImageFiles((prev) => prev.filter((_, i) => i !== index));
+    setImagePreviews((prev) => {
+      URL.revokeObjectURL(prev[index]);
+      return prev.filter((_, i) => i !== index);
+    });
+  }
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const listingData = {
-      title, description, spaceType, activityTypes: selectedActivities,
-      city, district, address, area, capacity, ceilingHeight,
-      pricePerHour, pricePerDay: pricePerDay || undefined,
-      minHours, styles: selectedStyles, amenities: selectedAmenities,
-      allows, rules: rules.split("\n").filter(Boolean),
-      hostId: user?.id,
-    };
-    console.log("New listing:", listingData);
-    setSubmitted(true);
+    if (!user) return;
+    if (imageFiles.length === 0) {
+      setError("Добавьте хотя бы одно фото");
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+
+    try {
+      const imageUrls = await uploadListingImages(imageFiles, user.id);
+      if (imageUrls.length === 0) {
+        setError("Ошибка загрузки фото. Попробуйте снова.");
+        setSaving(false);
+        return;
+      }
+
+      const { data: newListing, error: dbError } = await createListing({
+        title, description, spaceType, activityTypes: selectedActivities,
+        city, district, address, area, capacity, ceilingHeight,
+        pricePerHour, pricePerDay: pricePerDay || undefined,
+        minHours, styles: selectedStyles, amenities: selectedAmenities,
+        allows, rules: rules.split("\n").filter(Boolean),
+        images: imageUrls, hostId: user.id,
+      });
+
+      if (dbError) {
+        setError("Ошибка сохранения: " + dbError.message);
+        setSaving(false);
+        return;
+      }
+
+      // Bust Next.js cache so new listing appears everywhere
+      await fetch("/api/revalidate", { method: "POST" });
+
+      // Redirect to the new listing page
+      const slug = (newListing as Record<string, unknown>)?.slug as string;
+      router.push(slug ? `/listing/${slug}` : "/dashboard");
+    } catch {
+      setError("Произошла ошибка. Попробуйте снова.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (!user) {
@@ -306,13 +366,61 @@ export default function NewListingPage() {
               />
             </section>
 
+            {/* Photos */}
+            <section className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+              <h2 className="text-lg font-bold">Фотографии *</h2>
+              <p className="text-sm text-gray-500">Добавьте до 10 фотографий. Первое фото будет обложкой.</p>
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+                {imagePreviews.map((src, i) => (
+                  <div key={i} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 group">
+                    <Image src={src} alt={`Фото ${i + 1}`} fill className="object-cover" sizes="150px" />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(i)}
+                      className="absolute top-1 right-1 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      ×
+                    </button>
+                    {i === 0 && (
+                      <span className="absolute bottom-1 left-1 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">
+                        Обложка
+                      </span>
+                    )}
+                  </div>
+                ))}
+                {imagePreviews.length < 10 && (
+                  <label className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all">
+                    <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    <span className="text-xs text-gray-400 mt-1">Добавить</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageChange}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+            </section>
+
+            {/* Error */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+                {error}
+              </div>
+            )}
+
             {/* Submit */}
             <div className="flex gap-3">
               <button
                 type="submit"
-                className="flex-1 bg-primary text-white py-4 rounded-xl text-base font-bold hover:bg-primary-dark transition-colors"
+                disabled={saving}
+                className="flex-1 bg-primary text-white py-4 rounded-xl text-base font-bold hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Опубликовать локацию
+                {saving ? "Сохранение..." : "Опубликовать локацию"}
               </button>
               <button
                 type="button"

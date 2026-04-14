@@ -1,7 +1,8 @@
 import type { Listing, Review } from "./types";
 
-// Placeholder images from picsum (deterministic by seed)
-const img = (id: number) => `https://picsum.photos/seed/lokacia${id}/800/600`;
+// AI-generated images (Nano Banana 2 via laozhang.ai)
+const listingImg = (slug: string, n: number) => `/images/listings/${slug}/${n}.webp`;
+const avatarImg = (id: number) => `https://api.dicebear.com/9.x/avataaars/svg?seed=lokacia${id}`;
 
 export const listings: Listing[] = [
   {
@@ -23,7 +24,7 @@ export const listings: Listing[] = [
     pricePerHour: 8000,
     pricePerDay: 50000,
     minHours: 2,
-    images: [img(1), img(2), img(3), img(4), img(5)],
+    images: [listingImg("daylight-studio-cyclorama-6m", 1), listingImg("daylight-studio-cyclorama-6m", 2), listingImg("daylight-studio-cyclorama-6m", 3), listingImg("daylight-studio-cyclorama-6m", 4), listingImg("daylight-studio-cyclorama-6m", 5)],
     styles: ["modern", "minimalist"],
     amenities: [
       "Циклорама 6м",
@@ -43,7 +44,7 @@ export const listings: Listing[] = [
     allows: { alcohol: false, loudMusic: false, pets: false, smoking: false, food: true },
     hostId: "h1",
     hostName: "Алия К.",
-    hostAvatar: img(101),
+    hostAvatar: avatarImg(101),
     hostPhone: "+7 777 111 2233",
     rating: 4.9,
     reviewCount: 47,
@@ -70,7 +71,7 @@ export const listings: Listing[] = [
     pricePerHour: 25000,
     pricePerDay: 180000,
     minHours: 4,
-    images: [img(10), img(11), img(12), img(13), img(14)],
+    images: [listingImg("loft-factory-events-200", 1), listingImg("loft-factory-events-200", 2), listingImg("loft-factory-events-200", 3), listingImg("loft-factory-events-200", 4), listingImg("loft-factory-events-200", 5)],
     styles: ["industrial", "loft"],
     amenities: [
       "Сцена",
@@ -91,7 +92,7 @@ export const listings: Listing[] = [
     allows: { alcohol: true, loudMusic: true, pets: false, smoking: false, food: true },
     hostId: "h2",
     hostName: "Тимур Б.",
-    hostAvatar: img(102),
+    hostAvatar: avatarImg(102),
     hostPhone: "+7 701 222 3344",
     rating: 4.8,
     reviewCount: 93,
@@ -118,7 +119,7 @@ export const listings: Listing[] = [
     pricePerHour: 5000,
     pricePerDay: 35000,
     minHours: 3,
-    images: [img(20), img(21), img(22), img(23)],
+    images: [listingImg("apartment-midcentury-filming", 1), listingImg("apartment-midcentury-filming", 2), listingImg("apartment-midcentury-filming", 3), listingImg("apartment-midcentury-filming", 4)],
     styles: ["vintage", "modern"],
     amenities: [
       "Дизайнерская мебель",
@@ -135,7 +136,7 @@ export const listings: Listing[] = [
     allows: { alcohol: false, loudMusic: false, pets: false, smoking: false, food: true },
     hostId: "h3",
     hostName: "Дана М.",
-    hostAvatar: img(103),
+    hostAvatar: avatarImg(103),
     hostPhone: "+7 707 333 4455",
     rating: 4.7,
     reviewCount: 28,
@@ -162,7 +163,7 @@ export const listings: Listing[] = [
     pricePerHour: 50000,
     pricePerDay: 350000,
     minHours: 8,
-    images: [img(30), img(31), img(32), img(33), img(34)],
+    images: [listingImg("sound-stage-qazaq-500", 1), listingImg("sound-stage-qazaq-500", 2), listingImg("sound-stage-qazaq-500", 3), listingImg("sound-stage-qazaq-500", 4), listingImg("sound-stage-qazaq-500", 5)],
     styles: ["industrial"],
     amenities: [
       "Звукоизоляция",
@@ -181,7 +182,7 @@ export const listings: Listing[] = [
     allows: { alcohol: false, loudMusic: true, pets: false, smoking: false, food: true },
     hostId: "h4",
     hostName: "Арман Т.",
-    hostAvatar: img(104),
+    hostAvatar: avatarImg(104),
     hostPhone: "+7 700 444 5566",
     rating: 5.0,
     reviewCount: 12,
@@ -207,7 +208,7 @@ export const listings: Listing[] = [
     pricePerHour: 15000,
     pricePerDay: 100000,
     minHours: 3,
-    images: [img(40), img(41), img(42), img(43)],
+    images: [listingImg("yurt-nomad-ethno", 1), listingImg("yurt-nomad-ethno", 2), listingImg("yurt-nomad-ethno", 3), listingImg("yurt-nomad-ethno", 4)],
     styles: ["ethno", "rustic"],
     amenities: [
       "Традиционное убранство",
@@ -225,7 +226,7 @@ export const listings: Listing[] = [
     allows: { alcohol: true, loudMusic: false, pets: false, smoking: false, food: true },
     hostId: "h5",
     hostName: "Бахыт Н.",
-    hostAvatar: img(105),
+    hostAvatar: avatarImg(105),
     hostPhone: "+7 708 555 6677",
     rating: 4.9,
     reviewCount: 35,
@@ -252,7 +253,7 @@ export const listings: Listing[] = [
     pricePerHour: 35000,
     pricePerDay: 250000,
     minHours: 5,
-    images: [img(50), img(51), img(52), img(53), img(54)],
+    images: [listingImg("restaurant-astau-banquets", 1), listingImg("restaurant-astau-banquets", 2), listingImg("restaurant-astau-banquets", 3), listingImg("restaurant-astau-banquets", 4), listingImg("restaurant-astau-banquets", 5)],
     styles: ["classic", "modern"],
     amenities: [
       "Кухня",
@@ -272,7 +273,7 @@ export const listings: Listing[] = [
     allows: { alcohol: true, loudMusic: true, pets: false, smoking: false, food: true },
     hostId: "h6",
     hostName: "Ерлан С.",
-    hostAvatar: img(106),
+    hostAvatar: avatarImg(106),
     hostPhone: "+7 702 666 7788",
     rating: 4.6,
     reviewCount: 64,
@@ -299,7 +300,7 @@ export const listings: Listing[] = [
     pricePerHour: 20000,
     pricePerDay: 150000,
     minHours: 4,
-    images: [img(60), img(61), img(62), img(63), img(64)],
+    images: [listingImg("mountain-chalet-kokzhailau", 1), listingImg("mountain-chalet-kokzhailau", 2), listingImg("mountain-chalet-kokzhailau", 3), listingImg("mountain-chalet-kokzhailau", 4), listingImg("mountain-chalet-kokzhailau", 5)],
     styles: ["rustic", "modern"],
     amenities: [
       "Панорамный вид",
@@ -319,7 +320,7 @@ export const listings: Listing[] = [
     allows: { alcohol: true, loudMusic: false, pets: true, smoking: false, food: true },
     hostId: "h7",
     hostName: "Нурлан К.",
-    hostAvatar: img(107),
+    hostAvatar: avatarImg(107),
     hostPhone: "+7 705 777 8899",
     rating: 4.8,
     reviewCount: 19,
@@ -345,7 +346,7 @@ export const listings: Listing[] = [
     ceilingHeight: 3,
     pricePerHour: 6000,
     minHours: 1,
-    images: [img(70), img(71), img(72), img(73)],
+    images: [listingImg("coworking-hub-meeting-rooms", 1), listingImg("coworking-hub-meeting-rooms", 2), listingImg("coworking-hub-meeting-rooms", 3), listingImg("coworking-hub-meeting-rooms", 4)],
     styles: ["modern", "minimalist"],
     amenities: [
       "ТВ / проектор",
@@ -360,7 +361,7 @@ export const listings: Listing[] = [
     allows: { alcohol: false, loudMusic: false, pets: false, smoking: false, food: false },
     hostId: "h8",
     hostName: "Айнур Ж.",
-    hostAvatar: img(108),
+    hostAvatar: avatarImg(108),
     hostPhone: "+7 778 888 9900",
     rating: 4.5,
     reviewCount: 41,
@@ -387,7 +388,7 @@ export const listings: Listing[] = [
     pricePerHour: 10000,
     pricePerDay: 65000,
     minHours: 2,
-    images: [img(80), img(81), img(82), img(83)],
+    images: [listingImg("black-box-studio", 1), listingImg("black-box-studio", 2), listingImg("black-box-studio", 3), listingImg("black-box-studio", 4)],
     styles: ["modern", "industrial"],
     amenities: [
       "Звукоизоляция",
@@ -407,7 +408,7 @@ export const listings: Listing[] = [
     allows: { alcohol: false, loudMusic: true, pets: false, smoking: false, food: false },
     hostId: "h9",
     hostName: "Руслан А.",
-    hostAvatar: img(109),
+    hostAvatar: avatarImg(109),
     hostPhone: "+7 771 999 0011",
     rating: 4.9,
     reviewCount: 56,
@@ -433,7 +434,7 @@ export const listings: Listing[] = [
     pricePerHour: 30000,
     pricePerDay: 200000,
     minHours: 3,
-    images: [img(90), img(91), img(92), img(93), img(94)],
+    images: [listingImg("terrasa-vysota-openair", 1), listingImg("terrasa-vysota-openair", 2), listingImg("terrasa-vysota-openair", 3), listingImg("terrasa-vysota-openair", 4), listingImg("terrasa-vysota-openair", 5)],
     styles: ["modern"],
     amenities: [
       "Вид на горы",
@@ -452,7 +453,7 @@ export const listings: Listing[] = [
     allows: { alcohol: true, loudMusic: true, pets: false, smoking: true, food: true },
     hostId: "h10",
     hostName: "Мадина Р.",
-    hostAvatar: img(110),
+    hostAvatar: avatarImg(110),
     hostPhone: "+7 700 111 2233",
     rating: 4.7,
     reviewCount: 38,
@@ -463,12 +464,12 @@ export const listings: Listing[] = [
 ];
 
 export const reviews: Review[] = [
-  { id: "r1", listingId: "1", authorName: "Марат К.", authorAvatar: img(201), rating: 5, text: "Отличная студия! Свет потрясающий, оборудование в идеальном состоянии. Алия очень отзывчивый хост.", createdAt: "2026-03-10" },
-  { id: "r2", listingId: "1", authorName: "Света П.", authorAvatar: img(202), rating: 5, text: "Снимала каталог одежды — циклорама идеальная, пространства хватает. Приду ещё!", createdAt: "2026-02-25" },
-  { id: "r3", listingId: "1", authorName: "Ержан Т.", authorAvatar: img(203), rating: 4, text: "Хорошая студия, всё как в описании. Единственное — парковка ограничена.", createdAt: "2026-01-14" },
-  { id: "r4", listingId: "2", authorName: "Айгерим Б.", authorAvatar: img(204), rating: 5, text: "Провели корпоратив на 150 человек — всё прошло идеально. Звук и свет на высшем уровне.", createdAt: "2026-03-20" },
-  { id: "r5", listingId: "2", authorName: "Данияр М.", authorAvatar: img(205), rating: 5, text: "Снимали клип в лофте — атмосфера невероятная. Тимур помог с организацией.", createdAt: "2026-02-05" },
-  { id: "r6", listingId: "5", authorName: "Карина Л.", authorAvatar: img(206), rating: 5, text: "Юрта просто великолепная! Свадебная фотосессия получилась волшебной.", createdAt: "2026-03-01" },
+  { id: "r1", listingId: "1", authorName: "Марат К.", authorAvatar: avatarImg(201), rating: 5, text: "Отличная студия! Свет потрясающий, оборудование в идеальном состоянии. Алия очень отзывчивый хост.", createdAt: "2026-03-10" },
+  { id: "r2", listingId: "1", authorName: "Света П.", authorAvatar: avatarImg(202), rating: 5, text: "Снимала каталог одежды — циклорама идеальная, пространства хватает. Приду ещё!", createdAt: "2026-02-25" },
+  { id: "r3", listingId: "1", authorName: "Ержан Т.", authorAvatar: avatarImg(203), rating: 4, text: "Хорошая студия, всё как в описании. Единственное — парковка ограничена.", createdAt: "2026-01-14" },
+  { id: "r4", listingId: "2", authorName: "Айгерим Б.", authorAvatar: avatarImg(204), rating: 5, text: "Провели корпоратив на 150 человек — всё прошло идеально. Звук и свет на высшем уровне.", createdAt: "2026-03-20" },
+  { id: "r5", listingId: "2", authorName: "Данияр М.", authorAvatar: avatarImg(205), rating: 5, text: "Снимали клип в лофте — атмосфера невероятная. Тимур помог с организацией.", createdAt: "2026-02-05" },
+  { id: "r6", listingId: "5", authorName: "Карина Л.", authorAvatar: avatarImg(206), rating: 5, text: "Юрта просто великолепная! Свадебная фотосессия получилась волшебной.", createdAt: "2026-03-01" },
 ];
 
 export function getListingBySlug(slug: string): Listing | undefined {

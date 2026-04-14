@@ -1,9 +1,15 @@
+import Image from "next/image";
+import Link from "next/link";
+import Navbar from "@/components/navbar";
+import ListingCard from "@/components/listing-card";
+import { getListings } from "@/lib/api";
 import HostForm from "./host-form";
 
 const categories = [
   {
     title: "Фотостудии",
     desc: "Циклорамы, daylight-студии, оборудование",
+    image: "/images/categories/photo-studio.webp",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-8 h-8">
         <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
@@ -14,6 +20,7 @@ const categories = [
   {
     title: "Ивент-площадки",
     desc: "Банкетные залы, лофты, open-air",
+    image: "/images/categories/event-space.webp",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-8 h-8">
         <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z" />
@@ -24,6 +31,7 @@ const categories = [
   {
     title: "Жильё для съёмок",
     desc: "Квартиры, дома, виллы, коттеджи",
+    image: "/images/categories/apartment.webp",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-8 h-8">
         <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
@@ -33,6 +41,7 @@ const categories = [
   {
     title: "Sound Stages",
     desc: "Павильоны для кино и видеопродакшн",
+    image: "/images/categories/sound-stage.webp",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-8 h-8">
         <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
@@ -42,6 +51,7 @@ const categories = [
   {
     title: "Этно-пространства",
     desc: "Юрты, казахские гостевые дома",
+    image: "/images/categories/ethno-space.webp",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-8 h-8">
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0 0 12 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75Z" />
@@ -51,6 +61,7 @@ const categories = [
   {
     title: "Рестораны и кафе",
     desc: "Для корпоративов, тоев и вечеринок",
+    image: "/images/categories/restaurant.webp",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-8 h-8">
         <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349M3.75 21V9.349m0 0a3.001 3.001 0 0 0 3.75-.615A2.993 2.993 0 0 0 9.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 0 0 2.25 1.016c.896 0 1.7-.393 2.25-1.015a3.001 3.001 0 0 0 3.75.614m-16.5 0a3.004 3.004 0 0 1-.621-4.72l1.189-1.19A1.5 1.5 0 0 1 5.378 3h13.243a1.5 1.5 0 0 1 1.06.44l1.19 1.189a3 3 0 0 1-.621 4.72M6.75 18h3.75a.75.75 0 0 0 .75-.75V13.5a.75.75 0 0 0-.75-.75H6.75a.75.75 0 0 0-.75.75v3.75c0 .414.336.75.75.75Z" />
@@ -60,6 +71,7 @@ const categories = [
   {
     title: "Переговорные",
     desc: "Офисы, коворкинги, конференц-залы",
+    image: "/images/categories/meeting-room.webp",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-8 h-8">
         <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 0 0 .75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 0 0-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0 1 12 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 0 1-.673-.38m0 0A2.18 2.18 0 0 1 3 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 0 1 3.413-.387m7.5 0V5.25A2.25 2.25 0 0 0 13.5 3h-3a2.25 2.25 0 0 0-2.25 2.25v.894m7.5 0a48.667 48.667 0 0 0-7.5 0" />
@@ -69,6 +81,7 @@ const categories = [
   {
     title: "Горные шале",
     desc: "Уникальные площадки в горах Алматы",
+    image: "/images/categories/mountain-chalet.webp",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-8 h-8">
         <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15a4.5 4.5 0 0 0 4.5 4.5H18a3.75 3.75 0 0 0 1.332-7.257 3 3 0 0 0-3.758-3.848 5.25 5.25 0 0 0-10.233 2.33A4.502 4.502 0 0 0 2.25 15Z" />
@@ -116,39 +129,25 @@ const steps = [
   { num: "04", title: "Зарабатывайте", desc: "После мероприятия деньги поступают вам на Kaspi за 3-5 дней" },
 ];
 
-export default function Home() {
+export const revalidate = 60;
+
+export default async function Home() {
+  const listings = await getListings();
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-white">
-                <path d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" fill="currentColor" />
-                <path d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" stroke="currentColor" strokeWidth={1.5} />
-              </svg>
-            </div>
-            <span className="text-xl font-bold tracking-tight">
-              LOKACIA<span className="text-primary">.KZ</span>
-            </span>
-          </div>
-          <div className="hidden sm:flex items-center gap-6 text-sm font-medium text-gray-600">
-            <a href="#categories" className="hover:text-primary transition-colors">Категории</a>
-            <a href="#how" className="hover:text-primary transition-colors">Как это работает</a>
-            <a href="#benefits" className="hover:text-primary transition-colors">Преимущества</a>
-          </div>
-          <a
-            href="#form"
-            className="bg-primary text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-primary-dark transition-colors"
-          >
-            Разместить локацию
-          </a>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-violet-950 via-violet-900 to-purple-800 text-white">
+      <section className="relative overflow-hidden text-white">
+        <Image
+          src="/images/hero.webp"
+          alt="LOKACIA — площадки для съёмок и мероприятий в Казахстане"
+          fill
+          className="object-cover"
+          priority
+          quality={85}
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-violet-950/90 via-violet-900/80 to-purple-800/70" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(139,92,246,0.3),transparent_60%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(245,158,11,0.15),transparent_60%)]" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32 lg:py-40">
@@ -164,7 +163,7 @@ export default function Home() {
             </h1>
             <p className="mt-6 text-lg sm:text-xl text-violet-200 max-w-2xl leading-relaxed">
               LOKACIA — маркетплейс аренды локаций для съёмок, мероприятий и встреч
-              в&nbsp;Казахстане. Как Giggster, только для нас.
+              в&nbsp;Казахстане.
             </p>
             <div className="mt-10 flex flex-col sm:flex-row gap-4">
               <a
@@ -215,18 +214,71 @@ export default function Home() {
             {categories.map((cat) => (
               <div
                 key={cat.title}
-                className="group bg-white rounded-2xl p-6 border border-gray-200 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 cursor-pointer"
+                className="group relative rounded-2xl overflow-hidden h-56 sm:h-64 cursor-pointer"
               >
-                <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
-                  {cat.icon}
+                <Image
+                  src={cat.image}
+                  alt={cat.title}
+                  fill
+                  className="object-cover transition-transform duration-500 group-hover:scale-110"
+                  sizes="(max-width: 640px) 50vw, 25vw"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent group-hover:from-primary/80 group-hover:via-primary/30 transition-all duration-300" />
+                <div className="absolute inset-0 flex flex-col justify-end p-5">
+                  <div className="w-10 h-10 rounded-lg bg-white/20 backdrop-blur-sm text-white flex items-center justify-center mb-3">
+                    {cat.icon}
+                  </div>
+                  <h3 className="font-bold text-lg text-white">{cat.title}</h3>
+                  <p className="mt-1 text-sm text-white/80">{cat.desc}</p>
                 </div>
-                <h3 className="mt-4 font-semibold text-lg">{cat.title}</h3>
-                <p className="mt-1 text-sm text-gray-500">{cat.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
+
+      {/* Listings Grid */}
+      {listings.length > 0 && (
+        <section className="py-20 sm:py-28 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-end justify-between mb-10">
+              <div>
+                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
+                  Популярные локации
+                </h2>
+                <p className="mt-3 text-lg text-gray-600">
+                  Лучшие пространства для ваших проектов
+                </p>
+              </div>
+              <Link
+                href="/catalog"
+                className="hidden sm:inline-flex items-center gap-1 text-primary font-semibold hover:underline"
+              >
+                Смотреть все
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                </svg>
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {listings.slice(0, 6).map((listing) => (
+                <ListingCard key={listing.id} listing={listing} />
+              ))}
+            </div>
+            <div className="mt-8 text-center sm:hidden">
+              <Link
+                href="/catalog"
+                className="inline-flex items-center gap-1 text-primary font-semibold hover:underline"
+              >
+                Смотреть все локации
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                </svg>
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* How it works */}
       <section id="how" className="py-20 sm:py-28 bg-white">
