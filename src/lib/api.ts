@@ -115,6 +115,38 @@ export async function getReviewsByListingId(listingId: string): Promise<Review[]
   });
 }
 
+export async function getHostProfile(hostId: string) {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, name, phone, role, avatar_url, created_at")
+    .eq("id", hostId)
+    .single();
+
+  if (error || !data) return null;
+  return data as { id: string; name: string; phone: string | null; role: string; avatar_url: string | null; created_at: string };
+}
+
+export async function getHostActiveListings(hostId: string): Promise<Listing[]> {
+  const { data, error } = await supabase
+    .from("listings")
+    .select("*, profiles!listings_host_id_fkey(name, phone, avatar_url)")
+    .eq("host_id", hostId)
+    .eq("status", "active")
+    .order("created_at", { ascending: false });
+
+  if (error || !data || data.length === 0) return [];
+
+  return data.map((row: Record<string, unknown>) => {
+    const profile = row.profiles as Record<string, unknown> | null;
+    return rowToListing({
+      ...row,
+      host_name: profile?.name ?? "Хост",
+      host_avatar: profile?.avatar_url ?? "",
+      host_phone: profile?.phone ?? "",
+    });
+  });
+}
+
 export async function getHostListings(hostId: string): Promise<Listing[]> {
   const { data, error } = await supabase
     .from("listings")

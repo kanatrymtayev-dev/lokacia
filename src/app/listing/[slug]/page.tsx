@@ -118,8 +118,11 @@ export default async function ListingPage({
               </div>
 
               {/* Host */}
-              <div className="flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-200">
-                <div className="relative w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
+              <Link
+                href={`/host/${listing.hostId}`}
+                className="flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-200 hover:border-primary/30 hover:shadow-md hover:shadow-primary/5 transition-all group"
+              >
+                <div className="relative w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex-shrink-0 group-hover:ring-2 group-hover:ring-primary/20 transition-all">
                   <Image
                     src={listing.hostAvatar}
                     alt={listing.hostName}
@@ -128,13 +131,16 @@ export default async function ListingPage({
                     sizes="48px"
                   />
                 </div>
-                <div>
-                  <div className="font-semibold">{listing.hostName}</div>
+                <div className="flex-1">
+                  <div className="font-semibold group-hover:text-primary transition-colors">{listing.hostName}</div>
                   <div className="text-sm text-gray-500">
                     {listing.superhost ? "Суперхост" : "Хост"} · На платформе с {new Date(listing.createdAt).toLocaleDateString("ru-RU", { month: "long", year: "numeric" })}
                   </div>
                 </div>
-              </div>
+                <svg className="w-5 h-5 text-gray-300 group-hover:text-primary transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                </svg>
+              </Link>
 
               {/* Location hint */}
               <div className="flex items-start gap-3 p-4 bg-amber-50 rounded-xl border border-amber-100">
