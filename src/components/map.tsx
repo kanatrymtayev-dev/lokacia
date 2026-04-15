@@ -106,6 +106,7 @@ export default function Map2GIS({
   const markersRef = useRef<Map<string, MapglMarker>>(new Map());
   const apiRef = useRef<MapglApi | null>(null);
   const [errorState, setError] = useState<string | null>(null);
+  const [isMapLoaded, setIsMapLoaded] = useState(false);
 
   // Инициализация карты один раз
   useEffect(() => {
@@ -128,6 +129,8 @@ export default function Map2GIS({
           key: API_KEY,
           zoomControl: "topRight",
         });
+        
+        setIsMapLoaded(true);
       })
       .catch((e: Error) => setError(e.message));
 
@@ -162,7 +165,7 @@ export default function Map2GIS({
     for (const l of valid) {
       const marker = new api.HtmlMarker(map, {
         coordinates: [l.lng, l.lat],
-        html: pinHtml(formatPrice(l.pricePerHour), l.id === hoveredListingId),
+        html: pinHtml(formatPrice(l.pricePerHour), false),
         anchor: [0.5, 1],
       });
       // открыть карточку по клику
@@ -190,7 +193,7 @@ export default function Map2GIS({
         { padding: { top: 60, right: 60, bottom: 60, left: 60 } }
       );
     }
-  }, [listings, hoveredListingId]);
+  }, [listings, isMapLoaded]);
 
   // Подсветка ховеренного маркера — пересоздаём только его HTML (HtmlMarker не имеет setHtml в публичном API во всех версиях)
   useEffect(() => {
@@ -201,15 +204,31 @@ export default function Map2GIS({
     listings.forEach((l) => {
       const old = markersRef.current.get(l.id);
       if (!old) return;
+      
+      const isHovered = l.id === hoveredListingId;
+      // Optimization: Only update DOM class/styles if we can to avoid destroying marker
+      const el = (old as unknown as { getContent?: () => HTMLElement }).getContent?.();
+      if (el && el.firstElementChild) {
+        const inner = el.firstElementChild as HTMLElement;
+        inner.style.background = isHovered ? "#111827" : "#ffffff";
+        inner.style.color = isHovered ? "#ffffff" : "#111827";
+        inner.style.transform = isHovered ? "scale(1.12)" : "scale(1)";
+        inner.style.border = isHovered ? "1px solid #111827" : "1px solid rgba(0,0,0,0.12)";
+        inner.style.boxShadow = isHovered ? "0 4px 14px rgba(0,0,0,0.25)" : "0 4px 14px rgba(0,0,0,0.15)";
+        inner.style.zIndex = isHovered ? "10" : "1";
+        return;
+      }
+      
+      // Fallback: destroy and recreate
       old.destroy();
       const marker = new api.HtmlMarker(map, {
-        coordinates: [l.lng, l.lat],
-        html: pinHtml(formatPrice(l.pricePerHour), l.id === hoveredListingId),
+        coordinates: [l.lng !== 0 ? l.lng : 76.945465, l.lat !== 0 ? l.lat : 43.238949],
+        html: pinHtml(formatPrice(l.pricePerHour), isHovered),
         anchor: [0.5, 1],
       });
-      const el = (marker as unknown as { getContent?: () => HTMLElement }).getContent?.();
-      if (el) {
-        el.addEventListener("click", () => {
+      const newEl = (marker as unknown as { getContent?: () => HTMLElement }).getContent?.();
+      if (newEl) {
+        newEl.addEventListener("click", () => {
           window.location.href = `/listing/${l.slug}`;
         });
       }
