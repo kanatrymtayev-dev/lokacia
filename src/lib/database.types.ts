@@ -12,6 +12,10 @@ export interface Database {
           response_time: string | null;
           avg_rating: number | null;
           email: string | null;
+          id_verified: boolean;
+          company_name: string | null;
+          company_bin: string | null;
+          company_address: string | null;
           created_at: string;
         };
         Insert: {
@@ -72,6 +76,11 @@ export interface Database {
           pricing_tiers: Array<{ max_guests: number; price_per_hour: number }>;
           add_ons: Array<{ id: string; name: string; price: number; charge_type: "flat" | "per_hour" }>;
           featured_until: string | null;
+          power_kw: number | null;
+          parking_capacity: number | null;
+          has_freight_access: boolean;
+          has_loading_dock: boolean;
+          has_white_cyc: boolean;
           status: "active" | "draft" | "moderation" | "archived";
           created_at: string;
           updated_at: string;
@@ -253,6 +262,33 @@ export interface Database {
           viewer_id?: string | null;
         };
         Update: never;
+      };
+      host_verifications: {
+        Row: {
+          id: string;
+          host_id: string;
+          id_doc_url: string | null;
+          selfie_url: string | null;
+          status: "pending" | "verified" | "rejected";
+          reviewer_note: string | null;
+          submitted_at: string;
+          reviewed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          host_id: string;
+          id_doc_url?: string | null;
+          selfie_url?: string | null;
+          status?: "pending" | "verified" | "rejected";
+          reviewer_note?: string | null;
+        };
+        Update: {
+          id_doc_url?: string | null;
+          selfie_url?: string | null;
+          status?: "pending" | "verified" | "rejected";
+          reviewer_note?: string | null;
+          reviewed_at?: string | null;
+        };
       };
       favorites: {
         Row: {

@@ -101,7 +101,24 @@ export interface Listing {
   pricingTiers?: PricingTier[];
   addOns?: AddOn[];
   featuredUntil?: string | null;
+  powerKw?: number | null;
+  parkingCapacity?: number | null;
+  hasFreightAccess?: boolean;
+  hasLoadingDock?: boolean;
+  hasWhiteCyc?: boolean;
+  hostIdVerified?: boolean;
   createdAt: string;
+}
+
+export interface HostVerification {
+  id: string;
+  hostId: string;
+  idDocUrl: string | null;
+  selfieUrl: string | null;
+  status: "pending" | "verified" | "rejected";
+  reviewerNote: string | null;
+  submittedAt: string;
+  reviewedAt: string | null;
 }
 
 export interface ListingView {

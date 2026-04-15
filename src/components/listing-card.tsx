@@ -76,6 +76,14 @@ export default function ListingCard({
               Суперхост
             </span>
           )}
+          {listing.hostIdVerified && (
+            <span className="bg-emerald-500 text-white text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1" title="Хост прошёл ID-верификацию">
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clipRule="evenodd"/>
+              </svg>
+              Verified
+            </span>
+          )}
         </div>
         {/* Favorite */}
         {onToggleFavorite && (
@@ -146,6 +154,17 @@ export default function ListingCard({
             <span className="text-xs text-gray-400">({listing.reviewCount})</span>
           </div>
         </div>
+
+        {/* Production params (если заполнены) */}
+        {(listing.powerKw || listing.parkingCapacity || listing.hasFreightAccess || listing.hasLoadingDock || listing.hasWhiteCyc) && (
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500">
+            {listing.powerKw ? <span title="Электричество">⚡ {listing.powerKw} кВт</span> : null}
+            {listing.parkingCapacity ? <span title="Парковка">🅿 {listing.parkingCapacity}</span> : null}
+            {listing.hasFreightAccess && <span className="bg-gray-100 px-1.5 py-0.5 rounded">Грузовой въезд</span>}
+            {listing.hasLoadingDock && <span className="bg-gray-100 px-1.5 py-0.5 rounded">Разгрузка</span>}
+            {listing.hasWhiteCyc && <span className="bg-gray-100 px-1.5 py-0.5 rounded">Циклорама</span>}
+          </div>
+        )}
 
         {/* Compare toggle */}
         {onToggleCompare && (

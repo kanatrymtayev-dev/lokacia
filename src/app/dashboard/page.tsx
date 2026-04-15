@@ -14,6 +14,9 @@ const AnalyticsTab = dynamic(() => import("./analytics-tab"), {
   ssr: false,
   loading: () => <div className="text-gray-400 text-sm py-8 text-center">Загрузка...</div>,
 });
+
+import VerificationTab from "./verification-tab";
+import ProductionModal from "./production-modal";
 import { ACTIVITY_TYPE_LABELS } from "@/lib/types";
 import type { Listing, BookingRequest, HostBlackout } from "@/lib/types";
 import { formatPrice } from "@/lib/utils";
@@ -39,7 +42,8 @@ export default function DashboardPage() {
   const router = useRouter();
   const [bookings, setBookings] = useState<Array<Record<string, unknown>>>([]);
   const [myListings, setMyListings] = useState<Listing[]>([]);
-  const [tab, setTab] = useState<"listings" | "bookings" | "calendar" | "availability" | "analytics">("bookings");
+  const [tab, setTab] = useState<"listings" | "bookings" | "calendar" | "availability" | "analytics" | "verification">("bookings");
+  const [productionModal, setProductionModal] = useState<Listing | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -171,9 +175,25 @@ export default function DashboardPage() {
             >
               Аналитика
             </button>
+            <button
+              onClick={() => setTab("verification")}
+              className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
+                tab === "verification" ? "bg-white shadow-sm text-gray-900" : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Верификация
+            </button>
           </div>
 
           {tab === "analytics" && <AnalyticsTab hostId={user.id} />}
+          {tab === "verification" && <VerificationTab userId={user.id} />}
+          {productionModal && (
+            <ProductionModal
+              listing={productionModal}
+              onClose={() => setProductionModal(null)}
+              onSaved={() => { setProductionModal(null); loadData(); }}
+            />
+          )}
 
           {/* Bookings tab */}
           {tab === "bookings" && (
@@ -249,6 +269,17 @@ export default function DashboardPage() {
                                   Отклонить
                                 </button>
                               </div>
+                            )}
+                            {(status === "confirmed" || status === "completed") && (
+                              <a
+                                href={`/api/invoice/${booking.id as string}`}
+                                className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                                </svg>
+                                Скачать счёт
+                              </a>
                             )}
                           </div>
                         </div>
@@ -327,6 +358,12 @@ export default function DashboardPage() {
                           )}
                         </div>
                         <p className="mt-2 text-sm text-gray-500 line-clamp-1">{listing.description}</p>
+                        <button
+                          onClick={() => setProductionModal(listing)}
+                          className="mt-2 text-xs text-primary hover:underline"
+                        >
+                          ⚡ Технические параметры
+                        </button>
                       </div>
                     </div>
                   </div>

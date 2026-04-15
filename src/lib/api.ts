@@ -76,6 +76,12 @@ function rowToListing(row: Record<string, unknown>): Listing {
     pricingTiers: (row.pricing_tiers as Listing["pricingTiers"]) ?? [],
     addOns: (row.add_ons as Listing["addOns"]) ?? [],
     featuredUntil: (row.featured_until as string | null) ?? null,
+    powerKw: (row.power_kw as number | null) ?? null,
+    parkingCapacity: (row.parking_capacity as number | null) ?? null,
+    hasFreightAccess: (row.has_freight_access as boolean) ?? false,
+    hasLoadingDock: (row.has_loading_dock as boolean) ?? false,
+    hasWhiteCyc: (row.has_white_cyc as boolean) ?? false,
+    hostIdVerified: (row.host_id_verified as boolean) ?? false,
     createdAt: row.created_at as string,
   };
 }
@@ -83,7 +89,7 @@ function rowToListing(row: Record<string, unknown>): Listing {
 export async function getListings(): Promise<Listing[]> {
   const { data, error } = await supabase
     .from("listings")
-    .select("*, profiles!listings_host_id_fkey(name, phone, avatar_url)")
+    .select("*, profiles!listings_host_id_fkey(name, phone, avatar_url, id_verified)")
     .eq("status", "active")
     .order("created_at", { ascending: false });
 
@@ -98,6 +104,7 @@ export async function getListings(): Promise<Listing[]> {
       ...row,
       host_name: profile?.name ?? "Хост",
       host_avatar: profile?.avatar_url ?? "",
+      host_id_verified: profile?.id_verified ?? false,
       host_phone: profile?.phone ?? "",
     });
   });
@@ -113,7 +120,7 @@ export async function getListings(): Promise<Listing[]> {
 export async function getListingBySlug(slug: string): Promise<Listing | null> {
   const { data, error } = await supabase
     .from("listings")
-    .select("*, profiles!listings_host_id_fkey(name, phone, avatar_url)")
+    .select("*, profiles!listings_host_id_fkey(name, phone, avatar_url, id_verified)")
     .eq("slug", slug)
     .single();
 
@@ -128,6 +135,7 @@ export async function getListingBySlug(slug: string): Promise<Listing | null> {
     ...(data as Record<string, unknown>),
     host_name: profile?.name ?? "Хост",
     host_avatar: profile?.avatar_url ?? "",
+      host_id_verified: profile?.id_verified ?? false,
     host_phone: profile?.phone ?? "",
   });
 }
@@ -187,7 +195,7 @@ export async function getFavoriteIds(userId: string): Promise<Set<string>> {
 export async function getFavoriteListings(userId: string): Promise<Listing[]> {
   const { data, error } = await supabase
     .from("favorites")
-    .select("created_at, listings!favorites_listing_id_fkey(*, profiles!listings_host_id_fkey(name, phone, avatar_url))")
+    .select("created_at, listings!favorites_listing_id_fkey(*, profiles!listings_host_id_fkey(name, phone, avatar_url, id_verified))")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
@@ -202,6 +210,7 @@ export async function getFavoriteListings(userId: string): Promise<Listing[]> {
         ...listing,
         host_name: profile?.name ?? "Хост",
         host_avatar: profile?.avatar_url ?? "",
+      host_id_verified: profile?.id_verified ?? false,
         host_phone: profile?.phone ?? "",
       });
     })
@@ -212,7 +221,7 @@ export async function getListingsByIds(ids: string[]): Promise<Listing[]> {
   if (ids.length === 0) return [];
   const { data, error } = await supabase
     .from("listings")
-    .select("*, profiles!listings_host_id_fkey(name, phone, avatar_url)")
+    .select("*, profiles!listings_host_id_fkey(name, phone, avatar_url, id_verified)")
     .in("id", ids);
 
   if (error || !data) return [];
@@ -223,6 +232,7 @@ export async function getListingsByIds(ids: string[]): Promise<Listing[]> {
       ...row,
       host_name: profile?.name ?? "Хост",
       host_avatar: profile?.avatar_url ?? "",
+      host_id_verified: profile?.id_verified ?? false,
       host_phone: profile?.phone ?? "",
     });
   });
@@ -451,7 +461,7 @@ export async function getHostProfile(hostId: string) {
 export async function getHostActiveListings(hostId: string): Promise<Listing[]> {
   const { data, error } = await supabase
     .from("listings")
-    .select("*, profiles!listings_host_id_fkey(name, phone, avatar_url)")
+    .select("*, profiles!listings_host_id_fkey(name, phone, avatar_url, id_verified)")
     .eq("host_id", hostId)
     .eq("status", "active")
     .order("created_at", { ascending: false });
@@ -464,6 +474,7 @@ export async function getHostActiveListings(hostId: string): Promise<Listing[]> 
       ...row,
       host_name: profile?.name ?? "Хост",
       host_avatar: profile?.avatar_url ?? "",
+      host_id_verified: profile?.id_verified ?? false,
       host_phone: profile?.phone ?? "",
     });
   });
@@ -472,7 +483,7 @@ export async function getHostActiveListings(hostId: string): Promise<Listing[]> 
 export async function getHostListings(hostId: string): Promise<Listing[]> {
   const { data, error } = await supabase
     .from("listings")
-    .select("*, profiles!listings_host_id_fkey(name, phone, avatar_url)")
+    .select("*, profiles!listings_host_id_fkey(name, phone, avatar_url, id_verified)")
     .eq("host_id", hostId)
     .order("created_at", { ascending: false });
 
@@ -486,6 +497,7 @@ export async function getHostListings(hostId: string): Promise<Listing[]> {
       ...row,
       host_name: profile?.name ?? "Хост",
       host_avatar: profile?.avatar_url ?? "",
+      host_id_verified: profile?.id_verified ?? false,
       host_phone: profile?.phone ?? "",
     });
   });
@@ -559,6 +571,11 @@ export async function createListing(listing: {
   };
   images: string[];
   hostId: string;
+  powerKw?: number;
+  parkingCapacity?: number;
+  hasFreightAccess?: boolean;
+  hasLoadingDock?: boolean;
+  hasWhiteCyc?: boolean;
 }) {
   const slug = generateSlug(listing.title);
 
@@ -607,6 +624,11 @@ export async function createListing(listing: {
       superhost: false,
       rating: 0,
       review_count: 0,
+      power_kw: listing.powerKw ?? null,
+      parking_capacity: listing.parkingCapacity ?? null,
+      has_freight_access: listing.hasFreightAccess ?? false,
+      has_loading_dock: listing.hasLoadingDock ?? false,
+      has_white_cyc: listing.hasWhiteCyc ?? false,
     })
     .select()
     .single();
@@ -1456,4 +1478,237 @@ export async function isAdmin(userId: string): Promise<boolean> {
     .eq("id", userId)
     .single();
   return (data as Record<string, unknown> | null)?.is_admin === true;
+}
+
+// ──────────── Host verifications ────────────
+
+import type { HostVerification } from "./types";
+
+function rowToVerification(r: Record<string, unknown>): HostVerification {
+  return {
+    id: r.id as string,
+    hostId: r.host_id as string,
+    idDocUrl: (r.id_doc_url as string | null) ?? null,
+    selfieUrl: (r.selfie_url as string | null) ?? null,
+    status: r.status as HostVerification["status"],
+    reviewerNote: (r.reviewer_note as string | null) ?? null,
+    submittedAt: r.submitted_at as string,
+    reviewedAt: (r.reviewed_at as string | null) ?? null,
+  };
+}
+
+export async function uploadVerificationFile(
+  userId: string,
+  kind: "id" | "selfie",
+  file: File
+): Promise<string | null> {
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+  const path = `${userId}/${kind}.${ext}`;
+  const { error } = await supabase.storage
+    .from("verifications")
+    .upload(path, file, { contentType: file.type, upsert: true });
+  if (error) {
+    console.error("uploadVerificationFile:", error.message);
+    return null;
+  }
+  // Bucket приватный — генерим signed URL на 7 дней (для админ-превью)
+  const { data: signed } = await supabase.storage
+    .from("verifications")
+    .createSignedUrl(path, 60 * 60 * 24 * 7);
+  return signed?.signedUrl ?? null;
+}
+
+export async function submitHostVerification(
+  userId: string,
+  idDocUrl: string,
+  selfieUrl: string
+) {
+  const { data, error } = await supabase
+    .from("host_verifications")
+    .upsert(
+      {
+        host_id: userId,
+        id_doc_url: idDocUrl,
+        selfie_url: selfieUrl,
+        status: "pending",
+        reviewer_note: null,
+      },
+      { onConflict: "host_id" }
+    )
+    .select()
+    .single();
+  return { data, error };
+}
+
+export async function getMyVerification(userId: string): Promise<HostVerification | null> {
+  const { data } = await supabase
+    .from("host_verifications")
+    .select("*")
+    .eq("host_id", userId)
+    .maybeSingle();
+  if (!data) return null;
+  return rowToVerification(data as Record<string, unknown>);
+}
+
+export async function getAllPendingVerifications(): Promise<Array<HostVerification & { hostName: string; hostEmail: string | null }>> {
+  const { data, error } = await supabase
+    .from("host_verifications")
+    .select("*, profiles!host_verifications_host_id_fkey(name, email)")
+    .eq("status", "pending")
+    .order("submitted_at", { ascending: true });
+  if (error || !data) return [];
+  return (data as Array<Record<string, unknown>>).map((r) => {
+    const p = r.profiles as Record<string, unknown> | null;
+    return {
+      ...rowToVerification(r),
+      hostName: (p?.name as string) ?? "",
+      hostEmail: (p?.email as string | null) ?? null,
+    };
+  });
+}
+
+export async function reviewVerification(
+  verificationId: string,
+  status: "verified" | "rejected",
+  note?: string
+) {
+  const { error } = await supabase
+    .from("host_verifications")
+    .update({
+      status,
+      reviewer_note: note ?? null,
+      reviewed_at: new Date().toISOString(),
+    })
+    .eq("id", verificationId);
+  return { error };
+}
+
+// ──────────── Production-параметры (мини-обновление существующей локации) ────────────
+
+export async function updateListingProductionFields(
+  listingId: string,
+  fields: {
+    powerKw?: number | null;
+    parkingCapacity?: number | null;
+    hasFreightAccess?: boolean;
+    hasLoadingDock?: boolean;
+    hasWhiteCyc?: boolean;
+  }
+) {
+  const { error } = await supabase
+    .from("listings")
+    .update({
+      power_kw: fields.powerKw ?? null,
+      parking_capacity: fields.parkingCapacity ?? null,
+      has_freight_access: fields.hasFreightAccess ?? false,
+      has_loading_dock: fields.hasLoadingDock ?? false,
+      has_white_cyc: fields.hasWhiteCyc ?? false,
+    })
+    .eq("id", listingId);
+  return { error };
+}
+
+// ──────────── Invoice data ────────────
+
+export interface InvoiceData {
+  booking: {
+    id: string;
+    date: string;
+    start_time: string;
+    end_time: string;
+    total_price: number;
+    commission_rate: number | null;
+    metadata?: Record<string, unknown>;
+  };
+  listing: {
+    title: string;
+    address: string;
+    city: string;
+  };
+  host: {
+    name: string;
+    company_name: string | null;
+    company_bin: string | null;
+    company_address: string | null;
+  };
+  renter: {
+    name: string;
+    email: string | null;
+    company_name: string | null;
+    company_bin: string | null;
+    company_address: string | null;
+  };
+}
+
+export async function getInvoiceDataForBooking(bookingId: string): Promise<InvoiceData | null> {
+  const { data: b } = await supabase
+    .from("bookings")
+    .select("id, date, start_time, end_time, total_price, commission_rate, metadata, status, listing_id, renter_id, listings!bookings_listing_id_fkey(title, address, city, host_id)")
+    .eq("id", bookingId)
+    .single();
+  if (!b) return null;
+  const row = b as Record<string, unknown>;
+  const status = row.status as string;
+  if (status !== "confirmed" && status !== "completed") return null;
+
+  const listing = row.listings as Record<string, unknown> | null;
+  if (!listing) return null;
+  const hostId = listing.host_id as string;
+  const renterId = row.renter_id as string;
+
+  const [hostRes, renterRes] = await Promise.all([
+    supabase.from("profiles").select("name, company_name, company_bin, company_address").eq("id", hostId).single(),
+    supabase.from("profiles").select("name, email, company_name, company_bin, company_address").eq("id", renterId).single(),
+  ]);
+
+  const host = hostRes.data as Record<string, unknown> | null;
+  const renter = renterRes.data as Record<string, unknown> | null;
+  if (!host || !renter) return null;
+
+  return {
+    booking: {
+      id: row.id as string,
+      date: row.date as string,
+      start_time: row.start_time as string,
+      end_time: row.end_time as string,
+      total_price: row.total_price as number,
+      commission_rate: (row.commission_rate as number | null) ?? null,
+      metadata: (row.metadata as Record<string, unknown> | null) ?? undefined,
+    },
+    listing: {
+      title: listing.title as string,
+      address: listing.address as string,
+      city: listing.city as string,
+    },
+    host: {
+      name: host.name as string,
+      company_name: (host.company_name as string | null) ?? null,
+      company_bin: (host.company_bin as string | null) ?? null,
+      company_address: (host.company_address as string | null) ?? null,
+    },
+    renter: {
+      name: renter.name as string,
+      email: (renter.email as string | null) ?? null,
+      company_name: (renter.company_name as string | null) ?? null,
+      company_bin: (renter.company_bin as string | null) ?? null,
+      company_address: (renter.company_address as string | null) ?? null,
+    },
+  };
+}
+
+// Также — обновление B2B-данных профиля
+export async function updateProfileBilling(userId: string, fields: {
+  companyName?: string;
+  companyBin?: string;
+  companyAddress?: string;
+}) {
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      company_name: fields.companyName ?? null,
+      company_bin: fields.companyBin ?? null,
+      company_address: fields.companyAddress ?? null,
+    })
+    .eq("id", userId);
+  return { error };
 }

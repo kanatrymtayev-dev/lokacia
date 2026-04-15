@@ -75,7 +75,17 @@ export default async function HostProfilePage({
 
               {/* Info */}
               <div className="flex-1 text-center sm:text-left">
-                <h1 className="text-2xl sm:text-3xl font-bold">{host.name}</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold flex items-center justify-center sm:justify-start gap-2">
+                  {host.name}
+                  {(host as { id_verified?: boolean }).id_verified && (
+                    <span className="inline-flex items-center gap-1 bg-emerald-500 text-white text-xs font-bold px-2 py-0.5 rounded-full" title="Хост прошёл ID-верификацию">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clipRule="evenodd"/>
+                      </svg>
+                      Verified
+                    </span>
+                  )}
+                </h1>
                 <div className="mt-2 flex flex-wrap items-center justify-center sm:justify-start gap-3 text-sm text-gray-500">
                   <span className="flex items-center gap-1">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

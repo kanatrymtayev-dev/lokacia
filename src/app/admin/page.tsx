@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/navbar";
 import { useAuth } from "@/lib/auth-context";
+import Image from "next/image";
 import {
   isAdmin,
   getAdminStats,
@@ -14,11 +15,13 @@ import {
   completePayout,
   getListings,
   setListingFeatured,
+  getAllPendingVerifications,
+  reviewVerification,
 } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
-import type { Listing } from "@/lib/types";
+import type { Listing, HostVerification } from "@/lib/types";
 
-type Tab = "overview" | "bookings" | "payouts" | "featured";
+type Tab = "overview" | "bookings" | "payouts" | "featured" | "verifications";
 
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
   unpaid: "Не оплачено",
@@ -170,6 +173,7 @@ export default function AdminPage() {
                 ["overview", "Бронирования"],
                 ["payouts", "Выплаты"],
                 ["featured", "Топ-листинги"],
+                ["verifications", "Верификация"],
               ] as const
             ).map(([key, label]) => (
               <button
@@ -365,8 +369,94 @@ export default function AdminPage() {
           )}
 
           {tab === "featured" && <FeaturedTab />}
+          {tab === "verifications" && <VerificationsTab />}
         </div>
       </main>
+    </div>
+  );
+}
+
+function VerificationsTab() {
+  const [items, setItems] = useState<Array<HostVerification & { hostName: string; hostEmail: string | null }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setItems(await getAllPendingVerifications());
+    setLoading(false);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  async function decide(id: string, status: "verified" | "rejected") {
+    setBusy(id);
+    await reviewVerification(id, status, notes[id]);
+    setBusy(null);
+    await load();
+  }
+
+  if (loading) return <div className="text-gray-400 text-sm py-8 text-center">Загрузка...</div>;
+  if (items.length === 0) return (
+    <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500 text-sm">
+      Нет заявок на проверку
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      {items.map((v) => (
+        <div key={v.id} className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-start justify-between gap-2 mb-3">
+            <div>
+              <div className="font-semibold">{v.hostName}</div>
+              {v.hostEmail && <div className="text-xs text-gray-500">{v.hostEmail}</div>}
+              <div className="text-xs text-gray-400 mt-1">Подано: {new Date(v.submittedAt).toLocaleString("ru-RU")}</div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            {v.idDocUrl && typeof v.idDocUrl === 'string' && v.idDocUrl.trim() !== '' ? (
+              <a href={v.idDocUrl} target="_blank" rel="noopener" className="block relative aspect-[4/3] bg-gray-100 rounded-lg overflow-hidden">
+                <Image src={v.idDocUrl} alt="Удостоверение" fill sizes="240px" className="object-cover" unoptimized />
+                <div className="absolute bottom-1 left-1 text-[10px] bg-white/90 px-1.5 py-0.5 rounded">Удостоверение</div>
+              </a>
+            ) : (
+              <div className="aspect-[4/3] bg-gray-100 rounded-lg flex items-center justify-center text-xs text-gray-400">Нет фото</div>
+            )}
+            {v.selfieUrl && typeof v.selfieUrl === 'string' && v.selfieUrl.trim() !== '' ? (
+              <a href={v.selfieUrl} target="_blank" rel="noopener" className="block relative aspect-[4/3] bg-gray-100 rounded-lg overflow-hidden">
+                <Image src={v.selfieUrl} alt="Селфи" fill sizes="240px" className="object-cover" unoptimized />
+                <div className="absolute bottom-1 left-1 text-[10px] bg-white/90 px-1.5 py-0.5 rounded">Селфи</div>
+              </a>
+            ) : (
+              <div className="aspect-[4/3] bg-gray-100 rounded-lg flex items-center justify-center text-xs text-gray-400">Нет фото</div>
+            )}
+          </div>
+          <textarea
+            value={notes[v.id] ?? ""}
+            onChange={(e) => setNotes((p) => ({ ...p, [v.id]: e.target.value }))}
+            placeholder="Комментарий (опционально, виден хосту при отклонении)"
+            rows={2}
+            className="w-full px-3 py-2 rounded-lg border border-gray-200 outline-none text-sm resize-none mb-3"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={() => decide(v.id, "rejected")}
+              disabled={busy === v.id}
+              className="flex-1 py-2 rounded-lg border-2 border-gray-200 text-sm font-semibold text-gray-700 hover:border-red-300 hover:text-red-600 disabled:opacity-50"
+            >
+              Отклонить
+            </button>
+            <button
+              onClick={() => decide(v.id, "verified")}
+              disabled={busy === v.id}
+              className="flex-1 py-2 rounded-lg bg-green-600 text-white text-sm font-bold hover:bg-green-700 disabled:opacity-50"
+            >
+              Подтвердить
+            </button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

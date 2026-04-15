@@ -47,6 +47,11 @@ function CatalogInner({ listings }: { listings: Listing[] }) {
   const instantOnly = searchParams.get("instant") === "1";
   const superhostOnly = searchParams.get("super") === "1";
   const maxPrice = Number(searchParams.get("maxPrice") ?? 0) || 0;
+  const powerMin = Number(searchParams.get("powerMin") ?? 0) || 0;
+  const parkingMin = Number(searchParams.get("parkingMin") ?? 0) || 0;
+  const freight = searchParams.get("freight") === "1";
+  const dock = searchParams.get("dock") === "1";
+  const cyc = searchParams.get("cyc") === "1";
 
   const updateParam = useCallback(
     (key: string, value: string | null) => {
@@ -130,11 +135,16 @@ function CatalogInner({ listings }: { listings: Listing[] }) {
       if (instantOnly && !l.instantBook) return false;
       if (superhostOnly && !l.superhost) return false;
       if (maxPrice > 0 && l.pricePerHour > maxPrice) return false;
+      if (powerMin > 0 && (!l.powerKw || l.powerKw < powerMin)) return false;
+      if (parkingMin > 0 && (!l.parkingCapacity || l.parkingCapacity < parkingMin)) return false;
+      if (freight && !l.hasFreightAccess) return false;
+      if (dock && !l.hasLoadingDock) return false;
+      if (cyc && !l.hasWhiteCyc) return false;
       return true;
     });
-  }, [listings, search, city, spaceType, activityType, instantOnly, superhostOnly, maxPrice]);
+  }, [listings, search, city, spaceType, activityType, instantOnly, superhostOnly, maxPrice, powerMin, parkingMin, freight, dock, cyc]);
 
-  const activeFilterCount = [city, spaceType, activityType, instantOnly, superhostOnly, maxPrice > 0].filter(Boolean).length;
+  const activeFilterCount = [city, spaceType, activityType, instantOnly, superhostOnly, maxPrice > 0, powerMin > 0, parkingMin > 0, freight, dock, cyc].filter(Boolean).length;
 
   const compareListings = useMemo(
     () => listings.filter((l) => compareSet.has(l.id)),
@@ -271,6 +281,68 @@ function CatalogInner({ listings }: { listings: Listing[] }) {
                     Сбросить фильтры
                   </button>
                 )}
+              </div>
+
+              {/* Технические параметры (production) */}
+              <div className="border-t border-gray-100 pt-4 mt-2 space-y-3">
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Технические параметры</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Электричество, мин. {powerMin > 0 && `— ${powerMin} кВт`}
+                    </label>
+                    <input
+                      type="range"
+                      min={0}
+                      max={50}
+                      step={1}
+                      value={powerMin}
+                      onChange={(e) => updateParam("powerMin", e.target.value)}
+                      className="w-full mt-2 accent-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Парковка, мест мин.</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={parkingMin || ""}
+                      placeholder="0"
+                      onChange={(e) => updateParam("parkingMin", e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-lg border border-gray-300 outline-none text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer select-none text-sm">
+                    <input
+                      type="checkbox"
+                      checked={freight}
+                      onChange={(e) => updateParam("freight", e.target.checked ? "1" : null)}
+                      className="w-4 h-4 rounded border-gray-300 accent-primary"
+                    />
+                    Грузовой въезд
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer select-none text-sm">
+                    <input
+                      type="checkbox"
+                      checked={dock}
+                      onChange={(e) => updateParam("dock", e.target.checked ? "1" : null)}
+                      className="w-4 h-4 rounded border-gray-300 accent-primary"
+                    />
+                    Разгрузочная платформа
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer select-none text-sm">
+                    <input
+                      type="checkbox"
+                      checked={cyc}
+                      onChange={(e) => updateParam("cyc", e.target.checked ? "1" : null)}
+                      className="w-4 h-4 rounded border-gray-300 accent-primary"
+                    />
+                    Белый циклорама
+                  </label>
+                </div>
               </div>
             </div>
           )}
