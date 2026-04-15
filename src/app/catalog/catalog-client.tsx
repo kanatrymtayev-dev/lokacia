@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback, Suspense } from "react";
 import dynamic from "next/dynamic";
+import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { Listing, City, SpaceType, ActivityType } from "@/lib/types";
 import {
   CITY_LABELS,
@@ -9,6 +11,8 @@ import {
   ACTIVITY_TYPE_LABELS,
 } from "@/lib/types";
 import ListingCard from "@/components/listing-card";
+import { useAuth } from "@/lib/auth-context";
+import { addFavorite, removeFavorite, getFavoriteIds } from "@/lib/api";
 
 // Карта — только на клиенте, без SSR (внутри идёт обращение к window)
 const Map2GIS = dynamic(() => import("@/components/map"), {
@@ -20,18 +24,99 @@ const allCities = Object.entries(CITY_LABELS) as [City, string][];
 const allSpaceTypes = Object.entries(SPACE_TYPE_LABELS) as [SpaceType, string][];
 const allActivityTypes = Object.entries(ACTIVITY_TYPE_LABELS) as [ActivityType, string][];
 
+const MAX_COMPARE = 3;
+
 export default function CatalogClient({ listings }: { listings: Listing[] }) {
-  const [search, setSearch] = useState("");
-  const [city, setCity] = useState<City | "">("");
-  const [spaceType, setSpaceType] = useState<SpaceType | "">("");
-  const [activityType, setActivityType] = useState<ActivityType | "">("");
-  const [instantOnly, setInstantOnly] = useState(false);
-  const [superhostOnly, setSuperhostOnly] = useState(false);
-  const [maxPrice, setMaxPrice] = useState<number>(0);
+  return (
+    <Suspense fallback={<div className="p-8 text-gray-400 text-sm">Загрузка...</div>}>
+      <CatalogInner listings={listings} />
+    </Suspense>
+  );
+}
+
+function CatalogInner({ listings }: { listings: Listing[] }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user } = useAuth();
+
+  // ── URL-state фильтров ────────────────────────────────
+  const search = searchParams.get("q") ?? "";
+  const city = (searchParams.get("city") ?? "") as City | "";
+  const spaceType = (searchParams.get("type") ?? "") as SpaceType | "";
+  const activityType = (searchParams.get("activity") ?? "") as ActivityType | "";
+  const instantOnly = searchParams.get("instant") === "1";
+  const superhostOnly = searchParams.get("super") === "1";
+  const maxPrice = Number(searchParams.get("maxPrice") ?? 0) || 0;
+
+  const updateParam = useCallback(
+    (key: string, value: string | null) => {
+      const sp = new URLSearchParams(searchParams.toString());
+      if (value === null || value === "" || value === "0") sp.delete(key);
+      else sp.set(key, value);
+      const qs = sp.toString();
+      router.replace(qs ? `/catalog?${qs}` : "/catalog", { scroll: false });
+    },
+    [searchParams, router]
+  );
+
+  function clearFilters() {
+    router.replace("/catalog", { scroll: false });
+  }
+
+  // ── Локальный UI-стейт ────────────────────────────────
   const [showFilters, setShowFilters] = useState(false);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
 
+  // ── Favorites ─────────────────────────────────────────
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!user) { setFavorites(new Set()); return; }
+    getFavoriteIds(user.id).then(setFavorites);
+  }, [user]);
+
+  async function handleToggleFavorite(listingId: string) {
+    if (!user) {
+      router.push(`/login?next=/catalog?${searchParams.toString()}`);
+      return;
+    }
+    const isFav = favorites.has(listingId);
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (isFav) next.delete(listingId);
+      else next.add(listingId);
+      return next;
+    });
+    if (isFav) await removeFavorite(user.id, listingId);
+    else await addFavorite(user.id, listingId);
+  }
+
+  // ── Compare ───────────────────────────────────────────
+  const [compareSet, setCompareSet] = useState<Set<string>>(new Set());
+  const [compareToast, setCompareToast] = useState<string | null>(null);
+
+  function handleToggleCompare(listingId: string) {
+    setCompareSet((prev) => {
+      const next = new Set(prev);
+      if (next.has(listingId)) {
+        next.delete(listingId);
+      } else if (next.size >= MAX_COMPARE) {
+        setCompareToast(`Можно сравнить максимум ${MAX_COMPARE} локации`);
+        setTimeout(() => setCompareToast(null), 2500);
+        return prev;
+      } else {
+        next.add(listingId);
+      }
+      return next;
+    });
+  }
+
+  function goToCompare() {
+    const ids = Array.from(compareSet).join(",");
+    router.push(`/compare?ids=${ids}`);
+  }
+
+  // ── Фильтрация ────────────────────────────────────────
   const filtered = useMemo(() => {
     return listings.filter((l) => {
       if (search) {
@@ -51,23 +136,16 @@ export default function CatalogClient({ listings }: { listings: Listing[] }) {
 
   const activeFilterCount = [city, spaceType, activityType, instantOnly, superhostOnly, maxPrice > 0].filter(Boolean).length;
 
-  function clearFilters() {
-    setCity("");
-    setSpaceType("");
-    setActivityType("");
-    setInstantOnly(false);
-    setSuperhostOnly(false);
-    setMaxPrice(0);
-    setSearch("");
-  }
+  const compareListings = useMemo(
+    () => listings.filter((l) => compareSet.has(l.id)),
+    [listings, compareSet]
+  );
 
   return (
-    // Высота = вьюпорт минус шапка (~64px). Карта будет sticky внутри правой колонки.
     <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-64px)] lg:overflow-hidden">
-      {/* LEFT — список и фильтры (свой скролл на десктопе) */}
+      {/* LEFT */}
       <section className="w-full lg:w-3/5 xl:w-[62%] lg:overflow-y-auto">
         <div className="px-4 sm:px-6 lg:px-8 py-6">
-          {/* Header */}
           <div className="mb-6">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Каталог локаций</h1>
             <p className="mt-1 text-sm text-gray-600">
@@ -75,23 +153,17 @@ export default function CatalogClient({ listings }: { listings: Listing[] }) {
             </p>
           </div>
 
-          {/* Search bar */}
+          {/* Search */}
           <div className="flex flex-col sm:flex-row gap-3 mb-4">
             <div className="relative flex-1">
-              <svg
-                className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
+              <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
               </svg>
               <input
                 type="text"
                 placeholder="Поиск: циклорама, лофт, вид на горы..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => updateParam("q", e.target.value)}
                 className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-gray-900 bg-white"
               />
             </div>
@@ -111,7 +183,7 @@ export default function CatalogClient({ listings }: { listings: Listing[] }) {
             </button>
           </div>
 
-          {/* Filters panel */}
+          {/* Filters */}
           {showFilters && (
             <div className="bg-white rounded-2xl border border-gray-200 p-5 mb-5 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -119,7 +191,7 @@ export default function CatalogClient({ listings }: { listings: Listing[] }) {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Город</label>
                   <select
                     value={city}
-                    onChange={(e) => setCity(e.target.value as City | "")}
+                    onChange={(e) => updateParam("city", e.target.value)}
                     className="w-full px-3 py-2.5 rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm bg-white"
                   >
                     <option value="">Все города</option>
@@ -132,7 +204,7 @@ export default function CatalogClient({ listings }: { listings: Listing[] }) {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Тип помещения</label>
                   <select
                     value={spaceType}
-                    onChange={(e) => setSpaceType(e.target.value as SpaceType | "")}
+                    onChange={(e) => updateParam("type", e.target.value)}
                     className="w-full px-3 py-2.5 rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm bg-white"
                   >
                     <option value="">Все типы</option>
@@ -145,7 +217,7 @@ export default function CatalogClient({ listings }: { listings: Listing[] }) {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Активность</label>
                   <select
                     value={activityType}
-                    onChange={(e) => setActivityType(e.target.value as ActivityType | "")}
+                    onChange={(e) => updateParam("activity", e.target.value)}
                     className="w-full px-3 py-2.5 rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm bg-white"
                   >
                     <option value="">Все</option>
@@ -164,7 +236,7 @@ export default function CatalogClient({ listings }: { listings: Listing[] }) {
                     max={60000}
                     step={1000}
                     value={maxPrice}
-                    onChange={(e) => setMaxPrice(Number(e.target.value))}
+                    onChange={(e) => updateParam("maxPrice", e.target.value)}
                     className="w-full mt-2 accent-primary"
                   />
                 </div>
@@ -175,7 +247,7 @@ export default function CatalogClient({ listings }: { listings: Listing[] }) {
                   <input
                     type="checkbox"
                     checked={instantOnly}
-                    onChange={(e) => setInstantOnly(e.target.checked)}
+                    onChange={(e) => updateParam("instant", e.target.checked ? "1" : null)}
                     className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary/20 accent-primary"
                   />
                   <span className="text-sm flex items-center gap-1">
@@ -189,16 +261,13 @@ export default function CatalogClient({ listings }: { listings: Listing[] }) {
                   <input
                     type="checkbox"
                     checked={superhostOnly}
-                    onChange={(e) => setSuperhostOnly(e.target.checked)}
+                    onChange={(e) => updateParam("super", e.target.checked ? "1" : null)}
                     className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary/20 accent-primary"
                   />
                   <span className="text-sm">Суперхосты</span>
                 </label>
                 {activeFilterCount > 0 && (
-                  <button
-                    onClick={clearFilters}
-                    className="text-sm text-primary hover:underline ml-auto"
-                  >
+                  <button onClick={clearFilters} className="text-sm text-primary hover:underline ml-auto">
                     Сбросить фильтры
                   </button>
                 )}
@@ -206,7 +275,6 @@ export default function CatalogClient({ listings }: { listings: Listing[] }) {
             </div>
           )}
 
-          {/* Results count */}
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm text-gray-500">
               {filtered.length === 0
@@ -215,9 +283,8 @@ export default function CatalogClient({ listings }: { listings: Listing[] }) {
             </p>
           </div>
 
-          {/* Grid (на десктопе 2 колонки, чтобы карточки не выглядели сжатыми рядом с картой) */}
           {filtered.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pb-32">
               {filtered.map((listing) => (
                 <ListingCard
                   key={listing.id}
@@ -225,6 +292,10 @@ export default function CatalogClient({ listings }: { listings: Listing[] }) {
                   highlighted={hoveredId === listing.id}
                   onMouseEnter={() => setHoveredId(listing.id)}
                   onMouseLeave={() => setHoveredId(null)}
+                  isFavorite={favorites.has(listing.id)}
+                  onToggleFavorite={() => handleToggleFavorite(listing.id)}
+                  inCompare={compareSet.has(listing.id)}
+                  onToggleCompare={() => handleToggleCompare(listing.id)}
                 />
               ))}
             </div>
@@ -243,17 +314,18 @@ export default function CatalogClient({ listings }: { listings: Listing[] }) {
         </div>
       </section>
 
-      {/* RIGHT — карта (десктоп: sticky внутри split view; мобила: модальный фуллскрин) */}
+      {/* RIGHT — карта */}
       <aside className="hidden lg:block lg:w-2/5 xl:w-[38%] lg:h-full border-l border-gray-200 bg-white">
         <div className="w-full h-full">
           <Map2GIS listings={filtered} hoveredListingId={hoveredId} />
         </div>
       </aside>
 
-      {/* Mobile floating button — открыть карту */}
+      {/* Mobile floating: Map */}
       <button
         onClick={() => setMobileMapOpen(true)}
         className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-gray-900 text-white px-5 py-3 rounded-full shadow-xl flex items-center gap-2 text-sm font-semibold hover:bg-black transition-colors"
+        style={compareSet.size > 0 ? { bottom: "6.5rem" } : undefined}
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m0-8.25l-4.5 1.687v8.25L9 15m0 0 6 2.25m0 0 4.5-1.687V7.313L15 9m0 8.25V9m0 0L9 6.75" />
@@ -276,6 +348,49 @@ export default function CatalogClient({ listings }: { listings: Listing[] }) {
           <div className="flex-1 relative">
             <Map2GIS listings={filtered} hoveredListingId={hoveredId} />
           </div>
+        </div>
+      )}
+
+      {/* Compare drawer (sticky bottom) */}
+      {compareSet.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-2xl">
+          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
+            <div className="flex gap-2 flex-1 overflow-x-auto">
+              {compareListings.map((l) => (
+                <div key={l.id} className="relative flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden bg-gray-100 group">
+                  {l.images[0] && typeof l.images[0] === 'string' && l.images[0].trim() !== '' ? (
+                    <Image src={l.images[0]} alt={l.title} fill className="object-cover" sizes="56px" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400">Нет фото</div>
+                  )}
+                  <button
+                    onClick={() => handleToggleCompare(l.id)}
+                    aria-label="Убрать из сравнения"
+                    className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs hover:bg-red-500 transition-colors"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              {Array.from({ length: MAX_COMPARE - compareSet.size }).map((_, i) => (
+                <div key={`empty-${i}`} className="flex-shrink-0 w-14 h-14 rounded-lg border-2 border-dashed border-gray-200" />
+              ))}
+            </div>
+            <button
+              onClick={goToCompare}
+              disabled={compareSet.size < 2}
+              className="bg-primary text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-primary-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
+            >
+              Сравнить ({compareSet.size})
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {compareToast && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white px-4 py-2.5 rounded-xl text-sm shadow-xl">
+          {compareToast}
         </div>
       )}
     </div>

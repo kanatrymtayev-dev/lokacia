@@ -35,6 +35,12 @@ export type Style =
 
 export type City = "almaty" | "astana" | "shymkent" | "karaganda";
 
+export interface Favorite {
+  userId: string;
+  listingId: string;
+  createdAt: string;
+}
+
 export interface PricingTier {
   max_guests: number;
   price_per_hour: number;

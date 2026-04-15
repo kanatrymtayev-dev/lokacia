@@ -4,21 +4,24 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { isAdmin, getUnreadCount } from "@/lib/api";
+import { isAdmin, getUnreadCount, getFavoriteIds } from "@/lib/api";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [admin, setAdmin] = useState(false);
   const [unread, setUnread] = useState(0);
+  const [favoritesCount, setFavoritesCount] = useState(0);
 
   useEffect(() => {
     if (user) {
       isAdmin(user.id).then(setAdmin);
       getUnreadCount(user.id).then(setUnread);
+      getFavoriteIds(user.id).then((s) => setFavoritesCount(s.size));
     } else {
       setAdmin(false);
       setUnread(0);
+      setFavoritesCount(0);
     }
   }, [user]);
 
@@ -53,6 +56,22 @@ export default function Navbar() {
         <div className="flex items-center gap-3">
           {user ? (
             <>
+              {/* Favorites icon */}
+              <Link
+                href="/favorites"
+                className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-600 hover:text-red-500"
+                aria-label="Избранное"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+                </svg>
+                {favoritesCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold w-4.5 h-4.5 min-w-[18px] min-h-[18px] flex items-center justify-center rounded-full">
+                    {favoritesCount}
+                  </span>
+                )}
+              </Link>
+
               {/* Inbox icon — always visible */}
               <Link
                 href="/inbox"
@@ -119,6 +138,18 @@ export default function Navbar() {
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                     >
                       Бронирования
+                    </Link>
+                    <Link
+                      href="/favorites"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      Избранное
+                      {favoritesCount > 0 && (
+                        <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                          {favoritesCount}
+                        </span>
+                      )}
                     </Link>
                     {admin && (
                       <Link

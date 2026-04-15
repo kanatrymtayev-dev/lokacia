@@ -6,6 +6,7 @@ import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 
 import ListingMap from "./listing-map";
+import FavoriteButton from "./favorite-button";
 import Gallery from "./gallery";
 import BookingSidebar from "./booking-sidebar";
 import { getListings, getListingBySlug, getReviewsByListingId } from "@/lib/api";
@@ -75,9 +76,14 @@ export default async function ListingPage({
                   <span>/</span>
                   <span>{CITY_LABELS[listing.city]}</span>
                 </div>
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                  {listing.title}
-                </h1>
+                <div className="flex items-start justify-between gap-3">
+                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex-1">
+                    {listing.title}
+                  </h1>
+                  <div className="flex-shrink-0 pt-1">
+                    <FavoriteButton listingId={listing.id} slug={listing.slug} />
+                  </div>
+                </div>
                 <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-gray-600">
                   <span className="flex items-center gap-1">
                     <svg className="w-4 h-4 text-accent" fill="currentColor" viewBox="0 0 20 20">

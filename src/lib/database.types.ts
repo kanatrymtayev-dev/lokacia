@@ -208,6 +208,18 @@ export interface Database {
           text?: string;
         };
       };
+      favorites: {
+        Row: {
+          user_id: string;
+          listing_id: string;
+          created_at: string;
+        };
+        Insert: {
+          user_id: string;
+          listing_id: string;
+        };
+        Update: never;
+      };
       host_applications: {
         Row: {
           id: string;

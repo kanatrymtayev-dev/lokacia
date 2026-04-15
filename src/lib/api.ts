@@ -117,6 +117,77 @@ export async function getReviewsByListingId(listingId: string): Promise<Review[]
   });
 }
 
+// ---- Favorites / Wishlists ----
+
+export async function addFavorite(userId: string, listingId: string) {
+  const { error } = await supabase
+    .from("favorites")
+    .upsert({ user_id: userId, listing_id: listingId }, { onConflict: "user_id,listing_id" });
+  return { error };
+}
+
+export async function removeFavorite(userId: string, listingId: string) {
+  const { error } = await supabase
+    .from("favorites")
+    .delete()
+    .eq("user_id", userId)
+    .eq("listing_id", listingId);
+  return { error };
+}
+
+export async function getFavoriteIds(userId: string): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from("favorites")
+    .select("listing_id")
+    .eq("user_id", userId);
+  if (error || !data) return new Set();
+  return new Set(data.map((r: Record<string, unknown>) => r.listing_id as string));
+}
+
+export async function getFavoriteListings(userId: string): Promise<Listing[]> {
+  const { data, error } = await supabase
+    .from("favorites")
+    .select("created_at, listings!favorites_listing_id_fkey(*, profiles!listings_host_id_fkey(name, phone, avatar_url))")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (error || !data) return [];
+
+  return data
+    .map((r: Record<string, unknown>) => {
+      const listing = r.listings as Record<string, unknown> | null;
+      if (!listing) return null;
+      const profile = listing.profiles as Record<string, unknown> | null;
+      return rowToListing({
+        ...listing,
+        host_name: profile?.name ?? "Хост",
+        host_avatar: profile?.avatar_url ?? "",
+        host_phone: profile?.phone ?? "",
+      });
+    })
+    .filter((l): l is Listing => l !== null);
+}
+
+export async function getListingsByIds(ids: string[]): Promise<Listing[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase
+    .from("listings")
+    .select("*, profiles!listings_host_id_fkey(name, phone, avatar_url)")
+    .in("id", ids);
+
+  if (error || !data) return [];
+
+  return data.map((row: Record<string, unknown>) => {
+    const profile = row.profiles as Record<string, unknown> | null;
+    return rowToListing({
+      ...row,
+      host_name: profile?.name ?? "Хост",
+      host_avatar: profile?.avatar_url ?? "",
+      host_phone: profile?.phone ?? "",
+    });
+  });
+}
+
 // ---- Reviews ----
 
 export async function createReview(input: {
