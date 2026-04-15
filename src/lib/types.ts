@@ -100,7 +100,20 @@ export interface Listing {
   superhost: boolean;
   pricingTiers?: PricingTier[];
   addOns?: AddOn[];
+  featuredUntil?: string | null;
   createdAt: string;
+}
+
+export interface ListingView {
+  id: string;
+  listingId: string;
+  viewerId: string | null;
+  viewedAt: string;
+}
+
+export interface WeekStat {
+  weekStart: string;
+  value: number;
 }
 
 export type BookingStatus =
@@ -184,6 +197,8 @@ export interface Review {
   id: string;
   listingId: string;
   bookingId?: string | null;
+  targetType?: "listing" | "guest";
+  targetUserId?: string | null;
   authorName: string;
   authorAvatar: string;
   rating: number;

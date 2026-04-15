@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Navbar from "@/components/navbar";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -11,10 +12,13 @@ import {
   getAllPayouts,
   createPayout,
   completePayout,
+  getListings,
+  setListingFeatured,
 } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
+import type { Listing } from "@/lib/types";
 
-type Tab = "overview" | "bookings" | "payouts";
+type Tab = "overview" | "bookings" | "payouts" | "featured";
 
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
   unpaid: "Не оплачено",
@@ -165,6 +169,7 @@ export default function AdminPage() {
               [
                 ["overview", "Бронирования"],
                 ["payouts", "Выплаты"],
+                ["featured", "Топ-листинги"],
               ] as const
             ).map(([key, label]) => (
               <button
@@ -358,8 +363,112 @@ export default function AdminPage() {
               </div>
             </div>
           )}
+
+          {tab === "featured" && <FeaturedTab />}
         </div>
       </main>
+    </div>
+  );
+}
+
+function FeaturedTab() {
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const data = await getListings();
+    setListings(data);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function promote(id: string) {
+    setBusy(id);
+    const until = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    await setListingFeatured(id, until);
+    await load();
+    setBusy(null);
+  }
+
+  async function unfeature(id: string) {
+    setBusy(id);
+    await setListingFeatured(id, null);
+    await load();
+    setBusy(null);
+  }
+
+  const now = Date.now();
+
+  if (loading) {
+    return <div className="text-gray-400 text-sm py-8 text-center">Загрузка...</div>;
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="px-5 py-3 border-b border-gray-100 text-sm text-gray-500">
+        Продвижение поднимает локацию вверх каталога и даёт бейдж «★ Топ» на 7 дней.
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
+            <tr>
+              <th className="text-left px-4 py-3">Локация</th>
+              <th className="text-left px-4 py-3">Город</th>
+              <th className="text-left px-4 py-3">Featured до</th>
+              <th className="text-right px-4 py-3">Действие</th>
+            </tr>
+          </thead>
+          <tbody>
+            {listings.map((l) => {
+              const active = l.featuredUntil && new Date(l.featuredUntil).getTime() > now;
+              return (
+                <tr key={l.id} className="border-t border-gray-100">
+                  <td className="px-4 py-3">
+                    <Link href={`/listing/${l.slug}`} className="font-medium text-gray-900 hover:text-primary line-clamp-1">
+                      {l.title}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-gray-600">{l.city}, {l.district}</td>
+                  <td className="px-4 py-3">
+                    {active && l.featuredUntil ? (
+                      <span className="text-amber-700 font-medium">
+                        {new Date(l.featuredUntil).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {active ? (
+                      <button
+                        onClick={() => unfeature(l.id)}
+                        disabled={busy === l.id}
+                        className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:border-red-300 hover:text-red-600 disabled:opacity-50"
+                      >
+                        Снять
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => promote(l.id)}
+                        disabled={busy === l.id}
+                        className="text-xs px-3 py-1.5 rounded-lg bg-amber-500 text-white font-semibold hover:bg-amber-600 disabled:opacity-50"
+                      >
+                        Продвинуть на 7 дней
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+            {listings.length === 0 && (
+              <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-400">Локаций нет</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

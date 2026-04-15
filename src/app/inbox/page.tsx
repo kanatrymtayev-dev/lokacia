@@ -19,6 +19,7 @@ import {
   createQuote,
   acceptQuote,
   rejectQuote,
+  hasHostReviewedGuest,
 } from "@/lib/api";
 import type { QuoteMetadata } from "@/lib/types";
 
@@ -65,6 +66,7 @@ interface Message {
 interface BookingMeta {
   id: string;
   listing_id: string;
+  renter_id: string;
   date: string;
   start_time: string;
   end_time: string;
@@ -105,7 +107,8 @@ function InboxContent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [bookingsMap, setBookingsMap] = useState<Record<string, BookingMeta>>({});
   const [reviewedSet, setReviewedSet] = useState<Set<string>>(new Set());
-  const [reviewModal, setReviewModal] = useState<{ bookingId: string; listingId: string } | null>(null);
+  const [guestReviewedSet, setGuestReviewedSet] = useState<Set<string>>(new Set());
+  const [reviewModal, setReviewModal] = useState<{ bookingId: string; listingId: string; targetType: "listing" | "guest"; targetUserId?: string } | null>(null);
   const [quoteModalOpen, setQuoteModalOpen] = useState(false);
   const router = useRouter();
   const [newMsg, setNewMsg] = useState("");
@@ -149,6 +152,7 @@ function InboxContent() {
     if (ids.length === 0) {
       setBookingsMap({});
       setReviewedSet(new Set());
+      setGuestReviewedSet(new Set());
       return;
     }
     const [rows, reviewed] = await Promise.all([
@@ -156,12 +160,25 @@ function InboxContent() {
       getReviewedBookingIds(ids),
     ]);
     setReviewedSet(reviewed);
+
+    // Хост-отзывы о госте: проверяем только для тех броней, где текущий user — хост
+    if (user) {
+      const guestReviewed = new Set<string>();
+      await Promise.all(
+        ids.map(async (bid) => {
+          const ok = await hasHostReviewedGuest(bid, user.id);
+          if (ok) guestReviewed.add(bid);
+        })
+      );
+      setGuestReviewedSet(guestReviewed);
+    }
     const map: Record<string, BookingMeta> = {};
     for (const r of rows) {
       const listing = r.listings as { host_id?: string } | null;
       map[r.id as string] = {
         id: r.id as string,
         listing_id: r.listing_id as string,
+        renter_id: r.renter_id as string,
         date: r.date as string,
         start_time: r.start_time as string,
         end_time: r.end_time as string,
@@ -174,7 +191,7 @@ function InboxContent() {
       };
     }
     setBookingsMap(map);
-  }, []);
+  }, [user]);
 
   // Load messages when active conversation changes
   const loadMessages = useCallback(async () => {
@@ -499,7 +516,9 @@ function InboxContent() {
                               onRespond={handleRespond}
                               fallbackText={msg.content}
                               alreadyReviewed={msg.booking_id ? reviewedSet.has(msg.booking_id) : false}
-                              onReview={(bookingId, listingId) => setReviewModal({ bookingId, listingId })}
+                              onReview={(bookingId, listingId) => setReviewModal({ bookingId, listingId, targetType: "listing" })}
+                              guestReviewed={msg.booking_id ? guestReviewedSet.has(msg.booking_id) : false}
+                              onReviewGuest={(bookingId, listingId, renterId) => setReviewModal({ bookingId, listingId, targetType: "guest", targetUserId: renterId })}
                             />
                           </div>
                         );
@@ -616,9 +635,15 @@ function InboxContent() {
           bookingId={reviewModal.bookingId}
           listingId={reviewModal.listingId}
           authorId={user.id}
+          targetType={reviewModal.targetType}
+          targetUserId={reviewModal.targetUserId}
           onClose={() => setReviewModal(null)}
           onSubmitted={() => {
-            setReviewedSet((prev) => new Set(prev).add(reviewModal.bookingId));
+            if (reviewModal.targetType === "guest") {
+              setGuestReviewedSet((prev) => new Set(prev).add(reviewModal.bookingId));
+            } else {
+              setReviewedSet((prev) => new Set(prev).add(reviewModal.bookingId));
+            }
             setReviewModal(null);
           }}
         />
@@ -640,12 +665,16 @@ function ReviewModal({
   bookingId,
   listingId,
   authorId,
+  targetType = "listing",
+  targetUserId,
   onClose,
   onSubmitted,
 }: {
   bookingId: string;
   listingId: string;
   authorId: string;
+  targetType?: "listing" | "guest";
+  targetUserId?: string;
   onClose: () => void;
   onSubmitted: () => void;
 }) {
@@ -673,6 +702,8 @@ function ReviewModal({
       authorId,
       rating,
       text,
+      targetType,
+      targetUserId,
     });
     if (e2) {
       setError("Не удалось отправить отзыв. Попробуйте снова.");
@@ -702,9 +733,13 @@ function ReviewModal({
           </svg>
         </button>
 
-        <h3 className="text-lg font-bold pr-8">Оставить отзыв</h3>
+        <h3 className="text-lg font-bold pr-8">
+          {targetType === "guest" ? "Оценить гостя" : "Оставить отзыв"}
+        </h3>
         <p className="mt-1 text-sm text-gray-500">
-          Поделитесь впечатлениями — это поможет другим арендаторам.
+          {targetType === "guest"
+            ? "Был ли гость аккуратен и соблюдал правила?"
+            : "Поделитесь впечатлениями — это поможет другим арендаторам."}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
@@ -776,6 +811,8 @@ function BookingCard({
   fallbackText,
   alreadyReviewed,
   onReview,
+  guestReviewed,
+  onReviewGuest,
 }: {
   booking: BookingMeta | undefined;
   isHost: boolean;
@@ -783,6 +820,8 @@ function BookingCard({
   fallbackText: string;
   alreadyReviewed: boolean;
   onReview: (bookingId: string, listingId: string) => void;
+  guestReviewed: boolean;
+  onReviewGuest: (bookingId: string, listingId: string, renterId: string) => void;
 }) {
   if (!booking) {
     return (
@@ -904,6 +943,29 @@ function BookingCard({
                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.957a1 1 0 0 0 .95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.366 2.446a1 1 0 0 0-.364 1.118l1.286 3.957c.3.921-.755 1.688-1.54 1.118l-3.366-2.446a1 1 0 0 0-1.176 0l-3.366 2.446c-.784.57-1.838-.197-1.539-1.118l1.286-3.957a1 1 0 0 0-.364-1.118L2.05 9.384c-.783-.57-.38-1.81.588-1.81h4.162a1 1 0 0 0 .95-.69l1.286-3.957Z" />
               </svg>
               Оценить локацию
+            </button>
+          )}
+        </div>
+      )}
+
+      {isHost && booking.status === "completed" && (
+        <div className="mt-4">
+          {guestReviewed ? (
+            <div className="flex items-center justify-center gap-1.5 text-xs text-purple-700">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.957a1 1 0 0 0 .95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.366 2.446a1 1 0 0 0-.364 1.118l1.286 3.957c.3.921-.755 1.688-1.54 1.118l-3.366-2.446a1 1 0 0 0-1.176 0l-3.366 2.446c-.784.57-1.838-.197-1.539-1.118l1.286-3.957a1 1 0 0 0-.364-1.118L2.05 9.384c-.783-.57-.38-1.81.588-1.81h4.162a1 1 0 0 0 .95-.69l1.286-3.957Z" />
+              </svg>
+              Вы уже оценили гостя
+            </div>
+          ) : (
+            <button
+              onClick={() => onReviewGuest(booking.id, booking.listing_id, booking.renter_id)}
+              className="w-full py-2.5 rounded-xl bg-purple-600 text-white text-sm font-bold hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.957a1 1 0 0 0 .95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.366 2.446a1 1 0 0 0-.364 1.118l1.286 3.957c.3.921-.755 1.688-1.54 1.118l-3.366-2.446a1 1 0 0 0-1.176 0l-3.366 2.446c-.784.57-1.838-.197-1.539-1.118l1.286-3.957a1 1 0 0 0-.364-1.118L2.05 9.384c-.783-.57-.38-1.81.588-1.81h4.162a1 1 0 0 0 .95-.69l1.286-3.957Z" />
+              </svg>
+              Оценить гостя
             </button>
           )}
         </div>

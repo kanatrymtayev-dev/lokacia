@@ -71,6 +71,7 @@ export interface Database {
           superhost: boolean;
           pricing_tiers: Array<{ max_guests: number; price_per_hour: number }>;
           add_ons: Array<{ id: string; name: string; price: number; charge_type: "flat" | "per_hour" }>;
+          featured_until: string | null;
           status: "active" | "draft" | "moderation" | "archived";
           created_at: string;
           updated_at: string;
@@ -220,6 +221,8 @@ export interface Database {
           listing_id: string;
           author_id: string;
           booking_id: string | null;
+          target_type: "listing" | "guest";
+          target_user_id: string | null;
           rating: number;
           text: string;
           created_at: string;
@@ -228,6 +231,8 @@ export interface Database {
           listing_id: string;
           author_id: string;
           booking_id?: string | null;
+          target_type?: "listing" | "guest";
+          target_user_id?: string | null;
           rating: number;
           text: string;
         };
@@ -235,6 +240,19 @@ export interface Database {
           rating?: number;
           text?: string;
         };
+      };
+      listing_views: {
+        Row: {
+          id: string;
+          listing_id: string;
+          viewer_id: string | null;
+          viewed_at: string;
+        };
+        Insert: {
+          listing_id: string;
+          viewer_id?: string | null;
+        };
+        Update: never;
       };
       favorites: {
         Row: {

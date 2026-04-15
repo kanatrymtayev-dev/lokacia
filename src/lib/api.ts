@@ -75,6 +75,7 @@ function rowToListing(row: Record<string, unknown>): Listing {
     superhost: row.superhost as boolean,
     pricingTiers: (row.pricing_tiers as Listing["pricingTiers"]) ?? [],
     addOns: (row.add_ons as Listing["addOns"]) ?? [],
+    featuredUntil: (row.featured_until as string | null) ?? null,
     createdAt: row.created_at as string,
   };
 }
@@ -91,7 +92,7 @@ export async function getListings(): Promise<Listing[]> {
     return mockListings;
   }
 
-  return data.map((row: Record<string, unknown>) => {
+  const all = data.map((row: Record<string, unknown>) => {
     const profile = row.profiles as Record<string, unknown> | null;
     return rowToListing({
       ...row,
@@ -100,6 +101,13 @@ export async function getListings(): Promise<Listing[]> {
       host_phone: profile?.phone ?? "",
     });
   });
+
+  // Featured (с активным featured_until) идут первыми, затем остальные
+  const now = Date.now();
+  const featured = all.filter((l) => l.featuredUntil && new Date(l.featuredUntil).getTime() > now);
+  const featuredIds = new Set(featured.map((l) => l.id));
+  const rest = all.filter((l) => !featuredIds.has(l.id));
+  return [...featured, ...rest];
 }
 
 export async function getListingBySlug(slug: string): Promise<Listing | null> {
@@ -220,6 +228,150 @@ export async function getListingsByIds(ids: string[]): Promise<Listing[]> {
   });
 }
 
+// ---- Listing views (analytics tracking) ----
+
+export async function trackListingView(listingId: string, viewerId?: string | null) {
+  try {
+    await supabase.from("listing_views").insert({
+      listing_id: listingId,
+      viewer_id: viewerId ?? null,
+    });
+  } catch {
+    // fire-and-forget
+  }
+}
+
+// ---- Host analytics ----
+
+import type { WeekStat } from "./types";
+
+function startOfWeekUTC(d: Date): Date {
+  // Понедельник как начало недели, нормализованный до UTC 00:00
+  const day = d.getUTCDay(); // 0..6 (вс=0)
+  const offset = (day + 6) % 7; // дней от понедельника
+  const monday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - offset));
+  return monday;
+}
+
+function weeksBack(n: number): string[] {
+  const today = startOfWeekUTC(new Date());
+  const out: string[] = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setUTCDate(d.getUTCDate() - i * 7);
+    out.push(d.toISOString().slice(0, 10));
+  }
+  return out;
+}
+
+function weekKey(dateISO: string): string {
+  return startOfWeekUTC(new Date(dateISO)).toISOString().slice(0, 10);
+}
+
+export async function getHostAnalytics(hostId: string): Promise<{
+  views: WeekStat[];
+  bookings: WeekStat[];
+  revenue: WeekStat[];
+  conversionRate: number;
+}> {
+  const buckets = weeksBack(8);
+  const sinceISO = buckets[0]; // YYYY-MM-DD начало 8 недели назад
+
+  // 1. Listings хоста (id'шки)
+  const { data: listings } = await supabase
+    .from("listings")
+    .select("id")
+    .eq("host_id", hostId);
+  const listingIds = (listings ?? []).map((r: Record<string, unknown>) => r.id as string);
+  if (listingIds.length === 0) {
+    const empty = buckets.map((w) => ({ weekStart: w, value: 0 }));
+    return { views: empty, bookings: empty, revenue: empty, conversionRate: 0 };
+  }
+
+  // 2. Параллельно: views, bookings (created_at), bookings (date for revenue)
+  const [viewsRes, bookingsRes] = await Promise.all([
+    supabase
+      .from("listing_views")
+      .select("viewed_at, listing_id")
+      .in("listing_id", listingIds)
+      .gte("viewed_at", sinceISO),
+    supabase
+      .from("bookings")
+      .select("created_at, date, total_price, status, listing_id")
+      .in("listing_id", listingIds)
+      .gte("created_at", sinceISO),
+  ]);
+
+  const viewsByWeek = new Map<string, number>(buckets.map((w) => [w, 0]));
+  const bookingsByWeek = new Map<string, number>(buckets.map((w) => [w, 0]));
+  const revenueByWeek = new Map<string, number>(buckets.map((w) => [w, 0]));
+
+  for (const v of (viewsRes.data ?? []) as Array<Record<string, unknown>>) {
+    const k = weekKey(v.viewed_at as string);
+    if (viewsByWeek.has(k)) viewsByWeek.set(k, (viewsByWeek.get(k) ?? 0) + 1);
+  }
+
+  let totalBookings = 0;
+  for (const b of (bookingsRes.data ?? []) as Array<Record<string, unknown>>) {
+    const kCreated = weekKey(b.created_at as string);
+    if (bookingsByWeek.has(kCreated)) {
+      bookingsByWeek.set(kCreated, (bookingsByWeek.get(kCreated) ?? 0) + 1);
+      totalBookings++;
+    }
+    const status = b.status as string;
+    if (status === "confirmed" || status === "completed") {
+      const kDate = weekKey(b.date as string);
+      if (revenueByWeek.has(kDate)) {
+        revenueByWeek.set(kDate, (revenueByWeek.get(kDate) ?? 0) + (b.total_price as number));
+      }
+    }
+  }
+
+  const totalViews = Array.from(viewsByWeek.values()).reduce((a, b) => a + b, 0);
+  const conversionRate = totalViews > 0 ? Math.round((totalBookings / totalViews) * 1000) / 10 : 0;
+
+  return {
+    views: buckets.map((w) => ({ weekStart: w, value: viewsByWeek.get(w) ?? 0 })),
+    bookings: buckets.map((w) => ({ weekStart: w, value: bookingsByWeek.get(w) ?? 0 })),
+    revenue: buckets.map((w) => ({ weekStart: w, value: revenueByWeek.get(w) ?? 0 })),
+    conversionRate,
+  };
+}
+
+// ---- Featured listings ----
+
+export async function setListingFeatured(listingId: string, untilISO: string | null) {
+  const { error } = await supabase
+    .from("listings")
+    .update({ featured_until: untilISO })
+    .eq("id", listingId);
+  return { error };
+}
+
+// ---- Двусторонние отзывы ----
+
+export async function getReviewsAboutGuest(guestId: string) {
+  const { data, error } = await supabase
+    .from("reviews")
+    .select("id, rating, text, created_at, author_id, listing_id, profiles!reviews_author_id_fkey(name, avatar_url)")
+    .eq("target_user_id", guestId)
+    .eq("target_type", "guest")
+    .order("created_at", { ascending: false });
+  if (error || !data) return [];
+  return data as Array<Record<string, unknown>>;
+}
+
+export async function hasHostReviewedGuest(bookingId: string, hostId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("reviews")
+    .select("id")
+    .eq("booking_id", bookingId)
+    .eq("target_type", "guest")
+    .eq("author_id", hostId)
+    .maybeSingle();
+  return !!data;
+}
+
 // ---- Reviews ----
 
 export async function createReview(input: {
@@ -228,9 +380,15 @@ export async function createReview(input: {
   authorId: string;
   rating: number;
   text: string;
+  targetType?: "listing" | "guest";
+  targetUserId?: string;
 }) {
   if (input.rating < 1 || input.rating > 5) {
     return { data: null, error: { message: "Рейтинг должен быть от 1 до 5" } };
+  }
+  const targetType = input.targetType ?? "listing";
+  if (targetType === "guest" && !input.targetUserId) {
+    return { data: null, error: { message: "Для отзыва о госте нужен targetUserId" } };
   }
   const { data, error } = await supabase
     .from("reviews")
@@ -238,6 +396,8 @@ export async function createReview(input: {
       listing_id: input.listingId,
       author_id: input.authorId,
       booking_id: input.bookingId,
+      target_type: targetType,
+      target_user_id: targetType === "guest" ? input.targetUserId! : null,
       rating: Math.round(input.rating),
       text: input.text.trim(),
     })

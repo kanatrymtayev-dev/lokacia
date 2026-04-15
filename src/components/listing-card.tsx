@@ -55,6 +55,14 @@ export default function ListingCard({
         )}
         {/* Badges */}
         <div className="absolute top-3 left-3 flex gap-2">
+          {listing.featuredUntil && new Date(listing.featuredUntil).getTime() > Date.now() && (
+            <span className="bg-amber-400 text-amber-950 text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.957a1 1 0 0 0 .95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.366 2.446a1 1 0 0 0-.364 1.118l1.286 3.957c.3.921-.755 1.688-1.54 1.118l-3.366-2.446a1 1 0 0 0-1.176 0l-3.366 2.446c-.784.57-1.838-.197-1.539-1.118l1.286-3.957a1 1 0 0 0-.364-1.118L2.05 9.384c-.783-.57-.38-1.81.588-1.81h4.162a1 1 0 0 0 .95-.69l1.286-3.957Z"/>
+              </svg>
+              Топ
+            </span>
+          )}
           {listing.instantBook && (
             <span className="bg-accent text-gray-900 text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">

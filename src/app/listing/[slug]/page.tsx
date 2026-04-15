@@ -7,6 +7,7 @@ import Footer from "@/components/footer";
 
 import ListingMap from "./listing-map";
 import FavoriteButton from "./favorite-button";
+import ViewTracker from "./view-tracker";
 import Gallery from "./gallery";
 import BookingSidebar from "./booking-sidebar";
 import { getListings, getListingBySlug, getReviewsByListingId } from "@/lib/api";
@@ -51,6 +52,7 @@ export default async function ListingPage({
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
+      <ViewTracker listingId={listing.id} hostId={listing.hostId} />
       <main className="flex-1 bg-gray-50">
         {/* Gallery */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">

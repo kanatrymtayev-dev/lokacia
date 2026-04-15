@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -8,6 +9,11 @@ import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import { useAuth } from "@/lib/auth-context";
 import { getHostListings, getHostBookings, updateBookingStatus, getHostBlackouts, createBlackout, deleteBlackout } from "@/lib/api";
+
+const AnalyticsTab = dynamic(() => import("./analytics-tab"), {
+  ssr: false,
+  loading: () => <div className="text-gray-400 text-sm py-8 text-center">Загрузка...</div>,
+});
 import { ACTIVITY_TYPE_LABELS } from "@/lib/types";
 import type { Listing, BookingRequest, HostBlackout } from "@/lib/types";
 import { formatPrice } from "@/lib/utils";
@@ -33,7 +39,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [bookings, setBookings] = useState<Array<Record<string, unknown>>>([]);
   const [myListings, setMyListings] = useState<Listing[]>([]);
-  const [tab, setTab] = useState<"listings" | "bookings" | "calendar" | "availability">("bookings");
+  const [tab, setTab] = useState<"listings" | "bookings" | "calendar" | "availability" | "analytics">("bookings");
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -157,7 +163,17 @@ export default function DashboardPage() {
             >
               Доступность
             </button>
+            <button
+              onClick={() => setTab("analytics")}
+              className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
+                tab === "analytics" ? "bg-white shadow-sm text-gray-900" : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Аналитика
+            </button>
           </div>
+
+          {tab === "analytics" && <AnalyticsTab hostId={user.id} />}
 
           {/* Bookings tab */}
           {tab === "bookings" && (
