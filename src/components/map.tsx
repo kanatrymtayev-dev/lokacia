@@ -5,7 +5,37 @@ import type { Listing } from "@/lib/types";
 import { formatPrice } from "@/lib/utils";
 import { MapContainer, TileLayer, Marker, Circle, useMap } from "react-leaflet";
 import L from "leaflet";
+import MarkerClusterGroup from "react-leaflet-cluster";
 import "leaflet/dist/leaflet.css";
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+
+const PRIMARY = "#6d28d9";
+
+function clusterIcon(cluster: { getChildCount: () => number }) {
+  const count = cluster.getChildCount();
+  const size = count < 10 ? 36 : count < 50 ? 42 : 52;
+  return L.divIcon({
+    html: `
+      <div style="
+        width:${size}px;
+        height:${size}px;
+        border-radius:9999px;
+        background:${PRIMARY};
+        color:#fff;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        font-weight:700;
+        font-size:13px;
+        font-family:ui-sans-serif,system-ui,-apple-system;
+        box-shadow:0 0 0 6px rgba(109,40,217,0.18), 0 4px 14px rgba(0,0,0,0.18);
+      ">${count}</div>
+    `,
+    className: "lokacia-cluster-icon",
+    iconSize: L.point(size, size, true),
+  });
+}
 
 // Helper component to handle auto-fitting bounds when listings change
 function MapController({ listings, approximateRadius }: { listings: Listing[]; approximateRadius?: number }) {
@@ -111,40 +141,49 @@ export default function MapLeaflet({
         />
         <MapController listings={valid} approximateRadius={approximateRadius} />
 
-        {valid.map((l) => {
-          // Giggster/Airbnb-style: на странице листинга показываем приблизительную зону, а не точку
-          if (approximateRadius) {
-            return (
-              <Circle
-                key={l.id}
-                center={[l.lat, l.lng]}
-                radius={approximateRadius}
-                pathOptions={{
-                  color: "#111827",
-                  weight: 1.5,
-                  opacity: 0.5,
-                  fillColor: "#111827",
-                  fillOpacity: 0.12,
-                }}
-              />
-            );
-          }
-
-          const isHovered = l.id === hoveredListingId;
-          return (
-            <Marker
+        {approximateRadius ? (
+          // Giggster/Airbnb-style: на странице листинга — круг приблизительной зоны
+          valid.map((l) => (
+            <Circle
               key={l.id}
-              position={[l.lat, l.lng]}
-              icon={getIcon(formatPrice(l.pricePerHour), isHovered)}
-              zIndexOffset={isHovered ? 1000 : 0}
-              eventHandlers={{
-                click: () => {
-                  window.location.href = `/listing/${l.slug}`;
-                }
+              center={[l.lat, l.lng]}
+              radius={approximateRadius}
+              pathOptions={{
+                color: "#111827",
+                weight: 1.5,
+                opacity: 0.5,
+                fillColor: "#111827",
+                fillOpacity: 0.12,
               }}
             />
-          );
-        })}
+          ))
+        ) : (
+          // Каталог: обычные ценовые маркеры с кластеризацией
+          <MarkerClusterGroup
+            chunkedLoading
+            maxClusterRadius={50}
+            iconCreateFunction={clusterIcon}
+            showCoverageOnHover={false}
+            spiderfyOnMaxZoom
+          >
+            {valid.map((l) => {
+              const isHovered = l.id === hoveredListingId;
+              return (
+                <Marker
+                  key={l.id}
+                  position={[l.lat, l.lng]}
+                  icon={getIcon(formatPrice(l.pricePerHour), isHovered)}
+                  zIndexOffset={isHovered ? 1000 : 0}
+                  eventHandlers={{
+                    click: () => {
+                      window.location.href = `/listing/${l.slug}`;
+                    }
+                  }}
+                />
+              );
+            })}
+          </MarkerClusterGroup>
+        )}
       </MapContainer>
     </div>
   );

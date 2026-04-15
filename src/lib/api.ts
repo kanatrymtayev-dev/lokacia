@@ -1,6 +1,7 @@
 import { supabase } from "./supabase";
 import { listings as mockListings, reviews as mockReviews } from "./mock-data";
 import type { Listing, Review } from "./types";
+import { geocodeAddress } from "./geocoder";
 
 // Helper to convert Supabase row to Listing type
 function rowToListing(row: Record<string, unknown>): Listing {
@@ -369,6 +370,18 @@ export async function createListing(listing: {
   hostId: string;
 }) {
   const slug = generateSlug(listing.title);
+
+  // Геокодим адрес перед insert. Если 2GIS не отвечает — оставляем 0/0 и логируем.
+  let lat = 0;
+  let lng = 0;
+  const geo = await geocodeAddress(listing.city, listing.address);
+  if (geo) {
+    lat = geo.lat;
+    lng = geo.lng;
+  } else {
+    console.warn(`[geocoder] не удалось определить координаты для: ${listing.city}, ${listing.address}`);
+  }
+
   const { data, error } = await supabase
     .from("listings")
     .insert({
@@ -380,8 +393,8 @@ export async function createListing(listing: {
       city: listing.city,
       district: listing.district,
       address: listing.address,
-      lat: 0,
-      lng: 0,
+      lat,
+      lng,
       area: listing.area,
       capacity: listing.capacity,
       ceiling_height: listing.ceilingHeight,
@@ -408,6 +421,14 @@ export async function createListing(listing: {
     .single();
 
   return { data, error };
+}
+
+export async function updateListingCoords(listingId: string, lat: number, lng: number) {
+  const { error } = await supabase
+    .from("listings")
+    .update({ lat, lng })
+    .eq("id", listingId);
+  return { error };
 }
 
 export async function checkAvailability(
