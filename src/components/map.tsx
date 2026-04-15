@@ -1,78 +1,38 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { useEffect } from "react";
 import type { Listing } from "@/lib/types";
 import { formatPrice } from "@/lib/utils";
+import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
-// 2GIS MapGL загружается через CDN: https://docs.2gis.com/ru/mapgl/overview
-// Ключ можно положить в .env.local как NEXT_PUBLIC_2GIS_KEY. Демо-ключ работает с ограничениями.
-const MAPGL_SRC = "https://mapgl.2gis.com/api/js/v1";
-const API_KEY = process.env.NEXT_PUBLIC_2GIS_KEY ?? "042b5b75-f847-4f2a-b695-b5f58adc9dfd"; // публичный demo-key из доков 2GIS
+// Helper component to handle auto-fitting bounds when listings change
+function MapController({ listings }: { listings: Listing[] }) {
+  const map = useMap();
 
-type MapglMarker = {
-  destroy(): void;
-  setIcon(opts: { icon: string; size?: [number, number]; anchor?: [number, number] }): void;
-};
-
-type MapglMap = {
-  destroy(): void;
-  fitBounds(b: { northEast: [number, number]; southWest: [number, number] }, opts?: { padding?: { top: number; right: number; bottom: number; left: number } }): void;
-  setCenter(coords: [number, number]): void;
-  setZoom(z: number): void;
-  on(event: string, cb: (...args: unknown[]) => void): void;
-};
-
-interface MapglApi {
-  Map: new (
-    container: HTMLElement,
-    opts: { center: [number, number]; zoom: number; key: string; minZoom?: number; maxZoom?: number; zoomControl?: string }
-  ) => MapglMap;
-  Marker: new (
-    map: MapglMap,
-    opts: { coordinates: [number, number]; icon?: string; size?: [number, number]; anchor?: [number, number] }
-  ) => MapglMarker;
-  HtmlMarker: new (
-    map: MapglMap,
-    opts: { coordinates: [number, number]; html: string; anchor?: [number, number] }
-  ) => MapglMarker;
-}
-
-declare global {
-  interface Window {
-    mapgl?: MapglApi;
-    __mapgl_loader__?: Promise<MapglApi>;
-  }
-}
-
-function loadMapgl(): Promise<MapglApi> {
-  if (typeof window === "undefined") return Promise.reject(new Error("SSR"));
-  if (window.mapgl) return Promise.resolve(window.mapgl);
-  if (window.__mapgl_loader__) return window.__mapgl_loader__;
-
-  window.__mapgl_loader__ = new Promise((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>(`script[src="${MAPGL_SRC}"]`);
-    if (existing) {
-      existing.addEventListener("load", () => window.mapgl ? resolve(window.mapgl) : reject(new Error("mapgl missing")));
-      return;
+  useEffect(() => {
+    // If no valid coordinates, don't fitbounds
+    const valid = listings.filter(l => l.lat && l.lng && l.lat !== 0 && l.lng !== 0);
+    
+    if (valid.length === 1) {
+      map.setView([valid[0].lat, valid[0].lng], 13, { animate: true });
+    } else if (valid.length > 1) {
+      const bounds = L.latLngBounds(valid.map(l => [l.lat, l.lng]));
+      map.fitBounds(bounds, { padding: [60, 60], animate: true });
     }
-    const s = document.createElement("script");
-    s.src = MAPGL_SRC;
-    s.async = true;
-    s.onload = () => (window.mapgl ? resolve(window.mapgl) : reject(new Error("mapgl missing")));
-    s.onerror = () => reject(new Error("Не удалось загрузить 2GIS MapGL"));
-    document.head.appendChild(s);
-  });
+  }, [listings, map]);
 
-  return window.__mapgl_loader__;
+  return null;
 }
 
-function pinHtml(price: string, highlighted: boolean) {
+function getIcon(price: string, highlighted: boolean) {
   const bg = highlighted ? "#111827" : "#ffffff";
   const fg = highlighted ? "#ffffff" : "#111827";
   const border = highlighted ? "#111827" : "rgba(0,0,0,0.12)";
   const scale = highlighted ? "scale(1.12)" : "scale(1)";
-  return `
+  
+  const html = `
     <div style="
       background:${bg};
       color:${fg};
@@ -83,16 +43,23 @@ function pinHtml(price: string, highlighted: boolean) {
       font-weight:700;
       font-size:12px;
       white-space:nowrap;
-      transform:${scale};
+      transform:${scale} translateX(-50%);
       transform-origin:center bottom;
-      transition:transform .15s ease, background-color .15s ease, color .15s ease;
+      transition:transform 0.15s ease, background-color 0.15s ease, color 0.15s ease;
       font-family:ui-sans-serif,system-ui,-apple-system;
-      cursor:pointer;
+      display:inline-block;
     ">${price}</div>
   `;
+
+  return L.divIcon({
+    html,
+    className: "leaflet-custom-marker-transparent", 
+    iconSize: [0, 0], // Zero size lets us control anchor purely by CSS translate
+    iconAnchor: [0, 0] // 
+  });
 }
 
-export default function Map2GIS({
+export default function MapLeaflet({
   listings,
   hoveredListingId,
   className = "",
@@ -101,156 +68,61 @@ export default function Map2GIS({
   hoveredListingId?: string | null;
   className?: string;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<MapglMap | null>(null);
-  const markersRef = useRef<Map<string, MapglMarker>>(new Map());
-  const apiRef = useRef<MapglApi | null>(null);
-  const [errorState, setError] = useState<string | null>(null);
-  const [isMapLoaded, setIsMapLoaded] = useState(false);
+  // initial center
+  const initialCenter: [number, number] = (listings.length > 0 && listings[0].lat !== 0) 
+    ? [listings[0].lat, listings[0].lng] 
+    : [43.238949, 76.945465];
 
-  // Инициализация карты один раз
-  useEffect(() => {
-    let cancelled = false;
-    if (!containerRef.current) return;
-
-    loadMapgl()
-      .then((api) => {
-        if (cancelled || !containerRef.current) return;
-        apiRef.current = api;
-
-        // Стартовый центр — Алматы по умолчанию
-        const initial: [number, number] = listings.length > 0 && listings[0].lng && listings[0].lat
-          ? [listings[0].lng, listings[0].lat]
-          : [76.945465, 43.238949];
-
-        mapRef.current = new api.Map(containerRef.current, {
-          center: initial,
-          zoom: 11,
-          key: API_KEY,
-          zoomControl: "topRight",
-        });
-        
-        setIsMapLoaded(true);
-      })
-      .catch((e: Error) => setError(e.message));
-
-    return () => {
-      cancelled = true;
-      markersRef.current.forEach((m) => m.destroy());
-      markersRef.current.clear();
-      mapRef.current?.destroy();
-      mapRef.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Перерисовка маркеров и автомасштабирование при изменении listings
-  useEffect(() => {
-    const api = apiRef.current;
-    const map = mapRef.current;
-    if (!api || !map) return;
-
-    // удаляем старые
-    markersRef.current.forEach((m) => m.destroy());
-    markersRef.current.clear();
-
-    // Если координаты отсутствуют (моковые данные 0, 0), покажем дефолтную Алмату для теста
-    const valid = listings.map(l => {
-      if (l.lat === 0 || l.lng === 0 || !Number.isFinite(l.lat) || !Number.isFinite(l.lng)) {
-        return { ...l, lat: 43.238949, lng: 76.945465 };
-      }
-      return l;
-    });
-
-    for (const l of valid) {
-      const marker = new api.HtmlMarker(map, {
-        coordinates: [l.lng, l.lat],
-        html: pinHtml(formatPrice(l.pricePerHour), false),
-        anchor: [0.5, 1],
-      });
-      // открыть карточку по клику
-      const el = (marker as unknown as { getContent?: () => HTMLElement }).getContent?.();
-      if (el) {
-        el.addEventListener("click", () => {
-          window.location.href = `/listing/${l.slug}`;
-        });
-      }
-      markersRef.current.set(l.id, marker);
+  const valid = listings.map(l => {
+    if (l.lat === 0 || l.lng === 0 || !Number.isFinite(l.lat) || !Number.isFinite(l.lng)) {
+      return { ...l, lat: 43.238949, lng: 76.945465 };
     }
-
-    // Автомасштабирование под все точки
-    if (valid.length === 1) {
-      map.setCenter([valid[0].lng, valid[0].lat]);
-      map.setZoom(13);
-    } else {
-      const lats = valid.map((l) => l.lat);
-      const lngs = valid.map((l) => l.lng);
-      map.fitBounds(
-        {
-          southWest: [Math.min(...lngs), Math.min(...lats)],
-          northEast: [Math.max(...lngs), Math.max(...lats)],
-        },
-        { padding: { top: 60, right: 60, bottom: 60, left: 60 } }
-      );
-    }
-  }, [listings, isMapLoaded]);
-
-  // Подсветка ховеренного маркера — пересоздаём только его HTML (HtmlMarker не имеет setHtml в публичном API во всех версиях)
-  useEffect(() => {
-    const api = apiRef.current;
-    const map = mapRef.current;
-    if (!api || !map) return;
-
-    listings.forEach((l) => {
-      const old = markersRef.current.get(l.id);
-      if (!old) return;
-      
-      const isHovered = l.id === hoveredListingId;
-      // Optimization: Only update DOM class/styles if we can to avoid destroying marker
-      const el = (old as unknown as { getContent?: () => HTMLElement }).getContent?.();
-      if (el && el.firstElementChild) {
-        const inner = el.firstElementChild as HTMLElement;
-        inner.style.background = isHovered ? "#111827" : "#ffffff";
-        inner.style.color = isHovered ? "#ffffff" : "#111827";
-        inner.style.transform = isHovered ? "scale(1.12)" : "scale(1)";
-        inner.style.border = isHovered ? "1px solid #111827" : "1px solid rgba(0,0,0,0.12)";
-        inner.style.boxShadow = isHovered ? "0 4px 14px rgba(0,0,0,0.25)" : "0 4px 14px rgba(0,0,0,0.15)";
-        inner.style.zIndex = isHovered ? "10" : "1";
-        return;
-      }
-      
-      // Fallback: destroy and recreate
-      old.destroy();
-      const marker = new api.HtmlMarker(map, {
-        coordinates: [l.lng !== 0 ? l.lng : 76.945465, l.lat !== 0 ? l.lat : 43.238949],
-        html: pinHtml(formatPrice(l.pricePerHour), isHovered),
-        anchor: [0.5, 1],
-      });
-      const newEl = (marker as unknown as { getContent?: () => HTMLElement }).getContent?.();
-      if (newEl) {
-        newEl.addEventListener("click", () => {
-          window.location.href = `/listing/${l.slug}`;
-        });
-      }
-      markersRef.current.set(l.id, marker);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hoveredListingId]);
+    return l;
+  });
 
   return (
-    <div className={`relative w-full h-full bg-gray-100 ${className}`}>
-      <div ref={containerRef} className="absolute inset-0" />
-      {errorState && (
-        <div className="absolute inset-0 flex items-center justify-center p-4 bg-gray-50">
-          <div className="text-center text-sm text-gray-500 max-w-xs">
-            Не удалось загрузить карту 2GIS. {errorState}
-            <div className="mt-2">
-              <Link href="/catalog" className="text-primary hover:underline">Обновить</Link>
-            </div>
-          </div>
-        </div>
-      )}
+    <div className={`relative w-full h-full bg-gray-100 ${className} as-map-container`}>
+      <style>{`
+        .leaflet-custom-marker-transparent {
+          background: transparent !important;
+          border: none !important;
+        }
+        .leaflet-container {
+          width: 100%;
+          height: 100%;
+          border-radius: inherit;
+          z-index: 10;
+        }
+      `}</style>
+      <MapContainer 
+        center={initialCenter} 
+        zoom={12} 
+        scrollWheelZoom={true}
+        style={{ width: '100%', height: '100%' }}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>'
+          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+        />
+        <MapController listings={valid} />
+        
+        {valid.map((l) => {
+          const isHovered = l.id === hoveredListingId;
+          return (
+            <Marker
+              key={l.id}
+              position={[l.lat, l.lng]}
+              icon={getIcon(formatPrice(l.pricePerHour), isHovered)}
+              zIndexOffset={isHovered ? 1000 : 0}
+              eventHandlers={{
+                click: () => {
+                  window.location.href = \`/listing/\${l.slug}\`;
+                }
+              }}
+            />
+          );
+        })}
+      </MapContainer>
     </div>
   );
 }
-
