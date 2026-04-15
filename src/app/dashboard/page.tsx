@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -33,7 +33,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [bookings, setBookings] = useState<Array<Record<string, unknown>>>([]);
   const [myListings, setMyListings] = useState<Listing[]>([]);
-  const [tab, setTab] = useState<"listings" | "bookings">("bookings");
+  const [tab, setTab] = useState<"listings" | "bookings" | "calendar">("bookings");
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -141,6 +141,14 @@ export default function DashboardPage() {
             >
               Мои локации
             </button>
+            <button
+              onClick={() => setTab("calendar")}
+              className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
+                tab === "calendar" ? "bg-white shadow-sm text-gray-900" : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Календарь
+            </button>
           </div>
 
           {/* Bookings tab */}
@@ -165,7 +173,7 @@ export default function DashboardPage() {
                     >
                       <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                         {/* Listing thumbnail */}
-                        {images[0] && (
+                        {images[0] && typeof images[0] === 'string' && images[0].trim() !== '' && (
                           <Link href={`/listing/${slug}`} className="relative w-full sm:w-24 h-32 sm:h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                             <Image
                               src={images[0]}
@@ -228,6 +236,9 @@ export default function DashboardPage() {
             </div>
           )}
 
+          {/* Calendar tab */}
+          {tab === "calendar" && <CalendarTab bookings={bookings} />}
+
           {/* Listings tab */}
           {tab === "listings" && (
             <div className="space-y-4">
@@ -249,13 +260,17 @@ export default function DashboardPage() {
                   >
                     <div className="flex flex-col sm:flex-row gap-4">
                       <Link href={`/listing/${listing.slug}`} className="relative w-full sm:w-32 h-32 sm:h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                        <Image
-                          src={listing.images[0]}
-                          alt={listing.title}
-                          fill
-                          className="object-cover"
-                          sizes="128px"
-                        />
+                        {listing.images && listing.images.length > 0 && typeof listing.images[0] === 'string' && listing.images[0].trim() !== '' ? (
+                          <Image
+                            src={listing.images[0]}
+                            alt={listing.title}
+                            fill
+                            className="object-cover"
+                            sizes="128px"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">Нет фото</div>
+                        )}
                       </Link>
                       <div className="flex-1">
                         <Link href={`/listing/${listing.slug}`} className="font-semibold hover:text-primary transition-colors">
@@ -293,6 +308,131 @@ export default function DashboardPage() {
         </div>
       </main>
       <Footer />
+    </div>
+  );
+}
+
+function CalendarTab({ bookings }: { bookings: Array<Record<string, unknown>> }) {
+  // Только активные брони, не в прошлом, отсортированы по дате+времени и сгруппированы по дню
+  const grouped = useMemo(() => {
+    const todayStr = new Date().toISOString().split("T")[0];
+    const upcoming = bookings
+      .filter((b) => {
+        const status = b.status as BookingRequest["status"];
+        if (status !== "pending" && status !== "confirmed") return false;
+        const date = b.date as string;
+        return date >= todayStr;
+      })
+      .sort((a, b) => {
+        const ad = (a.date as string) + (a.start_time as string);
+        const bd = (b.date as string) + (b.start_time as string);
+        return ad.localeCompare(bd);
+      });
+
+    const map = new Map<string, Array<Record<string, unknown>>>();
+    for (const b of upcoming) {
+      const date = b.date as string;
+      if (!map.has(date)) map.set(date, []);
+      map.get(date)!.push(b);
+    }
+    return Array.from(map.entries());
+  }, [bookings]);
+
+  if (grouped.length === 0) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+        <svg className="w-14 h-14 text-gray-200 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+        </svg>
+        <p className="text-gray-500">На ближайшее время съёмок и мероприятий не запланировано</p>
+      </div>
+    );
+  }
+
+  function formatDayHeader(dateStr: string): string {
+    const d = new Date(dateStr);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const isToday = d.toDateString() === today.toDateString();
+    const isTomorrow = d.toDateString() === tomorrow.toDateString();
+    const formatted = d.toLocaleDateString("ru-RU", {
+      day: "numeric",
+      month: "long",
+      weekday: "long",
+    });
+    if (isToday) return `Сегодня · ${formatted}`;
+    if (isTomorrow) return `Завтра · ${formatted}`;
+    return formatted;
+  }
+
+  return (
+    <div className="space-y-8">
+      {grouped.map(([date, items]) => (
+        <section key={date}>
+          <h3 className="text-lg font-bold mb-3 capitalize">{formatDayHeader(date)}</h3>
+          <div className="space-y-2">
+            {items.map((b) => {
+              const bl = b.listings as Record<string, unknown> | null;
+              const title = (bl?.title as string) ?? "Локация";
+              const slug = (bl?.slug as string) ?? "";
+              const status = b.status as BookingRequest["status"];
+              const activity = (b.activity_type as string) ?? "";
+              return (
+                <div
+                  key={b.id as string}
+                  className={`flex items-stretch gap-3 bg-white rounded-xl border ${
+                    status === "confirmed" ? "border-green-200" : "border-amber-200"
+                  } p-4`}
+                >
+                  {/* Цветная вертикальная полоса по статусу */}
+                  <div
+                    className={`w-1 rounded-full flex-shrink-0 ${
+                      status === "confirmed" ? "bg-green-500" : "bg-amber-400"
+                    }`}
+                  />
+                  {/* Время */}
+                  <div className="flex flex-col items-center justify-center w-20 flex-shrink-0 border-r border-gray-100 pr-3">
+                    <div className="text-base font-bold tabular-nums">
+                      {(b.start_time as string).slice(0, 5)}
+                    </div>
+                    <div className="text-[11px] text-gray-400 tabular-nums">
+                      до {(b.end_time as string).slice(0, 5)}
+                    </div>
+                  </div>
+                  {/* Контент */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <Link
+                        href={`/listing/${slug}`}
+                        className="font-semibold text-sm hover:text-primary line-clamp-1"
+                      >
+                        {title}
+                      </Link>
+                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${STATUS_COLORS[status]}`}>
+                        {STATUS_LABELS[status]}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500">
+                      <span>{b.guest_count as number} гостей</span>
+                      {activity && (
+                        <>
+                          <span>•</span>
+                          <span>{ACTIVITY_TYPE_LABELS[activity as keyof typeof ACTIVITY_TYPE_LABELS] ?? activity}</span>
+                        </>
+                      )}
+                      <span>•</span>
+                      <span className="font-semibold text-gray-700">{formatPrice(b.total_price as number)}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }

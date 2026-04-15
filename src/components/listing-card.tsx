@@ -4,21 +4,41 @@ import type { Listing } from "@/lib/types";
 import { CITY_LABELS, SPACE_TYPE_LABELS } from "@/lib/types";
 import { formatPrice, formatRating } from "@/lib/utils";
 
-export default function ListingCard({ listing }: { listing: Listing }) {
+export default function ListingCard({
+  listing,
+  onMouseEnter,
+  onMouseLeave,
+  highlighted = false,
+}: {
+  listing: Listing;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
+  highlighted?: boolean;
+}) {
   return (
     <Link
       href={`/listing/${listing.slug}`}
-      className="group block bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20 transition-all duration-300"
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      className={`group block bg-white rounded-2xl border overflow-hidden hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 ${
+        highlighted ? "border-primary shadow-lg shadow-primary/10" : "border-gray-200 hover:border-primary/20"
+      }`}
     >
       {/* Image */}
       <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
-        <Image
-          src={listing.images[0]}
-          alt={listing.title}
-          fill
-          className="object-cover group-hover:scale-105 transition-transform duration-500"
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-        />
+        {listing.images && listing.images.length > 0 && typeof listing.images[0] === 'string' && listing.images[0].trim() !== '' ? (
+          <Image
+            src={listing.images[0]}
+            alt={listing.title}
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-500"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
+            Нет фото
+          </div>
+        )}
         {/* Badges */}
         <div className="absolute top-3 left-3 flex gap-2">
           {listing.instantBook && (

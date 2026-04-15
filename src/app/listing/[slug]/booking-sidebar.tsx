@@ -1,13 +1,45 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, useMemo, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import type { Listing } from "@/lib/types";
+import type { Listing, PricingTier, AddOn } from "@/lib/types";
 import { ACTIVITY_TYPE_LABELS } from "@/lib/types";
 import { formatPrice } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
-import { createBooking, checkAvailability, getOrCreateConversation, sendMessage } from "@/lib/api";
+import {
+  createBookingRequest,
+  checkAvailability,
+  getOrCreateConversation,
+  sendMessage,
+  getListingBookings,
+} from "@/lib/api";
+
+interface ListingBooking {
+  id: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  status: "pending" | "confirmed";
+}
+
+// "HH:MM" → минуты от 00:00
+function toMinutes(t: string): number {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+}
+
+// Полуоткрытый интервал [aStart, aEnd) пересекается с [bStart, bEnd)
+function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
+  return aStart < bEnd && aEnd > bStart;
+}
+
+// Подбор тира: минимальный max_guests, который >= guests. Возвращает null если не нашли.
+function pickTier(tiers: PricingTier[] | undefined, guests: number): PricingTier | null {
+  if (!tiers || tiers.length === 0) return null;
+  const sorted = [...tiers].sort((a, b) => a.max_guests - b.max_guests);
+  return sorted.find((t) => guests <= t.max_guests) ?? null;
+}
 
 export default function BookingSidebar({ listing, referralCode }: { listing: Listing; referralCode?: string }) {
   const { user } = useAuth();
@@ -18,9 +50,10 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
   const [guests, setGuests] = useState(1);
   const [activity, setActivity] = useState(listing.activityTypes[0]);
   const [description, setDescription] = useState("");
-  const [sent, setSent] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [existingBookings, setExistingBookings] = useState<ListingBooking[]>([]);
+  const [selectedAddOns, setSelectedAddOns] = useState<Set<string>>(new Set());
 
   // Message host state
   const [msgOpen, setMsgOpen] = useState(false);
@@ -28,15 +61,100 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
   const [msgSaving, setMsgSaving] = useState(false);
   const [msgError, setMsgError] = useState("");
 
-  const total = listing.pricePerHour * hours;
-  const serviceFee = Math.round(total * 0.075);
-  const grandTotal = total + serviceFee;
+  // Подбор тира по числу гостей. Если тиров нет — fallback на listing.pricePerHour
+  const tiers = listing.pricingTiers ?? [];
+  const addOnsList: AddOn[] = listing.addOns ?? [];
+  const selectedTier = useMemo(() => pickTier(tiers, guests), [tiers, guests]);
+  const basePricePerHour = selectedTier ? selectedTier.price_per_hour : listing.pricePerHour;
+
+  const baseTotal = basePricePerHour * hours;
+
+  // Калькуляция допов: per_hour * hours, flat — как есть
+  const addOnsBreakdown = useMemo(() => {
+    return addOnsList
+      .filter((a) => selectedAddOns.has(a.id))
+      .map((a) => ({
+        ...a,
+        total: a.charge_type === "per_hour" ? a.price * hours : a.price,
+      }));
+  }, [addOnsList, selectedAddOns, hours]);
+
+  const addOnsTotal = addOnsBreakdown.reduce((s, a) => s + a.total, 0);
+
+  const subtotal = baseTotal + addOnsTotal;
+  const serviceFee = Math.round(subtotal * 0.075);
+  const grandTotal = subtotal + serviceFee;
+
+  function toggleAddOn(id: string) {
+    setSelectedAddOns((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   function calculateEndTime(start: string, hrs: number): string {
     const [h, m] = start.split(":").map(Number);
     const endH = (h + hrs) % 24;
     return `${String(endH).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
   }
+
+  // Подгружаем все активные брони локации (один раз)
+  useEffect(() => {
+    let cancelled = false;
+    getListingBookings(listing.id).then((rows) => {
+      if (!cancelled) setExistingBookings(rows);
+    });
+    return () => { cancelled = true; };
+  }, [listing.id]);
+
+  // Конец смены — могут быть переходы через полночь, но мы их запрещаем (см. валидацию)
+  const endTime = calculateEndTime(startTime, hours);
+
+  // Бронирования на выбранную дату
+  const bookingsOnDate = useMemo(
+    () => existingBookings.filter((b) => b.date === date),
+    [existingBookings, date]
+  );
+
+  // Полная валидация: возвращает текст ошибки или null
+  const validationError = useMemo<string | null>(() => {
+    if (guests > listing.capacity) {
+      return `Максимальная вместимость локации — ${listing.capacity} гостей.`;
+    }
+    if (tiers.length > 0 && !selectedTier) {
+      return `Для ${guests} гостей нет подходящего тарифа. Свяжитесь с хостом.`;
+    }
+    if (!date) return null; // дата ещё не выбрана — не показываем ошибку
+    if (hours < listing.minHours) {
+      return `Минимальное время бронирования — ${listing.minHours} ч.`;
+    }
+    const startM = toMinutes(startTime);
+    const endM = startM + hours * 60;
+    // Запрещаем ночные смены (переход через полночь)
+    if (endM > 24 * 60) {
+      return "Бронирование не может выходить за пределы суток. Сократите длительность.";
+    }
+    // Сегодня + время уже прошло
+    const today = new Date().toISOString().split("T")[0];
+    if (date === today) {
+      const now = new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      if (startM <= nowMin) return "Время начала уже прошло. Выберите более позднее время.";
+    }
+    // Пересечения с pending/confirmed
+    for (const b of bookingsOnDate) {
+      const bs = toMinutes(b.start_time);
+      const be = toMinutes(b.end_time);
+      if (overlaps(startM, endM, bs, be)) {
+        return `Это время уже занято другим клиентом (${b.start_time}–${b.end_time}). Выберите другое.`;
+      }
+    }
+    return null;
+  }, [date, startTime, hours, bookingsOnDate, listing.minHours, listing.capacity, guests, tiers.length, selectedTier]);
+
+  const isBlocked = !!validationError;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -46,21 +164,26 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
       return;
     }
 
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     setSaving(true);
     setError("");
 
-    const endTime = calculateEndTime(startTime, hours);
-
+    // Двойная проверка на стороне сервера — на случай гонки между двумя клиентами
     const available = await checkAvailability(listing.id, date, startTime, endTime);
     if (!available) {
-      setError("Это время уже занято. Выберите другое время.");
+      setError("Это время только что заняли. Обновите страницу и выберите другой слот.");
       setSaving(false);
       return;
     }
 
-    const { error: dbError } = await createBooking({
+    const { data, error: dbError } = await createBookingRequest({
       listingId: listing.id,
       renterId: user.id,
+      hostId: listing.hostId,
       date,
       startTime,
       endTime,
@@ -68,18 +191,22 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
       activityType: activity,
       description,
       totalPrice: grandTotal,
-      status: listing.instantBook ? "confirmed" : "pending",
       referralCode,
+      metadata: {
+        base_price: basePricePerHour,
+        selected_tier: selectedTier,
+        selected_add_ons: Array.from(selectedAddOns),
+        add_ons_snapshot: addOnsBreakdown,
+      },
     });
 
-    if (dbError) {
+    if (dbError || !data) {
       setError("Ошибка бронирования. Попробуйте снова.");
       setSaving(false);
       return;
     }
 
-    setSaving(false);
-    setSent(true);
+    router.push(`/inbox?c=${data.conversationId}`);
   }
 
   async function handleMessageHost(e: FormEvent) {
@@ -107,41 +234,15 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
     router.push(`/inbox?c=${convo.id}`);
   }
 
-  if (sent) {
-    return (
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 text-center sticky top-24">
-        <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto">
-          <svg className="w-7 h-7 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-          </svg>
-        </div>
-        <h3 className="mt-3 text-lg font-bold">
-          {listing.instantBook ? "Забронировано!" : "Запрос отправлен!"}
-        </h3>
-        <p className="mt-2 text-sm text-gray-600">
-          {listing.instantBook
-            ? "Бронирование подтверждено. Оплата через Kaspi Pay."
-            : `${listing.hostName} получит ваш запрос и ответит в течение 12 часов.`}
-        </p>
-        <Link
-          href="/bookings"
-          className="inline-block mt-4 text-primary text-sm font-medium hover:underline"
-        >
-          Посмотреть мои бронирования
-        </Link>
-      </div>
-    );
-  }
-
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-6 sticky top-24">
       {/* Price */}
       <div className="flex items-baseline gap-2 mb-6">
-        <span className="text-2xl font-bold">{formatPrice(listing.pricePerHour)}</span>
+        <span className="text-2xl font-bold">{formatPrice(basePricePerHour)}</span>
         <span className="text-gray-500">/час</span>
-        {listing.pricePerDay && (
-          <span className="text-sm text-gray-400 ml-auto">
-            или {formatPrice(listing.pricePerDay)}/день
+        {tiers.length > 0 && (
+          <span className="text-xs text-gray-400 ml-auto">
+            {selectedTier ? `до ${selectedTier.max_guests} гостей` : "вне тарифной сетки"}
           </span>
         )}
       </div>
@@ -230,14 +331,61 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
           />
         </div>
 
+        {/* Add-ons */}
+        {addOnsList.length > 0 && (
+          <div className="border-t border-gray-100 pt-4">
+            <div className="text-sm font-semibold text-gray-700 mb-2">Дополнительные услуги</div>
+            <div className="space-y-1.5">
+              {addOnsList.map((addon) => {
+                const checked = selectedAddOns.has(addon.id);
+                const lineTotal = addon.charge_type === "per_hour" ? addon.price * hours : addon.price;
+                const suffix = addon.charge_type === "per_hour" ? "/час" : "/смена";
+                return (
+                  <label
+                    key={addon.id}
+                    className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                      checked ? "border-primary bg-primary/5" : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleAddOn(addon.id)}
+                      className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary/20 accent-primary"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-gray-900">{addon.name}</div>
+                      <div className="text-xs text-gray-500">
+                        {formatPrice(addon.price)}{suffix}
+                        {checked && addon.charge_type === "per_hour" && (
+                          <span className="ml-1 text-primary">→ {formatPrice(lineTotal)}</span>
+                        )}
+                      </div>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Price breakdown */}
         <div className="border-t border-gray-100 pt-4 space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-600">
-              {formatPrice(listing.pricePerHour)} × {hours} ч
+              {formatPrice(basePricePerHour)} × {hours} ч
             </span>
-            <span>{formatPrice(total)}</span>
+            <span>{formatPrice(baseTotal)}</span>
           </div>
+          {addOnsBreakdown.map((a) => (
+            <div key={a.id} className="flex justify-between text-gray-600">
+              <span className="truncate pr-2">
+                + {a.name}
+                {a.charge_type === "per_hour" && <span className="text-gray-400"> × {hours} ч</span>}
+              </span>
+              <span>{formatPrice(a.total)}</span>
+            </div>
+          ))}
           <div className="flex justify-between">
             <span className="text-gray-600">Сервисный сбор</span>
             <span>{formatPrice(serviceFee)}</span>
@@ -248,8 +396,38 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
           </div>
         </div>
 
-        {/* Error */}
-        {error && (
+        {/* Занятые слоты на выбранную дату — подсказка пользователю */}
+        {date && bookingsOnDate.length > 0 && (
+          <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600">
+            <div className="font-semibold text-gray-700 mb-1">Занято в этот день:</div>
+            <div className="flex flex-wrap gap-1.5">
+              {bookingsOnDate
+                .slice()
+                .sort((a, b) => a.start_time.localeCompare(b.start_time))
+                .map((b) => (
+                  <span
+                    key={b.id}
+                    className="px-2 py-0.5 rounded bg-white border border-gray-200 text-[11px] font-medium"
+                  >
+                    {b.start_time.slice(0, 5)}–{b.end_time.slice(0, 5)}
+                  </span>
+                ))}
+            </div>
+          </div>
+        )}
+
+        {/* Validation error — мгновенная, при изменении даты/времени */}
+        {validationError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm font-medium flex items-start gap-2">
+            <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+            </svg>
+            <span>{validationError}</span>
+          </div>
+        )}
+
+        {/* Server error (после submit) */}
+        {!validationError && error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">
             {error}
           </div>
@@ -259,8 +437,8 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
         {user ? (
           <button
             type="submit"
-            disabled={saving}
-            className="w-full bg-primary text-white py-3.5 rounded-xl text-sm font-bold hover:bg-primary-dark transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={saving || isBlocked || !date}
+            className="w-full bg-primary text-white py-3.5 rounded-xl text-sm font-bold hover:bg-primary-dark transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary"
           >
             {saving ? "Бронирование..." : listing.instantBook ? (
               <>

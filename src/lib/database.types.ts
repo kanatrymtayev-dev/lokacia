@@ -8,6 +8,9 @@ export interface Database {
           phone: string | null;
           role: "host" | "renter";
           avatar_url: string | null;
+          response_rate: number | null;
+          response_time: string | null;
+          avg_rating: number | null;
           created_at: string;
         };
         Insert: {
@@ -16,12 +19,18 @@ export interface Database {
           phone?: string | null;
           role?: "host" | "renter";
           avatar_url?: string | null;
+          response_rate?: number | null;
+          response_time?: string | null;
+          avg_rating?: number | null;
         };
         Update: {
           name?: string;
           phone?: string | null;
           role?: "host" | "renter";
           avatar_url?: string | null;
+          response_rate?: number | null;
+          response_time?: string | null;
+          avg_rating?: number | null;
         };
       };
       listings: {
@@ -57,6 +66,8 @@ export interface Database {
           review_count: number;
           instant_book: boolean;
           superhost: boolean;
+          pricing_tiers: Array<{ max_guests: number; price_per_hour: number }>;
+          add_ons: Array<{ id: string; name: string; price: number; charge_type: "flat" | "per_hour" }>;
           status: "active" | "draft" | "moderation" | "archived";
           created_at: string;
           updated_at: string;
@@ -88,6 +99,8 @@ export interface Database {
           allows_pets?: boolean;
           allows_smoking?: boolean;
           allows_food?: boolean;
+          pricing_tiers?: Array<{ max_guests: number; price_per_hour: number }>;
+          add_ons?: Array<{ id: string; name: string; price: number; charge_type: "flat" | "per_hour" }>;
           status?: "active" | "draft" | "moderation" | "archived";
         };
         Update: Partial<Database["public"]["Tables"]["listings"]["Insert"]>;
@@ -105,6 +118,8 @@ export interface Database {
           description: string | null;
           total_price: number;
           status: "pending" | "confirmed" | "rejected" | "completed" | "cancelled";
+          conversation_id: string | null;
+          metadata: Record<string, unknown>;
           created_at: string;
         };
         Insert: {
@@ -118,9 +133,57 @@ export interface Database {
           description?: string | null;
           total_price: number;
           status?: "pending" | "confirmed" | "rejected" | "completed" | "cancelled";
+          conversation_id?: string | null;
+          metadata?: Record<string, unknown>;
         };
         Update: {
           status?: "pending" | "confirmed" | "rejected" | "completed" | "cancelled";
+          conversation_id?: string | null;
+          metadata?: Record<string, unknown>;
+        };
+      };
+      conversations: {
+        Row: {
+          id: string;
+          listing_id: string | null;
+          guest_id: string;
+          host_id: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          listing_id?: string | null;
+          guest_id: string;
+          host_id: string;
+        };
+        Update: {
+          updated_at?: string;
+        };
+      };
+      messages: {
+        Row: {
+          id: string;
+          conversation_id: string;
+          sender_id: string;
+          content: string;
+          is_read: boolean;
+          type: "text" | "system";
+          booking_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          conversation_id: string;
+          sender_id: string;
+          content: string;
+          is_read?: boolean;
+          type?: "text" | "system";
+          booking_id?: string | null;
+        };
+        Update: {
+          is_read?: boolean;
+          content?: string;
         };
       };
       reviews: {
@@ -128,6 +191,7 @@ export interface Database {
           id: string;
           listing_id: string;
           author_id: string;
+          booking_id: string | null;
           rating: number;
           text: string;
           created_at: string;
@@ -135,6 +199,7 @@ export interface Database {
         Insert: {
           listing_id: string;
           author_id: string;
+          booking_id?: string | null;
           rating: number;
           text: string;
         };

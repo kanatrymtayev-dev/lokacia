@@ -14,16 +14,20 @@ export default function Gallery({ images, title }: { images: string[]; title: st
         {/* Main image */}
         <button
           onClick={() => setLightbox(true)}
-          className="relative aspect-[4/3] md:aspect-auto md:row-span-2 bg-gray-100 cursor-pointer overflow-hidden"
+          className="relative aspect-[4/3] md:aspect-auto md:row-span-2 bg-gray-100 cursor-pointer overflow-hidden flex items-center justify-center text-gray-400"
         >
-          <Image
-            src={images[0]}
-            alt={title}
-            fill
-            className="object-cover hover:scale-105 transition-transform duration-500"
-            sizes="(max-width: 768px) 100vw, 50vw"
-            priority
-          />
+          {images[0] && typeof images[0] === 'string' && images[0].trim() !== '' ? (
+            <Image
+              src={images[0]}
+              alt={title}
+              fill
+              className="object-cover hover:scale-105 transition-transform duration-500"
+              sizes="(max-width: 768px) 100vw, 50vw"
+              priority
+            />
+          ) : (
+            <span>Нет фото</span>
+          )}
         </button>
         {/* Thumbnails */}
         {images.slice(1, 5).map((img, i) => (
@@ -33,15 +37,19 @@ export default function Gallery({ images, title }: { images: string[]; title: st
               setActive(i + 1);
               setLightbox(true);
             }}
-            className="relative aspect-[4/3] bg-gray-100 cursor-pointer overflow-hidden hidden md:block"
+            className="relative aspect-[4/3] bg-gray-100 cursor-pointer overflow-hidden hidden md:flex items-center justify-center text-gray-400 text-xs"
           >
-            <Image
-              src={img}
-              alt={`${title} — фото ${i + 2}`}
-              fill
-              className="object-cover hover:scale-105 transition-transform duration-500"
-              sizes="25vw"
-            />
+            {img && typeof img === 'string' && img.trim() !== '' ? (
+              <Image
+                src={img}
+                alt={`${title} — фото ${i + 2}`}
+                fill
+                className="object-cover hover:scale-105 transition-transform duration-500"
+                sizes="25vw"
+              />
+            ) : (
+              <span>Нет фото</span>
+            )}
             {i === 3 && images.length > 5 && (
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                 <span className="text-white font-bold text-lg">+{images.length - 5}</span>
@@ -80,14 +88,18 @@ export default function Gallery({ images, title }: { images: string[]; title: st
           </button>
 
           {/* Image */}
-          <div className="relative w-full max-w-4xl aspect-[4/3] mx-12" onClick={(e) => e.stopPropagation()}>
-            <Image
-              src={images[active]}
-              alt={`${title} — фото ${active + 1}`}
-              fill
-              className="object-contain"
-              sizes="90vw"
-            />
+          <div className="relative w-full max-w-4xl aspect-[4/3] mx-12 flex items-center justify-center text-white/50" onClick={(e) => e.stopPropagation()}>
+            {images[active] && typeof images[active] === 'string' && images[active].trim() !== '' ? (
+              <Image
+                src={images[active]}
+                alt={`${title} — фото ${active + 1}`}
+                fill
+                className="object-contain"
+                sizes="90vw"
+              />
+            ) : (
+              <span>Нет фото</span>
+            )}
           </div>
 
           {/* Next */}

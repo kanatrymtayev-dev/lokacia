@@ -35,6 +35,26 @@ export type Style =
 
 export type City = "almaty" | "astana" | "shymkent" | "karaganda";
 
+export interface PricingTier {
+  max_guests: number;
+  price_per_hour: number;
+}
+
+export interface AddOn {
+  id: string;
+  name: string;
+  price: number;
+  charge_type: "flat" | "per_hour";
+}
+
+export interface BookingMetadata {
+  base_price?: number;
+  selected_tier?: PricingTier | null;
+  selected_add_ons?: string[];
+  add_ons_snapshot?: Array<{ id: string; name: string; price: number; charge_type: "flat" | "per_hour"; total: number }>;
+  [key: string]: unknown;
+}
+
 export interface Listing {
   id: string;
   title: string;
@@ -72,8 +92,17 @@ export interface Listing {
   reviewCount: number;
   instantBook: boolean;
   superhost: boolean;
+  pricingTiers?: PricingTier[];
+  addOns?: AddOn[];
   createdAt: string;
 }
+
+export type BookingStatus =
+  | "pending"
+  | "confirmed"
+  | "rejected"
+  | "completed"
+  | "cancelled";
 
 export interface BookingRequest {
   id: string;
@@ -86,13 +115,48 @@ export interface BookingRequest {
   activityType: ActivityType;
   description: string;
   totalPrice: number;
-  status: "pending" | "confirmed" | "rejected" | "completed" | "cancelled";
+  status: BookingStatus;
+  conversationId?: string | null;
+  createdAt: string;
+}
+
+export type MessageType = "text" | "system";
+
+export interface ChatMessage {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  content: string;
+  isRead: boolean;
+  type: MessageType;
+  bookingId?: string | null;
+  createdAt: string;
+}
+
+export interface Conversation {
+  id: string;
+  listingId: string | null;
+  guestId: string;
+  hostId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HostProfile {
+  id: string;
+  name: string;
+  phone: string | null;
+  role: "host" | "renter";
+  avatarUrl: string | null;
+  responseRate: number | null;
+  responseTime: string | null;
   createdAt: string;
 }
 
 export interface Review {
   id: string;
   listingId: string;
+  bookingId?: string | null;
   authorName: string;
   authorAvatar: string;
   rating: number;

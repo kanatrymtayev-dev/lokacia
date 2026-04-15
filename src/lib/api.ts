@@ -41,6 +41,8 @@ function rowToListing(row: Record<string, unknown>): Listing {
     reviewCount: row.review_count as number,
     instantBook: row.instant_book as boolean,
     superhost: row.superhost as boolean,
+    pricingTiers: (row.pricing_tiers as Listing["pricingTiers"]) ?? [],
+    addOns: (row.add_ons as Listing["addOns"]) ?? [],
     createdAt: row.created_at as string,
   };
 }
@@ -115,15 +117,72 @@ export async function getReviewsByListingId(listingId: string): Promise<Review[]
   });
 }
 
+// ---- Reviews ----
+
+export async function createReview(input: {
+  listingId: string;
+  bookingId: string;
+  authorId: string;
+  rating: number;
+  text: string;
+}) {
+  if (input.rating < 1 || input.rating > 5) {
+    return { data: null, error: { message: "Рейтинг должен быть от 1 до 5" } };
+  }
+  const { data, error } = await supabase
+    .from("reviews")
+    .insert({
+      listing_id: input.listingId,
+      author_id: input.authorId,
+      booking_id: input.bookingId,
+      rating: Math.round(input.rating),
+      text: input.text.trim(),
+    })
+    .select()
+    .single();
+  return { data, error };
+}
+
+// true, если на эту бронь уже есть отзыв
+export async function hasUserReviewedBooking(bookingId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("reviews")
+    .select("id")
+    .eq("booking_id", bookingId)
+    .maybeSingle();
+  if (error) return false;
+  return !!data;
+}
+
+// Массовая проверка: возвращает Set bookingId, для которых отзыв уже есть
+export async function getReviewedBookingIds(bookingIds: string[]): Promise<Set<string>> {
+  if (bookingIds.length === 0) return new Set();
+  const { data, error } = await supabase
+    .from("reviews")
+    .select("booking_id")
+    .in("booking_id", bookingIds);
+  if (error || !data) return new Set();
+  return new Set(data.map((r: Record<string, unknown>) => r.booking_id as string));
+}
+
 export async function getHostProfile(hostId: string) {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, name, phone, role, avatar_url, created_at")
+    .select("id, name, phone, role, avatar_url, response_rate, response_time, created_at")
     .eq("id", hostId)
     .single();
 
   if (error || !data) return null;
-  return data as { id: string; name: string; phone: string | null; role: string; avatar_url: string | null; created_at: string };
+  return data as {
+    id: string;
+    name: string;
+    phone: string | null;
+    role: string;
+    avatar_url: string | null;
+    response_rate: number | null;
+    response_time: string | null;
+    created_at: string;
+  };
 }
 
 export async function getHostActiveListings(hostId: string): Promise<Listing[]> {
@@ -360,6 +419,44 @@ export async function getRenterBookings(renterId: string) {
   return data;
 }
 
+// Все активные брони (pending/confirmed) одной локации — для блокировки занятых слотов
+export async function getListingBookings(listingId: string) {
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("id, date, start_time, end_time, status")
+    .eq("listing_id", listingId)
+    .in("status", ["pending", "confirmed"]);
+
+  if (error || !data) return [];
+  return data as Array<{
+    id: string;
+    date: string;
+    start_time: string;
+    end_time: string;
+    status: "pending" | "confirmed";
+  }>;
+}
+
+export async function getBookingById(bookingId: string) {
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("id, listing_id, renter_id, date, start_time, end_time, guest_count, activity_type, total_price, status, conversation_id, metadata, listings!bookings_listing_id_fkey(host_id, title)")
+    .eq("id", bookingId)
+    .single();
+  if (error || !data) return null;
+  return data as Record<string, unknown>;
+}
+
+export async function getBookingsByIds(bookingIds: string[]) {
+  if (bookingIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("id, listing_id, renter_id, date, start_time, end_time, guest_count, activity_type, total_price, status, conversation_id, metadata, listings!bookings_listing_id_fkey(host_id, title)")
+    .in("id", bookingIds);
+  if (error || !data) return [];
+  return data as Array<Record<string, unknown>>;
+}
+
 export async function updateBookingStatus(bookingId: string, status: string) {
   const { error } = await supabase
     .from("bookings")
@@ -457,14 +554,139 @@ export async function getOrCreateConversation(listingId: string, guestId: string
   return { id: (data as Record<string, unknown>).id as string, isNew: true };
 }
 
-export async function sendMessage(conversationId: string, senderId: string, content: string) {
+export async function sendMessage(
+  conversationId: string,
+  senderId: string,
+  content: string,
+  opts?: { type?: "text" | "system"; bookingId?: string | null }
+) {
   const { data, error } = await supabase
     .from("messages")
-    .insert({ conversation_id: conversationId, sender_id: senderId, content })
+    .insert({
+      conversation_id: conversationId,
+      sender_id: senderId,
+      content,
+      type: opts?.type ?? "text",
+      booking_id: opts?.bookingId ?? null,
+    })
     .select()
     .single();
 
   return { data, error };
+}
+
+// Создать запрос на бронирование + системное сообщение в чат
+export async function createBookingRequest(input: {
+  listingId: string;
+  renterId: string;
+  hostId: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  guestCount: number;
+  activityType: string;
+  description: string;
+  totalPrice: number;
+  referralCode?: string;
+  metadata?: Record<string, unknown>;
+}) {
+  // 1. Получаем/создаём conversation
+  const convo = await getOrCreateConversation(input.listingId, input.renterId, input.hostId);
+  if (!convo) return { data: null, error: { message: "Не удалось создать диалог" } };
+
+  // 2. Создаём бронирование со статусом pending
+  const commissionRate = input.referralCode ? 0.03 : 0.15;
+  const { data: booking, error: bookingError } = await supabase
+    .from("bookings")
+    .insert({
+      listing_id: input.listingId,
+      renter_id: input.renterId,
+      date: input.date,
+      start_time: input.startTime,
+      end_time: input.endTime,
+      guest_count: input.guestCount,
+      activity_type: input.activityType,
+      description: input.description,
+      total_price: input.totalPrice,
+      status: "pending",
+      conversation_id: convo.id,
+      referral_code: input.referralCode || null,
+      commission_rate: commissionRate,
+      payment_status: "unpaid",
+      metadata: input.metadata ?? {},
+    })
+    .select()
+    .single();
+
+  if (bookingError || !booking) {
+    return { data: null, error: bookingError ?? { message: "Не удалось создать бронь" } };
+  }
+
+  const bookingId = (booking as Record<string, unknown>).id as string;
+
+  // 3. Системное сообщение в чат со ссылкой на booking_id
+  const summary = `Запрос на бронирование · ${input.date} ${input.startTime}–${input.endTime} · ${input.guestCount} гостей`;
+  await sendMessage(convo.id, input.renterId, summary, {
+    type: "system",
+    bookingId,
+  });
+
+  return {
+    data: { bookingId, conversationId: convo.id, isNewConversation: convo.isNew },
+    error: null,
+  };
+}
+
+// Хост подтверждает или отклоняет бронь — пишет системное сообщение
+export async function respondToBooking(
+  bookingId: string,
+  status: "confirmed" | "rejected",
+  hostId: string
+) {
+  const { data: booking, error: fetchError } = await supabase
+    .from("bookings")
+    .select("conversation_id, listing_id, renter_id")
+    .eq("id", bookingId)
+    .single();
+
+  if (fetchError || !booking) {
+    return { error: fetchError ?? { message: "Бронь не найдена" } };
+  }
+
+  const { error: updateError } = await supabase
+    .from("bookings")
+    .update({ status })
+    .eq("id", bookingId);
+
+  if (updateError) return { error: updateError };
+
+  let conversationId = (booking as Record<string, unknown>).conversation_id as string | null;
+
+  // Fallback: если у старых броней нет conversation_id — найдём по (listing, renter)
+  if (!conversationId) {
+    const listingId = (booking as Record<string, unknown>).listing_id as string;
+    const renterId = (booking as Record<string, unknown>).renter_id as string;
+    const { data: convo } = await supabase
+      .from("conversations")
+      .select("id")
+      .eq("listing_id", listingId)
+      .eq("guest_id", renterId)
+      .single();
+    conversationId = (convo as Record<string, unknown> | null)?.id as string | null;
+  }
+
+  if (conversationId) {
+    const text =
+      status === "confirmed"
+        ? "Бронь подтверждена хостом ✓"
+        : "Хост отклонил запрос на бронирование";
+    await sendMessage(conversationId, hostId, text, {
+      type: "system",
+      bookingId,
+    });
+  }
+
+  return { error: null };
 }
 
 export async function getConversations(userId: string) {
@@ -490,7 +712,7 @@ export async function getConversations(userId: string) {
 export async function getMessages(conversationId: string) {
   const { data, error } = await supabase
     .from("messages")
-    .select("id, conversation_id, sender_id, content, is_read, created_at")
+    .select("id, conversation_id, sender_id, content, is_read, type, booking_id, created_at")
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: true });
 

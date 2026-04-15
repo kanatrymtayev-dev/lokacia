@@ -4,6 +4,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
+
+import Map2GIS from "@/components/map";
 import Gallery from "./gallery";
 import BookingSidebar from "./booking-sidebar";
 import { getListings, getListingBySlug, getReviewsByListingId } from "@/lib/api";
@@ -122,14 +124,18 @@ export default async function ListingPage({
                 href={`/host/${listing.hostId}`}
                 className="flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-200 hover:border-primary/30 hover:shadow-md hover:shadow-primary/5 transition-all group"
               >
-                <div className="relative w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex-shrink-0 group-hover:ring-2 group-hover:ring-primary/20 transition-all">
-                  <Image
-                    src={listing.hostAvatar}
-                    alt={listing.hostName}
-                    fill
-                    className="object-cover"
-                    sizes="48px"
-                  />
+                <div className="relative w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex-shrink-0 group-hover:ring-2 group-hover:ring-primary/20 transition-all flex items-center justify-center">
+                  {listing.hostAvatar && typeof listing.hostAvatar === 'string' && listing.hostAvatar.trim() !== '' ? (
+                    <Image
+                      src={listing.hostAvatar}
+                      alt={listing.hostName}
+                      fill
+                      className="object-cover"
+                      sizes="48px"
+                    />
+                  ) : (
+                    <span className="text-lg text-gray-400 font-bold">{listing.hostName[0]}</span>
+                  )}
                 </div>
                 <div className="flex-1">
                   <div className="font-semibold group-hover:text-primary transition-colors">{listing.hostName}</div>
@@ -143,18 +149,24 @@ export default async function ListingPage({
               </Link>
 
               {/* Location hint */}
-              <div className="flex items-start gap-3 p-4 bg-amber-50 rounded-xl border border-amber-100">
-                <svg className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
-                </svg>
-                <div>
-                  <div className="text-sm font-medium text-amber-800">
-                    {CITY_LABELS[listing.city]}, {listing.district}
+              <div>
+                <h2 className="text-xl font-bold mb-3">Расположение</h2>
+                <div className="flex items-start gap-3 p-4 bg-amber-50 rounded-xl border border-amber-100 mb-4">
+                  <svg className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                  </svg>
+                  <div>
+                    <div className="text-sm font-medium text-amber-800">
+                      {CITY_LABELS[listing.city]}, {listing.district}
+                    </div>
+                    <div className="text-xs text-amber-600 mt-0.5">
+                      Точный адрес будет доступен после подтверждения бронирования. Напишите хосту, чтобы договориться о просмотре.
+                    </div>
                   </div>
-                  <div className="text-xs text-amber-600 mt-0.5">
-                    Точный адрес будет доступен после подтверждения бронирования. Напишите хосту, чтобы договориться о просмотре.
-                  </div>
+                </div>
+                <div className="h-[300px] w-full rounded-2xl overflow-hidden border border-gray-200">
+                  <Map2GIS listings={[listing]} />
                 </div>
               </div>
 
@@ -236,14 +248,18 @@ export default async function ListingPage({
                         className="bg-white rounded-xl border border-gray-200 p-4"
                       >
                         <div className="flex items-center gap-3 mb-2">
-                          <div className="relative w-8 h-8 rounded-full overflow-hidden bg-gray-100">
-                            <Image
-                              src={review.authorAvatar}
-                              alt={review.authorName}
-                              fill
-                              className="object-cover"
-                              sizes="32px"
-                            />
+                          <div className="relative w-8 h-8 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                            {review.authorAvatar && typeof review.authorAvatar === 'string' && review.authorAvatar.trim() !== '' ? (
+                              <Image
+                                src={review.authorAvatar}
+                                alt={review.authorName}
+                                fill
+                                className="object-cover"
+                                sizes="32px"
+                              />
+                            ) : (
+                              <span className="text-xs text-gray-400 font-bold">{review.authorName[0]}</span>
+                            )}
                           </div>
                           <div>
                             <div className="text-sm font-semibold">{review.authorName}</div>

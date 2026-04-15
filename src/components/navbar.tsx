@@ -76,7 +76,7 @@ export default function Navbar() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                 </svg>
                 <div className="relative w-7 h-7 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center">
-                  {user.avatar_url ? (
+                  {user.avatar_url && typeof user.avatar_url === 'string' && user.avatar_url.trim() !== '' ? (
                     <Image src={user.avatar_url} alt={user.name} fill className="object-cover" sizes="28px" />
                   ) : (
                     <span className="text-xs font-bold text-primary">{user.name[0]}</span>

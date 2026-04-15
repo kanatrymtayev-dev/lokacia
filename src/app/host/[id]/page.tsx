@@ -39,6 +39,13 @@ export default async function HostProfilePage({
     year: "numeric",
   });
 
+  // Агрегируем рейтинг и отзывы по всем локациям хоста
+  const totalReviews = listings.reduce((s, l) => s + (l.reviewCount || 0), 0);
+  const weightedSum = listings.reduce((s, l) => s + (l.rating || 0) * (l.reviewCount || 0), 0);
+  const avgRating = totalReviews > 0 ? weightedSum / totalReviews : 0;
+  const responseTime = host.response_time ?? "обычно отвечает в течение нескольких часов";
+  const responseRate = host.response_rate ?? null;
+
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
@@ -49,7 +56,7 @@ export default async function HostProfilePage({
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
               {/* Avatar */}
               <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden bg-gray-100 flex-shrink-0 ring-4 ring-primary/10">
-                {host.avatar_url ? (
+                {host.avatar_url && typeof host.avatar_url === 'string' && host.avatar_url.trim() !== '' ? (
                   <Image
                     src={host.avatar_url}
                     alt={host.name}
@@ -88,6 +95,31 @@ export default async function HostProfilePage({
                 <div className="mt-5">
                   <MessageHostButton hostId={id} hostName={host.name} />
                 </div>
+              </div>
+            </div>
+
+            {/* Trust block: rating · reviews · response */}
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6 border-t border-gray-100">
+              <div className="text-center sm:text-left">
+                <div className="flex items-center justify-center sm:justify-start gap-1.5">
+                  <svg className="w-5 h-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.957a1 1 0 0 0 .95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.366 2.446a1 1 0 0 0-.364 1.118l1.286 3.957c.3.921-.755 1.688-1.54 1.118l-3.366-2.446a1 1 0 0 0-1.176 0l-3.366 2.446c-.784.57-1.838-.197-1.539-1.118l1.286-3.957a1 1 0 0 0-.364-1.118L2.05 9.384c-.783-.57-.38-1.81.588-1.81h4.162a1 1 0 0 0 .95-.69l1.286-3.957Z" />
+                  </svg>
+                  <span className="text-2xl font-bold">{avgRating > 0 ? avgRating.toFixed(2) : "—"}</span>
+                </div>
+                <div className="mt-1 text-xs text-gray-500">
+                  {totalReviews > 0 ? `${totalReviews} ${totalReviews === 1 ? "отзыв" : totalReviews < 5 ? "отзыва" : "отзывов"}` : "Пока нет отзывов"}
+                </div>
+              </div>
+
+              <div className="text-center sm:text-left">
+                <div className="text-2xl font-bold">{responseRate !== null ? `${responseRate}%` : "—"}</div>
+                <div className="mt-1 text-xs text-gray-500">Уровень ответов</div>
+              </div>
+
+              <div className="text-center sm:text-left">
+                <div className="text-sm font-semibold leading-tight">{responseTime}</div>
+                <div className="mt-1 text-xs text-gray-500">Среднее время ответа</div>
               </div>
             </div>
           </div>

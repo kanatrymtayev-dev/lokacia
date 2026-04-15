@@ -42,11 +42,14 @@ export default function MessageHostButton({
       return;
     }
 
-    const { error: msgErr } = await sendMessage(convo.id, user.id, text);
-    if (msgErr) {
-      setError("Ошибка отправки.");
-      setSaving(false);
-      return;
+    // Если пользователь написал текст — отправляем; иначе просто открываем пустой чат
+    if (text.trim()) {
+      const { error: msgErr } = await sendMessage(convo.id, user.id, text.trim());
+      if (msgErr) {
+        setError("Ошибка отправки.");
+        setSaving(false);
+        return;
+      }
     }
 
     setSaving(false);
@@ -96,11 +99,10 @@ export default function MessageHostButton({
             <h3 className="text-lg font-bold pr-8">Написать {hostName}</h3>
             <form onSubmit={handleSend} className="mt-4 space-y-4">
               <textarea
-                required
                 rows={4}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder="Здравствуйте! Хотел бы узнать о ваших локациях..."
+                placeholder="Здравствуйте! Хотел бы узнать о ваших локациях... (можно оставить пустым)"
                 className="w-full px-3 py-2.5 rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm resize-none"
               />
               {error && (
