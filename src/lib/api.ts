@@ -2,6 +2,37 @@ import { supabase } from "./supabase";
 import { listings as mockListings, reviews as mockReviews } from "./mock-data";
 import type { Listing, Review } from "./types";
 import { geocodeAddress } from "./geocoder";
+import {
+  sendBookingPendingEmail,
+  sendBookingConfirmedEmail,
+  sendBookingRejectedEmail,
+  sendNewMessageEmail,
+} from "./email";
+
+const SITE_URL = "https://lokacia.kz";
+
+// Хелпер: получить email + name пользователя через auth.users + profiles
+async function getUserEmailName(userId: string): Promise<{ email: string; name: string } | null> {
+  // profiles.email отсутствует — берём из auth.users через admin API недоступно, поэтому
+  // хранится rest: email есть только в auth metadata. Используем supabase.auth.admin?
+  // У нас anon key — admin недоступен. Решение: добавить email в profiles при регистрации
+  // (см. auth-context). Если поля нет — fallback null и письмо не уйдёт.
+  const { data } = await supabase
+    .from("profiles")
+    .select("name, email")
+    .eq("id", userId)
+    .single();
+  if (!data) return null;
+  const row = data as Record<string, unknown>;
+  const email = (row.email as string | null) ?? null;
+  const name = (row.name as string | null) ?? "Пользователь";
+  if (!email) return null;
+  return { email, name };
+}
+
+// Rate-limit: не чаще 1 email на conversation в 5 минут
+const messageEmailLastSent = new Map<string, number>();
+const MESSAGE_EMAIL_COOLDOWN_MS = 5 * 60 * 1000;
 
 // Helper to convert Supabase row to Listing type
 function rowToListing(row: Record<string, unknown>): Listing {
@@ -793,17 +824,59 @@ export async function sendMessage(
   content: string,
   opts?: { type?: "text" | "system"; bookingId?: string | null }
 ) {
+  const type = opts?.type ?? "text";
   const { data, error } = await supabase
     .from("messages")
     .insert({
       conversation_id: conversationId,
       sender_id: senderId,
       content,
-      type: opts?.type ?? "text",
+      type,
       booking_id: opts?.bookingId ?? null,
     })
     .select()
     .single();
+
+  // Email получателю — только для обычных text-сообщений + rate-limit 5 мин на conversation
+  if (!error && type === "text") {
+    void (async () => {
+      try {
+        const last = messageEmailLastSent.get(conversationId) ?? 0;
+        if (Date.now() - last < MESSAGE_EMAIL_COOLDOWN_MS) return;
+
+        const { data: convo } = await supabase
+          .from("conversations")
+          .select("guest_id, host_id, listings!conversations_listing_id_fkey(title)")
+          .eq("id", conversationId)
+          .single();
+        if (!convo) return;
+        const c = convo as Record<string, unknown>;
+        const guestId = c.guest_id as string;
+        const hostId = c.host_id as string;
+        const recipientId = senderId === hostId ? guestId : hostId;
+        const listing = c.listings as Record<string, unknown> | null;
+        const listingTitle = (listing?.title as string) ?? "локация";
+
+        const [recipient, sender] = await Promise.all([
+          getUserEmailName(recipientId),
+          getUserEmailName(senderId),
+        ]);
+        if (!recipient?.email) return;
+
+        messageEmailLastSent.set(conversationId, Date.now());
+        await sendNewMessageEmail({
+          to: recipient.email,
+          recipientName: recipient.name,
+          senderName: sender?.name ?? "Пользователь",
+          listingTitle,
+          snippet: content.slice(0, 120),
+          inboxUrl: `${SITE_URL}/inbox?c=${conversationId}`,
+        });
+      } catch (e) {
+        console.error("[email] new-message failed:", e);
+      }
+    })();
+  }
 
   return { data, error };
 }
@@ -864,6 +937,33 @@ export async function createBookingRequest(input: {
     bookingId,
   });
 
+  // 4. Email хосту (fire-and-forget)
+  void (async () => {
+    try {
+      const [host, renter, listing] = await Promise.all([
+        getUserEmailName(input.hostId),
+        getUserEmailName(input.renterId),
+        supabase.from("listings").select("title").eq("id", input.listingId).single(),
+      ]);
+      const listingTitle = ((listing.data as Record<string, unknown> | null)?.title as string) ?? "локация";
+      if (host?.email) {
+        await sendBookingPendingEmail({
+          to: host.email,
+          hostName: host.name,
+          listingTitle,
+          date: input.date,
+          startTime: input.startTime,
+          endTime: input.endTime,
+          guestName: renter?.name ?? "Гость",
+          totalPrice: input.totalPrice,
+          dashboardUrl: `${SITE_URL}/dashboard`,
+        });
+      }
+    } catch (e) {
+      console.error("[email] booking-pending failed:", e);
+    }
+  })();
+
   return {
     data: { bookingId, conversationId: convo.id, isNewConversation: convo.isNew },
     error: null,
@@ -918,6 +1018,46 @@ export async function respondToBooking(
       bookingId,
     });
   }
+
+  // Email арендатору (fire-and-forget)
+  void (async () => {
+    try {
+      const renterId = (booking as Record<string, unknown>).renter_id as string;
+      const listingId = (booking as Record<string, unknown>).listing_id as string;
+      const [renter, host, listingRes, fullBooking] = await Promise.all([
+        getUserEmailName(renterId),
+        getUserEmailName(hostId),
+        supabase.from("listings").select("title, slug").eq("id", listingId).single(),
+        supabase.from("bookings").select("date, start_time, end_time").eq("id", bookingId).single(),
+      ]);
+      if (!renter?.email) return;
+      const listing = listingRes.data as Record<string, unknown> | null;
+      const title = (listing?.title as string) ?? "локация";
+      const slug = (listing?.slug as string) ?? "";
+      if (status === "confirmed") {
+        const b = fullBooking.data as Record<string, unknown> | null;
+        await sendBookingConfirmedEmail({
+          to: renter.email,
+          renterName: renter.name,
+          listingTitle: title,
+          date: (b?.date as string) ?? "",
+          startTime: (b?.start_time as string) ?? "",
+          endTime: (b?.end_time as string) ?? "",
+          hostName: host?.name ?? "Хост",
+          listingUrl: `${SITE_URL}/listing/${slug}`,
+        });
+      } else {
+        await sendBookingRejectedEmail({
+          to: renter.email,
+          renterName: renter.name,
+          listingTitle: title,
+          hostName: host?.name ?? "Хост",
+        });
+      }
+    } catch (e) {
+      console.error(`[email] booking-${status} failed:`, e);
+    }
+  })();
 
   return { error: null };
 }

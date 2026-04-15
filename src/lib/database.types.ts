@@ -11,6 +11,7 @@ export interface Database {
           response_rate: number | null;
           response_time: string | null;
           avg_rating: number | null;
+          email: string | null;
           created_at: string;
         };
         Insert: {
@@ -22,6 +23,7 @@ export interface Database {
           response_rate?: number | null;
           response_time?: string | null;
           avg_rating?: number | null;
+          email?: string | null;
         };
         Update: {
           name?: string;
@@ -31,6 +33,7 @@ export interface Database {
           response_rate?: number | null;
           response_time?: string | null;
           avg_rating?: number | null;
+          email?: string | null;
         };
       };
       listings: {

@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import Navbar from "@/components/navbar";
 import { useAuth } from "@/lib/auth-context";
+import { supabase } from "@/lib/supabase";
 import {
   getConversations,
   getMessages,
@@ -113,7 +114,6 @@ function InboxContent() {
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [mobileShowChat, setMobileShowChat] = useState(!!initialConvoId);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -193,21 +193,44 @@ function InboxContent() {
     loadMessages();
   }, [loadMessages]);
 
-  // Poll for new messages every 5s
+  // Realtime: подписываемся на новые/обновлённые сообщения активного диалога
   useEffect(() => {
-    if (pollRef.current) clearInterval(pollRef.current);
     if (!activeId || !user) return;
 
-    pollRef.current = setInterval(async () => {
-      const data = await getMessages(activeId);
-      const msgs = data as unknown as Message[];
-      setMessages(msgs);
-      await loadBookingsForMessages(msgs);
-      await markMessagesRead(activeId, user.id);
-    }, 5000);
+    const channel = supabase
+      .channel(`messages:${activeId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${activeId}` },
+        (payload) => {
+          const newRow = payload.new as Message;
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === newRow.id)) return prev;
+            const next = [...prev, newRow];
+            // обновляем привязанные брони если это system-сообщение со ссылкой на бронь
+            if (newRow.type === "system" && newRow.booking_id) {
+              loadBookingsForMessages(next);
+            }
+            return next;
+          });
+          if (user) markMessagesRead(activeId, user.id);
+          setTimeout(scrollToBottom, 50);
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "messages", filter: `conversation_id=eq.${activeId}` },
+        (payload) => {
+          const updated = payload.new as Message;
+          setMessages((prev) => prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m)));
+        }
+      )
+      .subscribe();
 
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [activeId, user, loadBookingsForMessages]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeId, user, loadBookingsForMessages, scrollToBottom]);
 
   // Хост подтверждает или отклоняет бронь
   async function handleRespond(bookingId: string, status: "confirmed" | "rejected") {
