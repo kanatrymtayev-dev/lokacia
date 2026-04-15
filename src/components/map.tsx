@@ -3,25 +3,27 @@
 import { useEffect } from "react";
 import type { Listing } from "@/lib/types";
 import { formatPrice } from "@/lib/utils";
-import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Circle, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 // Helper component to handle auto-fitting bounds when listings change
-function MapController({ listings }: { listings: Listing[] }) {
+function MapController({ listings, approximateRadius }: { listings: Listing[]; approximateRadius?: number }) {
   const map = useMap();
 
   useEffect(() => {
     // If no valid coordinates, don't fitbounds
     const valid = listings.filter(l => l.lat && l.lng && l.lat !== 0 && l.lng !== 0);
-    
+
     if (valid.length === 1) {
-      map.setView([valid[0].lat, valid[0].lng], 13, { animate: true });
+      // В режиме circle отдаляем зум, чтобы круг радиуса R помещался с запасом
+      const zoom = approximateRadius ? 14 : 13;
+      map.setView([valid[0].lat, valid[0].lng], zoom, { animate: true });
     } else if (valid.length > 1) {
       const bounds = L.latLngBounds(valid.map(l => [l.lat, l.lng]));
       map.fitBounds(bounds, { padding: [60, 60], animate: true });
     }
-  }, [listings, map]);
+  }, [listings, map, approximateRadius]);
 
   return null;
 }
@@ -63,10 +65,13 @@ export default function MapLeaflet({
   listings,
   hoveredListingId,
   className = "",
+  approximateRadius,
 }: {
   listings: Listing[];
   hoveredListingId?: string | null;
   className?: string;
+  /** Если задан — вместо точечного пина рисуется круг радиуса (в метрах). Используется на странице листинга для приватности. */
+  approximateRadius?: number;
 }) {
   // initial center
   const initialCenter: [number, number] = (listings.length > 0 && listings[0].lat !== 0) 
@@ -104,9 +109,27 @@ export default function MapLeaflet({
           attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>'
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         />
-        <MapController listings={valid} />
-        
+        <MapController listings={valid} approximateRadius={approximateRadius} />
+
         {valid.map((l) => {
+          // Giggster/Airbnb-style: на странице листинга показываем приблизительную зону, а не точку
+          if (approximateRadius) {
+            return (
+              <Circle
+                key={l.id}
+                center={[l.lat, l.lng]}
+                radius={approximateRadius}
+                pathOptions={{
+                  color: "#111827",
+                  weight: 1.5,
+                  opacity: 0.5,
+                  fillColor: "#111827",
+                  fillOpacity: 0.12,
+                }}
+              />
+            );
+          }
+
           const isHovered = l.id === hoveredListingId;
           return (
             <Marker

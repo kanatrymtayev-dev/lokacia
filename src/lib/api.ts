@@ -419,6 +419,22 @@ export async function getRenterBookings(renterId: string) {
   return data;
 }
 
+// У пользователя есть подтверждённая (или завершённая) бронь этой локации? → разрешает показать точный адрес
+export async function hasUserConfirmedBookingForListing(
+  userId: string,
+  listingId: string
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("id")
+    .eq("renter_id", userId)
+    .eq("listing_id", listingId)
+    .in("status", ["confirmed", "completed"])
+    .limit(1);
+  if (error || !data) return false;
+  return data.length > 0;
+}
+
 // Все активные брони (pending/confirmed) одной локации — для блокировки занятых слотов
 export async function getListingBookings(listingId: string) {
   const { data, error } = await supabase
