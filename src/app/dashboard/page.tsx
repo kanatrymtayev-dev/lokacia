@@ -7,9 +7,9 @@ import Image from "next/image";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import { useAuth } from "@/lib/auth-context";
-import { getHostListings, getHostBookings, updateBookingStatus } from "@/lib/api";
+import { getHostListings, getHostBookings, updateBookingStatus, getHostBlackouts, createBlackout, deleteBlackout } from "@/lib/api";
 import { ACTIVITY_TYPE_LABELS } from "@/lib/types";
-import type { Listing, BookingRequest } from "@/lib/types";
+import type { Listing, BookingRequest, HostBlackout } from "@/lib/types";
 import { formatPrice } from "@/lib/utils";
 
 const STATUS_LABELS: Record<BookingRequest["status"], string> = {
@@ -33,7 +33,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [bookings, setBookings] = useState<Array<Record<string, unknown>>>([]);
   const [myListings, setMyListings] = useState<Listing[]>([]);
-  const [tab, setTab] = useState<"listings" | "bookings" | "calendar">("bookings");
+  const [tab, setTab] = useState<"listings" | "bookings" | "calendar" | "availability">("bookings");
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -149,6 +149,14 @@ export default function DashboardPage() {
             >
               Календарь
             </button>
+            <button
+              onClick={() => setTab("availability")}
+              className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
+                tab === "availability" ? "bg-white shadow-sm text-gray-900" : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Доступность
+            </button>
           </div>
 
           {/* Bookings tab */}
@@ -238,6 +246,11 @@ export default function DashboardPage() {
 
           {/* Calendar tab */}
           {tab === "calendar" && <CalendarTab bookings={bookings} />}
+
+          {/* Availability tab — blackouts + iCal */}
+          {tab === "availability" && (
+            <AvailabilityTab listings={myListings} hostId={user.id} />
+          )}
 
           {/* Listings tab */}
           {tab === "listings" && (
@@ -433,6 +446,270 @@ function CalendarTab({ bookings }: { bookings: Array<Record<string, unknown>> })
           </div>
         </section>
       ))}
+    </div>
+  );
+}
+
+function AvailabilityTab({ listings, hostId }: { listings: Listing[]; hostId: string }) {
+  const [blackouts, setBlackouts] = useState<HostBlackout[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [icalCopied, setIcalCopied] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const data = await getHostBlackouts(hostId);
+    setBlackouts(data);
+    setLoading(false);
+  }, [hostId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function handleDelete(id: string) {
+    setBlackouts((prev) => prev.filter((b) => b.id !== id));
+    await deleteBlackout(id);
+  }
+
+  // Группируем по локации
+  const byListing = useMemo(() => {
+    const map = new Map<string, HostBlackout[]>();
+    for (const b of blackouts) {
+      if (!map.has(b.listingId)) map.set(b.listingId, []);
+      map.get(b.listingId)!.push(b);
+    }
+    return map;
+  }, [blackouts]);
+
+  const icalUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/api/ical/${hostId}`
+    : `https://lokacia.kz/api/ical/${hostId}`;
+  const webcalUrl = icalUrl.replace(/^https?:/, "webcal:");
+
+  function copyIcal() {
+    navigator.clipboard.writeText(icalUrl);
+    setIcalCopied(true);
+    setTimeout(() => setIcalCopied(false), 2000);
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Calendar subscription */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <h3 className="font-semibold">Подписаться на календарь</h3>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Все ваши подтверждённые брони и блокировки в Apple/Google Calendar
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <a
+            href={webcalUrl}
+            className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-black transition-colors"
+          >
+            Открыть в Apple Calendar
+          </a>
+          <button
+            onClick={copyIcal}
+            className="inline-flex items-center gap-2 border border-gray-300 px-4 py-2 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            {icalCopied ? "✓ Скопировано" : "Скопировать ссылку"}
+          </button>
+        </div>
+        <div className="mt-3 text-xs text-gray-500">
+          <strong>Google Calendar:</strong> «Other calendars» → «From URL» → вставьте{" "}
+          <code className="bg-gray-100 px-1.5 py-0.5 rounded">{icalUrl}</code>
+        </div>
+      </div>
+
+      {/* Blackouts */}
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold">Заблокированные даты</h3>
+        <button
+          onClick={() => setModalOpen(true)}
+          disabled={listings.length === 0}
+          className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary-dark transition-colors disabled:opacity-40"
+        >
+          + Заблокировать даты
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="text-gray-400 text-sm">Загрузка...</div>
+      ) : listings.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500 text-sm">
+          У вас пока нет локаций
+        </div>
+      ) : blackouts.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500 text-sm">
+          Нет заблокированных дат. Используйте кнопку выше, чтобы отметить периоды недоступности.
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {listings.map((l) => {
+            const items = byListing.get(l.id) ?? [];
+            if (items.length === 0) return null;
+            return (
+              <div key={l.id} className="bg-white rounded-xl border border-gray-200 p-4">
+                <Link href={`/listing/${l.slug}`} className="font-semibold hover:text-primary line-clamp-1 mb-2 block">
+                  {l.title}
+                </Link>
+                <div className="space-y-1.5">
+                  {items.map((b) => {
+                    const fmt = (d: string) => new Date(d).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+                    return (
+                      <div key={b.id} className="flex items-center justify-between gap-2 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                        <div className="text-sm">
+                          <span className="font-medium text-amber-800">
+                            {b.startDate === b.endDate ? fmt(b.startDate) : `${fmt(b.startDate)} – ${fmt(b.endDate)}`}
+                          </span>
+                          {b.reason && <span className="text-xs text-amber-600 ml-2">· {b.reason}</span>}
+                        </div>
+                        <button
+                          onClick={() => handleDelete(b.id)}
+                          className="text-xs text-amber-700 hover:text-red-600 hover:underline"
+                        >
+                          Снять блокировку
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {modalOpen && (
+        <BlackoutModal
+          listings={listings}
+          onClose={() => setModalOpen(false)}
+          onCreated={() => { setModalOpen(false); load(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function BlackoutModal({
+  listings,
+  onClose,
+  onCreated,
+}: {
+  listings: Listing[];
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [listingId, setListingId] = useState(listings[0]?.id ?? "");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!listingId || !startDate || !endDate) {
+      setError("Заполните локацию и обе даты");
+      return;
+    }
+    if (endDate < startDate) {
+      setError("Дата окончания не может быть раньше начала");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    const { error: err } = await createBlackout({ listingId, startDate, endDate, reason });
+    if (err) {
+      setError("Не удалось сохранить. Возможно, миграция БД не применена.");
+      setSaving(false);
+      return;
+    }
+    onCreated();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => { if (!saving) onClose(); }} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={saving}
+          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        <h3 className="text-lg font-bold pr-8">Заблокировать даты</h3>
+        <p className="text-sm text-gray-500 mt-1">Эти дни нельзя будет забронировать</p>
+
+        <form onSubmit={handleSubmit} className="mt-5 space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Локация</label>
+            <select
+              value={listingId}
+              onChange={(e) => setListingId(e.target.value)}
+              required
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm bg-white"
+            >
+              {listings.map((l) => (
+                <option key={l.id} value={l.id}>{l.title}</option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">С</label>
+              <input
+                type="date"
+                required
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                min={new Date().toISOString().split("T")[0]}
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-300 outline-none text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">По</label>
+              <input
+                type="date"
+                required
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                min={startDate || new Date().toISOString().split("T")[0]}
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-300 outline-none text-sm"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Причина (опционально)</label>
+            <input
+              type="text"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Отпуск, ремонт, частное событие..."
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-300 outline-none text-sm"
+            />
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">{error}</div>
+          )}
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="w-full bg-primary text-white py-3 rounded-xl text-sm font-bold hover:bg-primary-dark transition-colors disabled:opacity-50"
+          >
+            {saving ? "Сохранение..." : "Заблокировать"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

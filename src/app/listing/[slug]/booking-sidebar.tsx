@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { Listing, PricingTier, AddOn } from "@/lib/types";
 import { ACTIVITY_TYPE_LABELS } from "@/lib/types";
@@ -13,7 +13,9 @@ import {
   getOrCreateConversation,
   sendMessage,
   getListingBookings,
+  getListingBlackouts,
 } from "@/lib/api";
+import type { ListingBlackout } from "@/lib/types";
 
 interface ListingBooking {
   id: string;
@@ -44,15 +46,23 @@ function pickTier(tiers: PricingTier[] | undefined, guests: number): PricingTier
 export default function BookingSidebar({ listing, referralCode }: { listing: Listing; referralCode?: string }) {
   const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Кастомная смета от хоста (через query params после accept в чате)
+  const quotePrice = Number(searchParams.get("quotePrice")) || 0;
+  const quoteHours = Number(searchParams.get("quoteHours")) || 0;
+  const hasQuote = quotePrice > 0 && quoteHours > 0;
+
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("10:00");
-  const [hours, setHours] = useState(listing.minHours);
+  const [hours, setHours] = useState(quoteHours || listing.minHours);
   const [guests, setGuests] = useState(1);
   const [activity, setActivity] = useState(listing.activityTypes[0]);
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [existingBookings, setExistingBookings] = useState<ListingBooking[]>([]);
+  const [blackouts, setBlackouts] = useState<ListingBlackout[]>([]);
   const [selectedAddOns, setSelectedAddOns] = useState<Set<string>>(new Set());
 
   // Message host state
@@ -65,7 +75,10 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
   const tiers = listing.pricingTiers ?? [];
   const addOnsList: AddOn[] = listing.addOns ?? [];
   const selectedTier = useMemo(() => pickTier(tiers, guests), [tiers, guests]);
-  const basePricePerHour = selectedTier ? selectedTier.price_per_hour : listing.pricePerHour;
+  // Если есть кастомная смета — она перебивает обычную цену
+  const basePricePerHour = hasQuote
+    ? Math.round(quotePrice / quoteHours)
+    : (selectedTier ? selectedTier.price_per_hour : listing.pricePerHour);
 
   const baseTotal = basePricePerHour * hours;
 
@@ -100,11 +113,16 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
     return `${String(endH).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
   }
 
-  // Подгружаем все активные брони локации (один раз)
+  // Подгружаем все активные брони + блокировки локации
   useEffect(() => {
     let cancelled = false;
-    getListingBookings(listing.id).then((rows) => {
-      if (!cancelled) setExistingBookings(rows);
+    Promise.all([
+      getListingBookings(listing.id),
+      getListingBlackouts(listing.id),
+    ]).then(([bookings, bl]) => {
+      if (cancelled) return;
+      setExistingBookings(bookings);
+      setBlackouts(bl);
     });
     return () => { cancelled = true; };
   }, [listing.id]);
@@ -143,6 +161,12 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
       const nowMin = now.getHours() * 60 + now.getMinutes();
       if (startM <= nowMin) return "Время начала уже прошло. Выберите более позднее время.";
     }
+    // Хост заблокировал эту дату
+    for (const bl of blackouts) {
+      if (date >= bl.startDate && date <= bl.endDate) {
+        return `Эта дата заблокирована хостом${bl.reason ? `: ${bl.reason}` : ""}.`;
+      }
+    }
     // Пересечения с pending/confirmed
     for (const b of bookingsOnDate) {
       const bs = toMinutes(b.start_time);
@@ -152,7 +176,7 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
       }
     }
     return null;
-  }, [date, startTime, hours, bookingsOnDate, listing.minHours, listing.capacity, guests, tiers.length, selectedTier]);
+  }, [date, startTime, hours, bookingsOnDate, blackouts, listing.minHours, listing.capacity, guests, tiers.length, selectedTier]);
 
   const isBlocked = !!validationError;
 
@@ -236,6 +260,13 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-6 sticky top-24">
+      {hasQuote && (
+        <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-800">
+          <span className="font-semibold">Кастомная смета хоста:</span>{" "}
+          {new Intl.NumberFormat("ru-RU").format(quotePrice)} ₸ за {quoteHours} ч
+        </div>
+      )}
+
       {/* Price */}
       <div className="flex items-baseline gap-2 mb-6">
         <span className="text-2xl font-bold">{formatPrice(basePricePerHour)}</span>
@@ -395,6 +426,27 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
             <span>{formatPrice(grandTotal)}</span>
           </div>
         </div>
+
+        {/* Заблокированные хостом даты в ближайшие 60 дней */}
+        {(() => {
+          const today = new Date().toISOString().split("T")[0];
+          const cutoff = new Date(Date.now() + 60 * 86400000).toISOString().split("T")[0];
+          const upcoming = blackouts.filter((b) => b.endDate >= today && b.startDate <= cutoff);
+          if (upcoming.length === 0) return null;
+          const fmt = (d: string) => new Date(d).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+          return (
+            <div className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 text-xs text-amber-700">
+              <div className="font-semibold mb-1">Хост заблокировал даты:</div>
+              <div className="flex flex-wrap gap-1.5">
+                {upcoming.map((b) => (
+                  <span key={b.id} className="px-2 py-0.5 rounded bg-white border border-amber-200">
+                    {b.startDate === b.endDate ? fmt(b.startDate) : `${fmt(b.startDate)} – ${fmt(b.endDate)}`}
+                  </span>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Занятые слоты на выбранную дату — подсказка пользователю */}
         {date && bookingsOnDate.length > 0 && (

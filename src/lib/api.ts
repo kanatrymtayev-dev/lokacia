@@ -527,6 +527,131 @@ export async function hasUserConfirmedBookingForListing(
   return data.length > 0;
 }
 
+// ──────────── Blackouts (заблокированные хостом даты) ────────────
+
+import type { ListingBlackout, HostBlackout, QuoteMetadata } from "./types";
+
+function rowToBlackout(r: Record<string, unknown>): ListingBlackout {
+  return {
+    id: r.id as string,
+    listingId: r.listing_id as string,
+    startDate: r.start_date as string,
+    endDate: r.end_date as string,
+    reason: (r.reason as string | null) ?? null,
+    createdAt: r.created_at as string,
+  };
+}
+
+export async function getListingBlackouts(listingId: string): Promise<ListingBlackout[]> {
+  const { data, error } = await supabase
+    .from("listing_blackouts")
+    .select("id, listing_id, start_date, end_date, reason, created_at")
+    .eq("listing_id", listingId)
+    .order("start_date", { ascending: true });
+  if (error || !data) return [];
+  return (data as Record<string, unknown>[]).map(rowToBlackout);
+}
+
+export async function getHostBlackouts(hostId: string): Promise<HostBlackout[]> {
+  const { data, error } = await supabase
+    .from("listing_blackouts")
+    .select("id, listing_id, start_date, end_date, reason, created_at, listings!listing_blackouts_listing_id_fkey(title, slug, host_id)")
+    .order("start_date", { ascending: true });
+  if (error || !data) return [];
+  return (data as Record<string, unknown>[])
+    .filter((r) => {
+      const l = r.listings as Record<string, unknown> | null;
+      return l?.host_id === hostId;
+    })
+    .map((r) => {
+      const l = r.listings as Record<string, unknown> | null;
+      return {
+        ...rowToBlackout(r),
+        listingTitle: (l?.title as string) ?? "",
+        listingSlug: (l?.slug as string) ?? "",
+      };
+    });
+}
+
+export async function createBlackout(input: {
+  listingId: string;
+  startDate: string;
+  endDate: string;
+  reason?: string;
+}) {
+  const { data, error } = await supabase
+    .from("listing_blackouts")
+    .insert({
+      listing_id: input.listingId,
+      start_date: input.startDate,
+      end_date: input.endDate,
+      reason: input.reason || null,
+    })
+    .select()
+    .single();
+  return { data, error };
+}
+
+export async function deleteBlackout(blackoutId: string) {
+  const { error } = await supabase
+    .from("listing_blackouts")
+    .delete()
+    .eq("id", blackoutId);
+  return { error };
+}
+
+// ──────────── Custom quotes (смета хоста в чате) ────────────
+
+export async function createQuote(
+  conversationId: string,
+  hostId: string,
+  input: { price: number; hours: number; validUntil?: string }
+) {
+  const meta: QuoteMetadata = {
+    price: Math.round(input.price),
+    hours: input.hours,
+    status: "pending",
+    ...(input.validUntil ? { valid_until: input.validUntil } : {}),
+  };
+  const summary = `Смета: ${new Intl.NumberFormat("ru-RU").format(meta.price)} ₸ за ${meta.hours} ч`;
+  const { data, error } = await supabase
+    .from("messages")
+    .insert({
+      conversation_id: conversationId,
+      sender_id: hostId,
+      content: summary,
+      type: "quote",
+      metadata: meta as unknown as Record<string, unknown>,
+    })
+    .select()
+    .single();
+  return { data, error };
+}
+
+async function setQuoteStatus(messageId: string, status: "accepted" | "rejected") {
+  const { data: existing, error: fetchErr } = await supabase
+    .from("messages")
+    .select("metadata")
+    .eq("id", messageId)
+    .single();
+  if (fetchErr || !existing) return { error: fetchErr ?? { message: "Сообщение не найдено" } };
+  const meta = (existing as Record<string, unknown>).metadata as QuoteMetadata;
+  const updated: QuoteMetadata = { ...meta, status };
+  const { error } = await supabase
+    .from("messages")
+    .update({ metadata: updated as unknown as Record<string, unknown> })
+    .eq("id", messageId);
+  return { error, quote: updated };
+}
+
+export async function acceptQuote(messageId: string) {
+  return setQuoteStatus(messageId, "accepted");
+}
+
+export async function rejectQuote(messageId: string) {
+  return setQuoteStatus(messageId, "rejected");
+}
+
 // Все активные брони (pending/confirmed) одной локации — для блокировки занятых слотов
 export async function getListingBookings(listingId: string) {
   const { data, error } = await supabase
@@ -820,7 +945,7 @@ export async function getConversations(userId: string) {
 export async function getMessages(conversationId: string) {
   const { data, error } = await supabase
     .from("messages")
-    .select("id, conversation_id, sender_id, content, is_read, type, booking_id, created_at")
+    .select("id, conversation_id, sender_id, content, is_read, type, booking_id, metadata, created_at")
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: true });
 

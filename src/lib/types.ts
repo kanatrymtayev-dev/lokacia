@@ -126,7 +126,28 @@ export interface BookingRequest {
   createdAt: string;
 }
 
-export type MessageType = "text" | "system";
+export type MessageType = "text" | "system" | "quote";
+
+export interface QuoteMetadata {
+  price: number;
+  hours: number;
+  valid_until?: string;
+  status: "pending" | "accepted" | "rejected";
+}
+
+export interface ListingBlackout {
+  id: string;
+  listingId: string;
+  startDate: string;
+  endDate: string;
+  reason: string | null;
+  createdAt: string;
+}
+
+export interface HostBlackout extends ListingBlackout {
+  listingTitle: string;
+  listingSlug: string;
+}
 
 export interface ChatMessage {
   id: string;

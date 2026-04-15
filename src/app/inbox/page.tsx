@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState, useCallback, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import Navbar from "@/components/navbar";
@@ -15,7 +15,11 @@ import {
   respondToBooking,
   getReviewedBookingIds,
   createReview,
+  createQuote,
+  acceptQuote,
+  rejectQuote,
 } from "@/lib/api";
+import type { QuoteMetadata } from "@/lib/types";
 
 const ACTIVITY_LABELS_MAP: Record<string, string> = {
   production: "Продакшн",
@@ -51,8 +55,9 @@ interface Message {
   sender_id: string;
   content: string;
   is_read: boolean;
-  type: "text" | "system";
+  type: "text" | "system" | "quote";
   booking_id: string | null;
+  metadata?: Record<string, unknown> | null;
   created_at: string;
 }
 
@@ -100,6 +105,8 @@ function InboxContent() {
   const [bookingsMap, setBookingsMap] = useState<Record<string, BookingMeta>>({});
   const [reviewedSet, setReviewedSet] = useState<Set<string>>(new Set());
   const [reviewModal, setReviewModal] = useState<{ bookingId: string; listingId: string } | null>(null);
+  const [quoteModalOpen, setQuoteModalOpen] = useState(false);
+  const router = useRouter();
   const [newMsg, setNewMsg] = useState("");
   const [sending, setSending] = useState(false);
   const [loadingConvos, setLoadingConvos] = useState(true);
@@ -428,6 +435,34 @@ function InboxContent() {
                         </div>
                       );
 
+                      // Кастомная смета хоста
+                      if (msg.type === "quote") {
+                        const meta = (msg.metadata ?? {}) as unknown as QuoteMetadata;
+                        const isHost = activeConvo ? activeConvo.host_id === user.id : false;
+                        const listingSlug = activeConvo?.listings?.slug ?? "";
+                        return (
+                          <div key={msg.id}>
+                            {dateHeader}
+                            <QuoteCard
+                              messageId={msg.id}
+                              meta={meta}
+                              viewerIsHost={isHost}
+                              onAccept={async () => {
+                                const { error } = await acceptQuote(msg.id);
+                                if (error) return;
+                                if (listingSlug) {
+                                  router.push(`/listing/${listingSlug}?quotePrice=${meta.price}&quoteHours=${meta.hours}`);
+                                }
+                              }}
+                              onReject={async () => {
+                                await rejectQuote(msg.id);
+                                await loadMessages();
+                              }}
+                            />
+                          </div>
+                        );
+                      }
+
                       // Системная карточка бронирования
                       if (msg.type === "system" && msg.booking_id) {
                         const b = bookingsMap[msg.booking_id];
@@ -493,6 +528,18 @@ function InboxContent() {
               {/* Input */}
               <form onSubmit={handleSend} className="px-4 py-3 border-t border-gray-200 bg-white">
                 <div className="flex items-end gap-2">
+                  {activeConvo?.host_id === user.id && (
+                    <button
+                      type="button"
+                      onClick={() => setQuoteModalOpen(true)}
+                      title="Отправить смету"
+                      className="w-10 h-10 flex items-center justify-center rounded-xl border border-gray-200 text-gray-600 hover:border-primary hover:text-primary transition-colors flex-shrink-0"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75 18 18m-7.5-3.75a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5ZM2.25 6h19.5M2.25 12h12.75M2.25 18h12.75" />
+                      </svg>
+                    </button>
+                  )}
                   <textarea
                     value={newMsg}
                     onChange={(e) => setNewMsg(e.target.value)}
@@ -551,6 +598,15 @@ function InboxContent() {
             setReviewedSet((prev) => new Set(prev).add(reviewModal.bookingId));
             setReviewModal(null);
           }}
+        />
+      )}
+
+      {quoteModalOpen && activeId && (
+        <QuoteModal
+          conversationId={activeId}
+          hostId={user.id}
+          onClose={() => setQuoteModalOpen(false)}
+          onSent={async () => { setQuoteModalOpen(false); await loadMessages(); }}
         />
       )}
     </div>
@@ -829,6 +885,189 @@ function BookingCard({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function QuoteCard({
+  meta,
+  viewerIsHost,
+  onAccept,
+  onReject,
+}: {
+  messageId: string;
+  meta: QuoteMetadata;
+  viewerIsHost: boolean;
+  onAccept: () => void;
+  onReject: () => void;
+}) {
+  const priceStr = new Intl.NumberFormat("ru-RU").format(meta.price) + " ₸";
+  const validUntil = meta.valid_until
+    ? new Date(meta.valid_until).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
+    : null;
+
+  const palette = (() => {
+    switch (meta.status) {
+      case "accepted":
+        return { bg: "bg-green-50", border: "border-green-200", title: "Смета принята ✓", titleClr: "text-green-700" };
+      case "rejected":
+        return { bg: "bg-gray-50", border: "border-gray-200", title: "Смета отклонена", titleClr: "text-gray-600" };
+      default:
+        return { bg: "bg-blue-50", border: "border-blue-200", title: "Смета от хоста", titleClr: "text-blue-800" };
+    }
+  })();
+
+  return (
+    <div className={`mx-auto max-w-md rounded-2xl border ${palette.border} ${palette.bg} px-5 py-4`}>
+      <div className="flex items-center gap-2">
+        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center border border-gray-100">
+          <svg className="w-4 h-4 text-blue-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.7}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
+          </svg>
+        </div>
+        <div className={`text-sm font-bold ${palette.titleClr}`}>{palette.title}</div>
+      </div>
+
+      <div className="mt-4 text-center">
+        <div className="text-2xl font-bold text-gray-900">{priceStr}</div>
+        <div className="text-sm text-gray-600 mt-1">за {meta.hours} ч</div>
+        {validUntil && (
+          <div className="text-xs text-gray-500 mt-2">Действует до {validUntil}</div>
+        )}
+      </div>
+
+      {!viewerIsHost && meta.status === "pending" && (
+        <div className="mt-4 flex gap-2">
+          <button
+            onClick={onReject}
+            className="flex-1 py-2.5 rounded-xl border-2 border-gray-200 text-sm font-semibold text-gray-700 hover:border-gray-300 hover:text-gray-900 transition-colors"
+          >
+            Отклонить
+          </button>
+          <button
+            onClick={onAccept}
+            className="flex-1 py-2.5 rounded-xl bg-green-600 text-white text-sm font-bold hover:bg-green-700 transition-colors"
+          >
+            Принять
+          </button>
+        </div>
+      )}
+
+      {viewerIsHost && meta.status === "pending" && (
+        <div className="mt-3 text-xs text-blue-700/80 text-center">
+          Ожидаем ответа клиента
+        </div>
+      )}
+    </div>
+  );
+}
+
+function QuoteModal({
+  conversationId,
+  hostId,
+  onClose,
+  onSent,
+}: {
+  conversationId: string;
+  hostId: string;
+  onClose: () => void;
+  onSent: () => void;
+}) {
+  const [price, setPrice] = useState<number>(0);
+  const [hours, setHours] = useState<number>(2);
+  const [validUntil, setValidUntil] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (price < 1 || hours < 1) {
+      setError("Цена и часы должны быть больше нуля");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    const { error: err } = await createQuote(conversationId, hostId, {
+      price,
+      hours,
+      validUntil: validUntil || undefined,
+    });
+    if (err) {
+      setError("Не удалось отправить. Возможно, миграция БД не применена.");
+      setSaving(false);
+      return;
+    }
+    onSent();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => { if (!saving) onClose(); }} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={saving}
+          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        <h3 className="text-lg font-bold pr-8">Отправить смету</h3>
+        <p className="text-sm text-gray-500 mt-1">Кастомная цена для этого клиента</p>
+
+        <form onSubmit={handleSubmit} className="mt-5 space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Цена (₸)</label>
+            <input
+              type="number"
+              required
+              min={1}
+              step={1000}
+              value={price || ""}
+              onChange={(e) => setPrice(Number(e.target.value))}
+              placeholder="35000"
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-300 outline-none text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Часов</label>
+            <input
+              type="number"
+              required
+              min={1}
+              max={24}
+              value={hours}
+              onChange={(e) => setHours(Number(e.target.value))}
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-300 outline-none text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Действует до (опционально)</label>
+            <input
+              type="date"
+              value={validUntil}
+              onChange={(e) => setValidUntil(e.target.value)}
+              min={new Date().toISOString().split("T")[0]}
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-300 outline-none text-sm"
+            />
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">{error}</div>
+          )}
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="w-full bg-primary text-white py-3 rounded-xl text-sm font-bold hover:bg-primary-dark transition-colors disabled:opacity-50"
+          >
+            {saving ? "Отправка..." : "Отправить смету"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

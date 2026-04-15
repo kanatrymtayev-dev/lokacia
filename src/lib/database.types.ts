@@ -168,8 +168,9 @@ export interface Database {
           sender_id: string;
           content: string;
           is_read: boolean;
-          type: "text" | "system";
+          type: "text" | "system" | "quote";
           booking_id: string | null;
+          metadata: Record<string, unknown>;
           created_at: string;
         };
         Insert: {
@@ -178,12 +179,36 @@ export interface Database {
           sender_id: string;
           content: string;
           is_read?: boolean;
-          type?: "text" | "system";
+          type?: "text" | "system" | "quote";
           booking_id?: string | null;
+          metadata?: Record<string, unknown>;
         };
         Update: {
           is_read?: boolean;
           content?: string;
+          metadata?: Record<string, unknown>;
+        };
+      };
+      listing_blackouts: {
+        Row: {
+          id: string;
+          listing_id: string;
+          start_date: string;
+          end_date: string;
+          reason: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          listing_id: string;
+          start_date: string;
+          end_date: string;
+          reason?: string | null;
+        };
+        Update: {
+          start_date?: string;
+          end_date?: string;
+          reason?: string | null;
         };
       };
       reviews: {
