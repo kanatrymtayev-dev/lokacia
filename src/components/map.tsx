@@ -116,7 +116,7 @@ export default function MapLeaflet({
               zIndexOffset={isHovered ? 1000 : 0}
               eventHandlers={{
                 click: () => {
-                  window.location.href = \`/listing/\${l.slug}\`;
+                  window.location.href = `/listing/${l.slug}`;
                 }
               }}
             />
