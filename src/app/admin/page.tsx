@@ -17,11 +17,14 @@ import {
   setListingFeatured,
   getAllPendingVerifications,
   reviewVerification,
+  getSiteSettings,
+  updateSiteSetting,
 } from "@/lib/api";
+import type { SiteSettings } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
 import type { Listing, HostVerification } from "@/lib/types";
 
-type Tab = "overview" | "bookings" | "payouts" | "featured" | "verifications";
+type Tab = "overview" | "bookings" | "payouts" | "featured" | "verifications" | "settings";
 
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
   unpaid: "Не оплачено",
@@ -174,6 +177,7 @@ export default function AdminPage() {
                 ["payouts", "Выплаты"],
                 ["featured", "Топ-листинги"],
                 ["verifications", "Верификация"],
+              ["settings", "Настройки"],
               ] as const
             ).map(([key, label]) => (
               <button
@@ -370,6 +374,7 @@ export default function AdminPage() {
 
           {tab === "featured" && <FeaturedTab />}
           {tab === "verifications" && <VerificationsTab />}
+          {tab === "settings" && <SettingsTab />}
         </div>
       </main>
     </div>
@@ -558,6 +563,108 @@ function FeaturedTab() {
             )}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+const SETTINGS_FIELDS: { key: string; label: string; type: "text" | "textarea" }[] = [
+  { key: "site_name", label: "Название сайта", type: "text" },
+  { key: "site_tagline", label: "Описание / слоган", type: "textarea" },
+  { key: "email", label: "Email", type: "text" },
+  { key: "phone", label: "Телефон", type: "text" },
+  { key: "address", label: "Адрес", type: "text" },
+  { key: "instagram", label: "Instagram (ссылка)", type: "text" },
+  { key: "telegram", label: "Telegram (ссылка)", type: "text" },
+  { key: "whatsapp", label: "WhatsApp (ссылка или номер)", type: "text" },
+];
+
+function SettingsTab() {
+  const [settings, setSettings] = useState<SiteSettings>({});
+  const [draft, setDraft] = useState<SiteSettings>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const data = await getSiteSettings();
+    setSettings(data);
+    setDraft(data);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  function handleChange(key: string, value: string) {
+    setDraft((prev) => ({ ...prev, [key]: value }));
+    setSaved(false);
+  }
+
+  const hasChanges = SETTINGS_FIELDS.some((f) => (draft[f.key] ?? "") !== (settings[f.key] ?? ""));
+
+  async function handleSave() {
+    setSaving(true);
+    const changed = SETTINGS_FIELDS.filter((f) => (draft[f.key] ?? "") !== (settings[f.key] ?? ""));
+    for (const f of changed) {
+      await updateSiteSetting(f.key, draft[f.key] ?? "");
+    }
+    setSettings({ ...draft });
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  }
+
+  if (loading) return <div className="text-gray-400 text-sm py-8 text-center">Загрузка...</div>;
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="mb-6">
+        <h3 className="text-lg font-bold">Настройки сайта</h3>
+        <p className="text-sm text-gray-500 mt-1">
+          Эти данные отображаются в footer, на страницах «О нас», «Контакты» и в email-уведомлениях.
+        </p>
+      </div>
+
+      <div className="space-y-5 max-w-xl">
+        {SETTINGS_FIELDS.map((field) => (
+          <div key={field.key}>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              {field.label}
+            </label>
+            {field.type === "textarea" ? (
+              <textarea
+                value={draft[field.key] ?? ""}
+                onChange={(e) => handleChange(field.key, e.target.value)}
+                rows={3}
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
+              />
+            ) : (
+              <input
+                type="text"
+                value={draft[field.key] ?? ""}
+                onChange={(e) => handleChange(field.key, e.target.value)}
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              />
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-6 flex items-center gap-3">
+        <button
+          onClick={handleSave}
+          disabled={!hasChanges || saving}
+          className="bg-primary text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {saving ? "Сохранение..." : "Сохранить"}
+        </button>
+        {saved && (
+          <span className="text-sm text-green-600 font-medium">Сохранено!</span>
+        )}
+        {hasChanges && !saved && (
+          <span className="text-sm text-amber-600">Есть несохранённые изменения</span>
+        )}
       </div>
     </div>
   );

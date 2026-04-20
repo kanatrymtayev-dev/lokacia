@@ -1,9 +1,42 @@
 import Image from "next/image";
 import Link from "next/link";
 import Navbar from "@/components/navbar";
+import Footer from "@/components/footer";
 import ListingCard from "@/components/listing-card";
+import HeroSearch from "@/components/hero-search";
+import FaqAccordion from "@/components/faq-accordion";
 import { getListings } from "@/lib/api";
 import HostForm from "./host-form";
+
+const testimonials = [
+  {
+    name: "Алия К.",
+    role: "Арендатор",
+    text: "Нашла идеальную студию для фотосъёмки за 10 минут. Раньше обзванивала по 20 номеров. LOKACIA — это спасение!",
+    rating: 5,
+  },
+  {
+    name: "Марат Т.",
+    role: "Хост, фотостудия",
+    text: "За первый месяц получил 12 бронирований. Платформа сама приводит клиентов, мне остаётся только подтверждать.",
+    rating: 5,
+  },
+  {
+    name: "Динара С.",
+    role: "Ивент-менеджер",
+    text: "Удобно сравнивать площадки, смотреть отзывы и бронировать без звонков. Для корпоративов — самое то, PDF-инвойс сразу для бухгалтерии.",
+    rating: 5,
+  },
+];
+
+const homeFaqs = [
+  { q: "Как разместить площадку?", a: "Зарегистрируйтесь как хост, нажмите «Разместить площадку», заполните описание, добавьте фото и укажите цену. Публикация бесплатная." },
+  { q: "Сколько стоит размещение?", a: "Размещение бесплатное. Платформа берёт комиссию 15% только с успешных бронирований. Если приводите своего клиента — всего 3%." },
+  { q: "Как забронировать локацию?", a: "Выберите площадку, укажите дату, время и количество гостей, отправьте запрос. Хост подтвердит — и готово." },
+  { q: "Можно ли отменить бронирование?", a: "Да. Полный возврат за 48+ часов, частичный за 24-48 часов. Точные условия зависят от политики хоста." },
+  { q: "Нужно ли быть юрлицом?", a: "Нет. И хосты, и арендаторы могут работать как физлица. Юр. данные нужны только для PDF-инвойсов." },
+  { q: "Как связаться с поддержкой?", a: "Напишите на hello@lokacia.kz — мы отвечаем в течение 24 часов." },
+];
 
 const categories = [
   {
@@ -150,37 +183,24 @@ export default async function Home() {
         <div className="absolute inset-0 bg-gradient-to-br from-violet-950/90 via-violet-900/80 to-purple-800/70" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(139,92,246,0.3),transparent_60%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(245,158,11,0.15),transparent_60%)]" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32 lg:py-40">
-          <div className="max-w-3xl">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 lg:py-36">
+          <div className="text-center max-w-3xl mx-auto">
             <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-1.5 text-sm font-medium mb-6">
               <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-              Запуск в Алматы — набираем первых хостов
+              Запуск в Алматы
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-tight">
-              Сдавайте помещение.
+              Найдите идеальную
               <br />
-              <span className="text-amber-400">Зарабатывайте.</span>
+              <span className="text-amber-400">локацию</span>
             </h1>
-            <p className="mt-6 text-lg sm:text-xl text-violet-200 max-w-2xl leading-relaxed">
-              LOKACIA — маркетплейс аренды локаций для съёмок, мероприятий и встреч
-              в&nbsp;Казахстане.
+            <p className="mt-6 text-lg sm:text-xl text-violet-200 max-w-2xl mx-auto leading-relaxed">
+              Площадки для съёмок, мероприятий и встреч в&nbsp;Казахстане
             </p>
-            <div className="mt-10 flex flex-col sm:flex-row gap-4">
-              <a
-                href="#form"
-                className="inline-flex items-center justify-center bg-accent text-gray-900 px-8 py-4 rounded-full text-base font-bold hover:bg-amber-400 transition-colors shadow-lg shadow-amber-500/25"
-              >
-                Хочу сдавать помещение
-                <svg className="ml-2 w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-                </svg>
-              </a>
-              <a
-                href="#categories"
-                className="inline-flex items-center justify-center bg-white/10 backdrop-blur-sm text-white px-8 py-4 rounded-full text-base font-semibold hover:bg-white/20 transition-colors border border-white/20"
-              >
-                Ищу локацию
-              </a>
+
+            {/* Search bar */}
+            <div className="mt-10">
+              <HeroSearch />
             </div>
           </div>
 
@@ -373,6 +393,69 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* Testimonials */}
+      <section className="py-20 sm:py-28 bg-gradient-to-br from-violet-950 to-purple-900 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-14">
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
+              Что говорят наши пользователи
+            </h2>
+            <p className="mt-4 text-lg text-violet-300">
+              Отзывы хостов и арендаторов о платформе
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {testimonials.map((t) => (
+              <div
+                key={t.name}
+                className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/10"
+              >
+                <div className="flex items-center gap-0.5 mb-4">
+                  {Array.from({ length: t.rating }).map((_, i) => (
+                    <svg key={i} className="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.957a1 1 0 0 0 .95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.366 2.446a1 1 0 0 0-.364 1.118l1.286 3.957c.3.921-.755 1.688-1.54 1.118l-3.366-2.446a1 1 0 0 0-1.176 0l-3.366 2.446c-.784.57-1.838-.197-1.539-1.118l1.286-3.957a1 1 0 0 0-.364-1.118L2.05 9.384c-.783-.57-.38-1.81.588-1.81h4.162a1 1 0 0 0 .95-.69l1.286-3.957Z" />
+                    </svg>
+                  ))}
+                </div>
+                <p className="text-violet-100 leading-relaxed mb-5">
+                  &ldquo;{t.text}&rdquo;
+                </p>
+                <div>
+                  <div className="font-semibold text-sm">{t.name}</div>
+                  <div className="text-xs text-violet-400">{t.role}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="py-20 sm:py-28 bg-white">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
+              Часто задаваемые вопросы
+            </h2>
+            <p className="mt-4 text-lg text-gray-600">
+              Ответы на популярные вопросы о платформе
+            </p>
+          </div>
+          <FaqAccordion items={homeFaqs} />
+          <div className="mt-8 text-center">
+            <Link
+              href="/faq"
+              className="inline-flex items-center gap-1 text-primary font-semibold hover:underline"
+            >
+              Все вопросы и ответы
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+              </svg>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* CTA / Form */}
       <section id="form" className="py-20 sm:py-28 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -393,28 +476,7 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-gray-400 py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-                <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-white">
-                  <path d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" fill="currentColor" />
-                  <path d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" stroke="currentColor" strokeWidth={1.5} />
-                </svg>
-              </div>
-              <span className="text-white font-bold">LOKACIA.KZ</span>
-            </div>
-            <p className="text-sm">
-              Маркетплейс аренды локаций для съёмок, мероприятий и встреч в Казахстане
-            </p>
-          </div>
-          <div className="mt-8 pt-8 border-t border-gray-800 text-center text-sm">
-            &copy; {new Date().getFullYear()} LOKACIA.KZ. Все права защищены. Алматы, Казахстан.
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

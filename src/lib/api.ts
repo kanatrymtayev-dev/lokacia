@@ -441,7 +441,7 @@ export async function getReviewedBookingIds(bookingIds: string[]): Promise<Set<s
 export async function getHostProfile(hostId: string) {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, name, phone, role, avatar_url, response_rate, response_time, created_at")
+    .select("id, name, phone, role, avatar_url, response_rate, response_time, created_at, id_verified, bio, instagram, telegram")
     .eq("id", hostId)
     .single();
 
@@ -455,6 +455,10 @@ export async function getHostProfile(hostId: string) {
     response_rate: number | null;
     response_time: string | null;
     created_at: string;
+    id_verified: boolean;
+    bio: string | null;
+    instagram: string | null;
+    telegram: string | null;
   };
 }
 
@@ -1244,6 +1248,43 @@ export async function respondToBooking(
   return { error: null };
 }
 
+export async function cancelBooking(bookingId: string, renterId: string) {
+  // Verify ownership
+  const { data: booking, error: fetchError } = await supabase
+    .from("bookings")
+    .select("id, status, renter_id, conversation_id")
+    .eq("id", bookingId)
+    .single();
+
+  if (fetchError || !booking) return { error: fetchError ?? { message: "Бронь не найдена" } };
+
+  const row = booking as Record<string, unknown>;
+  if (row.renter_id !== renterId) return { error: { message: "Нет доступа" } };
+
+  const status = row.status as string;
+  if (status !== "pending" && status !== "confirmed") {
+    return { error: { message: "Эту бронь нельзя отменить" } };
+  }
+
+  const { error: updateError } = await supabase
+    .from("bookings")
+    .update({ status: "cancelled" })
+    .eq("id", bookingId);
+
+  if (updateError) return { error: updateError };
+
+  // System message in conversation
+  const conversationId = row.conversation_id as string | null;
+  if (conversationId) {
+    await sendMessage(conversationId, renterId, "Арендатор отменил бронирование", {
+      type: "system",
+      bookingId,
+    });
+  }
+
+  return { error: null };
+}
+
 export async function getConversations(userId: string) {
   const { data, error } = await supabase
     .from("conversations")
@@ -1712,3 +1753,61 @@ export async function updateProfileBilling(userId: string, fields: {
     .eq("id", userId);
   return { error };
 }
+
+// ---- Site Settings ----
+
+export type SiteSettings = Record<string, string>;
+
+export async function getSiteSettings(): Promise<SiteSettings> {
+  const { data, error } = await supabase
+    .from("site_settings")
+    .select("key, value");
+  if (error || !data) return {};
+  const map: SiteSettings = {};
+  for (const row of data) {
+    map[row.key as string] = row.value as string;
+  }
+  return map;
+}
+
+export async function updateSiteSetting(key: string, value: string) {
+  const { error } = await supabase
+    .from("site_settings")
+    .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" });
+  return { error };
+}
+
+// ---- Profile ----
+
+export async function getProfile(userId: string) {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, name, phone, avatar_url, role, email, company_name, company_bin, company_address, iin, created_at, id_verified, bio, instagram, telegram")
+    .eq("id", userId)
+    .single();
+  if (error || !data) return null;
+  return data as Record<string, unknown>;
+}
+
+export async function updateProfile(
+  userId: string,
+  fields: {
+    name?: string;
+    phone?: string | null;
+    avatar_url?: string | null;
+    iin?: string | null;
+    company_name?: string | null;
+    company_bin?: string | null;
+    company_address?: string | null;
+    bio?: string | null;
+    instagram?: string | null;
+    telegram?: string | null;
+  }
+) {
+  const { error } = await supabase
+    .from("profiles")
+    .update(fields)
+    .eq("id", userId);
+  return { error };
+}
+

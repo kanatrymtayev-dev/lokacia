@@ -11,6 +11,7 @@ export interface User {
   phone: string | null;
   role: "host" | "renter";
   avatar_url: string | null;
+  onboarding_completed: boolean;
 }
 
 interface AuthContextType {
@@ -59,6 +60,7 @@ async function fetchProfile(supabaseUser: SupabaseUser): Promise<User | null> {
       phone: (newProfile as Record<string, unknown>).phone as string | null,
       role: ((newProfile as Record<string, unknown>).role as string) as "host" | "renter",
       avatar_url: (newProfile as Record<string, unknown>).avatar_url as string | null,
+      onboarding_completed: ((newProfile as Record<string, unknown>).onboarding_completed as boolean) ?? false,
     };
   }
 
@@ -68,6 +70,7 @@ async function fetchProfile(supabaseUser: SupabaseUser): Promise<User | null> {
     phone: string | null;
     role: string;
     avatar_url: string | null;
+    onboarding_completed: boolean;
   };
 
   return {
@@ -77,6 +80,7 @@ async function fetchProfile(supabaseUser: SupabaseUser): Promise<User | null> {
     phone: profile.phone,
     role: profile.role as "host" | "renter",
     avatar_url: profile.avatar_url,
+    onboarding_completed: profile.onboarding_completed ?? false,
   };
 }
 

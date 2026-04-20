@@ -1,16 +1,27 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import { useAuth } from "@/lib/auth-context";
-import { getRenterBookings } from "@/lib/api";
+import { getRenterBookings, cancelBooking } from "@/lib/api";
 import { ACTIVITY_TYPE_LABELS } from "@/lib/types";
 import type { BookingRequest } from "@/lib/types";
 import { formatPrice } from "@/lib/utils";
+
+type StatusFilter = "all" | BookingRequest["status"];
+
+const TABS: { key: StatusFilter; label: string }[] = [
+  { key: "all", label: "Все" },
+  { key: "pending", label: "Ожидают" },
+  { key: "confirmed", label: "Подтверждённые" },
+  { key: "completed", label: "Завершённые" },
+  { key: "cancelled", label: "Отменённые" },
+  { key: "rejected", label: "Отклонённые" },
+];
 
 const STATUS_LABELS: Record<BookingRequest["status"], string> = {
   pending: "Ожидает подтверждения",
@@ -32,6 +43,11 @@ export default function BookingsPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [bookings, setBookings] = useState<Array<Record<string, unknown>>>([]);
+  const [tab, setTab] = useState<StatusFilter>("all");
+  const [sortNewest, setSortNewest] = useState(true);
+  const [cancelling, setCancelling] = useState<string | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
+  const [paying, setPaying] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) router.push("/login");
@@ -46,6 +62,70 @@ export default function BookingsPage() {
   useEffect(() => {
     loadBookings();
   }, [loadBookings]);
+
+  const filtered = useMemo(() => {
+    let list = tab === "all" ? bookings : bookings.filter((b) => b.status === tab);
+    list = [...list].sort((a, b) => {
+      const da = new Date(a.created_at as string).getTime();
+      const db = new Date(b.created_at as string).getTime();
+      return sortNewest ? db - da : da - db;
+    });
+    return list;
+  }, [bookings, tab, sortNewest]);
+
+  const tabCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: bookings.length };
+    for (const b of bookings) {
+      const s = b.status as string;
+      counts[s] = (counts[s] ?? 0) + 1;
+    }
+    return counts;
+  }, [bookings]);
+
+  async function handleCancel(bookingId: string) {
+    if (!user) return;
+    setCancelling(bookingId);
+    await cancelBooking(bookingId, user.id);
+    setConfirmCancel(null);
+    setCancelling(null);
+    await loadBookings();
+  }
+
+  async function handlePay(bookingId: string) {
+    setPaying(bookingId);
+    try {
+      // Create payment
+      const createRes = await fetch("/api/kaspi/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId }),
+      });
+      const createData = await createRes.json();
+
+      if (!createRes.ok) {
+        alert(createData.error ?? "Ошибка создания платежа");
+        setPaying(null);
+        return;
+      }
+
+      if (createData.mock) {
+        // Mock mode: simulate payment immediately
+        await fetch("/api/kaspi/webhook", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paymentId: createData.paymentId, status: "paid" }),
+        });
+        await loadBookings();
+      } else if (createData.paymentUrl) {
+        // Real Kaspi: redirect to payment page
+        window.location.href = createData.paymentUrl;
+        return;
+      }
+    } catch {
+      alert("Ошибка оплаты");
+    }
+    setPaying(null);
+  }
 
   if (authLoading || !user) {
     return (
@@ -63,33 +143,76 @@ export default function BookingsPage() {
       <Navbar />
       <main className="flex-1 bg-gray-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className="text-2xl font-bold mb-6">Мои бронирования</h1>
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-bold">Мои бронирования</h1>
+            <button
+              onClick={() => setSortNewest(!sortNewest)}
+              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 7.5 7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" />
+              </svg>
+              {sortNewest ? "Сначала новые" : "Сначала старые"}
+            </button>
+          </div>
 
-          {bookings.length === 0 ? (
+          {/* Tabs */}
+          <div className="flex gap-1 overflow-x-auto pb-1 mb-6 -mx-1 px-1">
+            {TABS.map((t) => {
+              const count = tabCounts[t.key] ?? 0;
+              if (t.key !== "all" && count === 0) return null;
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+                    tab === t.key
+                      ? "bg-primary text-white"
+                      : "bg-white border border-gray-200 text-gray-600 hover:border-primary/30 hover:text-primary"
+                  }`}
+                >
+                  {t.label}
+                  {count > 0 && (
+                    <span className={`ml-1.5 text-xs ${tab === t.key ? "text-white/70" : "text-gray-400"}`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {filtered.length === 0 ? (
             <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-              <p className="text-gray-500 mb-4">У вас пока нет бронирований</p>
+              <p className="text-gray-500 mb-4">
+                {tab === "all" ? "У вас пока нет бронирований" : "Нет бронирований в этой категории"}
+              </p>
               <Link
                 href="/catalog"
-                className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-primary-dark transition-colors"
+                className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-primary/90 transition-colors"
               >
                 Найти локацию
               </Link>
             </div>
           ) : (
             <div className="space-y-4">
-              {bookings.map((booking) => {
+              {filtered.map((booking) => {
                 const bl = booking.listings as Record<string, unknown> | null;
                 const images = (bl?.images as string[]) ?? [];
+                const firstImg = images[0];
                 const title = (bl?.title as string) ?? "";
                 const slug = (bl?.slug as string) ?? "";
                 const status = booking.status as BookingRequest["status"];
                 const activityType = (booking.activity_type as string) ?? "production";
+                const canCancel = status === "pending" || status === "confirmed";
+                const bookingId = booking.id as string;
+
                 return (
-                  <div key={booking.id as string} className="bg-white rounded-xl border border-gray-200 p-5">
+                  <div key={bookingId} className="bg-white rounded-xl border border-gray-200 p-5">
                     <div className="flex flex-col sm:flex-row gap-4">
-                      {images[0] && (
+                      {firstImg && typeof firstImg === "string" && firstImg.trim() !== "" && (
                         <Link href={`/listing/${slug}`} className="relative w-full sm:w-28 h-32 sm:h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                          <Image src={images[0]} alt={title} fill className="object-cover" sizes="112px" />
+                          <Image src={firstImg} alt={title} fill className="object-cover" sizes="112px" />
                         </Link>
                       )}
                       <div className="flex-1 min-w-0">
@@ -100,11 +223,11 @@ export default function BookingsPage() {
                             </Link>
                             <div className="flex flex-wrap items-center gap-2 mt-1 text-sm text-gray-500">
                               <span>{booking.date as string}</span>
-                              <span>•</span>
+                              <span>·</span>
                               <span>{booking.start_time as string} — {booking.end_time as string}</span>
-                              <span>•</span>
+                              <span>·</span>
                               <span>{booking.guest_count as number} чел.</span>
-                              <span>•</span>
+                              <span>·</span>
                               <span>{ACTIVITY_TYPE_LABELS[activityType as keyof typeof ACTIVITY_TYPE_LABELS] ?? activityType}</span>
                             </div>
                           </div>
@@ -112,21 +235,73 @@ export default function BookingsPage() {
                             {STATUS_LABELS[status]}
                           </span>
                         </div>
-                        <p className="mt-2 text-sm text-gray-600 line-clamp-2">{booking.description as string}</p>
-                        <div className="mt-3 flex items-center justify-between">
+                        {booking.description ? (
+                          <p className="mt-2 text-sm text-gray-600 line-clamp-2">{String(booking.description)}</p>
+                        ) : null}
+                        <div className="mt-3 flex items-center justify-between gap-3">
                           <span className="font-bold">{formatPrice(booking.total_price as number)}</span>
-                          {(status === "confirmed" || status === "completed") && (
-                            <a
-                              href={`/api/invoice/${booking.id as string}`}
-                              className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
-                            >
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                              </svg>
-                              Скачать счёт
-                            </a>
-                          )}
+                          <div className="flex items-center gap-3">
+                            {(status === "confirmed" || status === "completed") && (
+                              <a
+                                href={`/api/invoice/${bookingId}`}
+                                className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                                </svg>
+                                Скачать счёт
+                              </a>
+                            )}
+                            {status === "confirmed" && booking.payment_status !== "paid" && (
+                              <button
+                                onClick={() => handlePay(bookingId)}
+                                disabled={paying === bookingId}
+                                className="inline-flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
+                                </svg>
+                                {paying === bookingId ? "Оплата..." : "Оплатить"}
+                              </button>
+                            )}
+                            {status === "confirmed" && booking.payment_status === "paid" && (
+                              <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
+                                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clipRule="evenodd" />
+                                </svg>
+                                Оплачено
+                              </span>
+                            )}
+                            {canCancel && confirmCancel !== bookingId && (
+                              <button
+                                onClick={() => setConfirmCancel(bookingId)}
+                                className="text-xs text-red-500 hover:text-red-700 font-medium transition-colors"
+                              >
+                                Отменить
+                              </button>
+                            )}
+                          </div>
                         </div>
+
+                        {/* Cancel confirmation */}
+                        {confirmCancel === bookingId && (
+                          <div className="mt-3 flex items-center gap-2 bg-red-50 rounded-lg p-3">
+                            <span className="text-sm text-red-700">Отменить бронирование?</span>
+                            <button
+                              onClick={() => handleCancel(bookingId)}
+                              disabled={cancelling === bookingId}
+                              className="bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-semibold hover:bg-red-700 disabled:opacity-50"
+                            >
+                              {cancelling === bookingId ? "Отмена..." : "Да, отменить"}
+                            </button>
+                            <button
+                              onClick={() => setConfirmCancel(null)}
+                              className="text-xs text-gray-500 hover:text-gray-700"
+                            >
+                              Нет
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

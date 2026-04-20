@@ -10,6 +10,7 @@ import FavoriteButton from "./favorite-button";
 import ViewTracker from "./view-tracker";
 import Gallery from "./gallery";
 import BookingSidebar from "./booking-sidebar";
+import AvailabilityCalendar from "@/components/availability-calendar";
 import { getListings, getListingBySlug, getReviewsByListingId } from "@/lib/api";
 import { CITY_LABELS, SPACE_TYPE_LABELS, ACTIVITY_TYPE_LABELS } from "@/lib/types";
 import { formatPrice, formatRating } from "@/lib/utils";
@@ -29,9 +30,24 @@ export async function generateMetadata({
   const { slug } = await params;
   const listing = await getListingBySlug(slug);
   if (!listing) return { title: "Не найдено — LOKACIA.KZ" };
+  const ogImage = listing.images?.[0] ?? null;
   return {
     title: `${listing.title} — LOKACIA.KZ`,
     description: listing.description.slice(0, 160),
+    openGraph: {
+      title: listing.title,
+      description: listing.description.slice(0, 160),
+      type: "website",
+      locale: "ru_KZ",
+      siteName: "LOKACIA.KZ",
+      ...(ogImage ? { images: [{ url: ogImage, width: 1200, height: 630, alt: listing.title }] } : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: listing.title,
+      description: listing.description.slice(0, 160),
+      ...(ogImage ? { images: [ogImage] } : {}),
+    },
   };
 }
 
@@ -225,6 +241,12 @@ export default async function ListingPage({
                     </li>
                   ))}
                 </ul>
+              </div>
+
+              {/* Availability Calendar */}
+              <div>
+                <h2 className="text-xl font-bold mb-4">Доступность</h2>
+                <AvailabilityCalendar listingId={listing.id} />
               </div>
 
               {/* Reviews */}
