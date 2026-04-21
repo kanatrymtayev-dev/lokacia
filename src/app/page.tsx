@@ -7,6 +7,7 @@ import HeroSearch from "@/components/hero-search";
 import FaqAccordion from "@/components/faq-accordion";
 import { getListings } from "@/lib/api";
 import HostForm from "./host-form";
+import { HeroText, SectionTitle, T } from "./home-sections";
 
 const testimonials = [
   {
@@ -185,18 +186,7 @@ export default async function Home() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(245,158,11,0.15),transparent_60%)]" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 lg:py-36">
           <div className="text-center max-w-3xl mx-auto">
-            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-1.5 text-sm font-medium mb-6">
-              <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-              Запуск в Алматы
-            </div>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-tight">
-              Найдите идеальную
-              <br />
-              <span className="text-amber-400">локацию</span>
-            </h1>
-            <p className="mt-6 text-lg sm:text-xl text-violet-200 max-w-2xl mx-auto leading-relaxed">
-              Площадки для съёмок, мероприятий и встреч в&nbsp;Казахстане
-            </p>
+            <HeroText />
 
             {/* Search bar */}
             <div className="mt-10">
@@ -222,14 +212,7 @@ export default async function Home() {
       {/* Categories */}
       <section id="categories" className="py-20 sm:py-28 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-14">
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
-              Любое пространство для любой задачи
-            </h2>
-            <p className="mt-4 text-lg text-gray-600">
-              От фотостудий до горных шале — размещайте и находите локации любого типа
-            </p>
-          </div>
+          <SectionTitle titleKey="home.categories.title" subtitleKey="home.categories.subtitle" />
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {categories.map((cat) => (
               <div
@@ -303,14 +286,7 @@ export default async function Home() {
       {/* How it works */}
       <section id="how" className="py-20 sm:py-28 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-14">
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
-              Как начать зарабатывать
-            </h2>
-            <p className="mt-4 text-lg text-gray-600">
-              4 простых шага — от размещения до первых денег на Kaspi
-            </p>
-          </div>
+          <SectionTitle titleKey="home.howItWorks.title" subtitleKey="home.howItWorks.subtitle" />
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {steps.map((step, i) => (
               <div key={step.num} className="relative">
@@ -329,11 +305,7 @@ export default async function Home() {
       {/* Benefits */}
       <section id="benefits" className="py-20 sm:py-28 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-14">
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
-              Почему LOKACIA
-            </h2>
-          </div>
+          <SectionTitle titleKey="home.benefits.title" />
           <div className="grid md:grid-cols-2 gap-8">
             {benefits.map((b) => (
               <div

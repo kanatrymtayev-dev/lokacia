@@ -6,6 +6,7 @@ import Image from "next/image";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import { useAuth } from "@/lib/auth-context";
+import { useT } from "@/lib/i18n";
 import { getProfile, updateProfile } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 
@@ -30,6 +31,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const { t } = useT();
 
   useEffect(() => {
     if (!authLoading && !user) router.push("/login?next=/profile");
@@ -135,11 +137,11 @@ export default function ProfilePage() {
       <Navbar />
       <main className="flex-1 bg-gray-50">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10">
-          <h1 className="text-2xl font-bold text-gray-900 mb-8">Профиль</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-8">{t("profile.title")}</h1>
 
           {/* Avatar + personal info */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-5">Личные данные</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-5">{t("profile.personal")}</h2>
 
             {/* Avatar */}
             <div className="flex items-center gap-5 mb-6">
@@ -154,7 +156,7 @@ export default function ProfilePage() {
               </div>
               <div>
                 <label className="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors">
-                  {uploading ? "Загрузка..." : "Изменить фото"}
+                  {uploading ? t("common.uploading") : t("profile.changePhoto")}
                   <input
                     type="file"
                     accept="image/*"
@@ -203,7 +205,7 @@ export default function ProfilePage() {
 
           {/* Bio & Socials */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-5">О себе и соцсети</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-5">{t("profile.bioSocials")}</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">О себе</label>
@@ -240,9 +242,9 @@ export default function ProfilePage() {
 
           {/* Billing */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">Платёжные данные</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">{t("profile.billing")}</h2>
             <p className="text-sm text-gray-500 mb-5">
-              Для формирования счетов и PDF-инвойсов. Необязательно для размещения локаций.
+              {t("profile.billingNote")}
             </p>
 
             {/* Entity type toggle */}
@@ -256,7 +258,7 @@ export default function ProfilePage() {
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
               >
-                Физическое лицо
+                {t("profile.individual")}
               </button>
               <button
                 type="button"
@@ -267,7 +269,7 @@ export default function ProfilePage() {
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
               >
-                Юридическое лицо
+                {t("profile.company")}
               </button>
             </div>
 
@@ -331,7 +333,7 @@ export default function ProfilePage() {
             disabled={saving}
             className="w-full bg-primary text-white py-3 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
-            {saving ? "Сохранение..." : "Сохранить"}
+            {saving ? t("profile.saving") : t("profile.save")}
           </button>
         </div>
       </main>

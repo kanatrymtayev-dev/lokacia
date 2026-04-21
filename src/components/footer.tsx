@@ -4,24 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getSiteSettings } from "@/lib/api";
 import type { SiteSettings } from "@/lib/api";
-
-const platform = [
-  { label: "Каталог", href: "/catalog" },
-  { label: "Как это работает", href: "/#how" },
-  { label: "Разместить площадку", href: "/#form" },
-];
-
-const companyLinks = [
-  { label: "О нас", href: "/about" },
-  { label: "FAQ", href: "/faq" },
-  { label: "Блог", href: "/blog" },
-];
-
-const legal = [
-  { label: "Политика конфиденциальности", href: "/privacy" },
-  { label: "Оферта", href: "/terms" },
-  { label: "Условия использования", href: "/terms" },
-];
+import { useT } from "@/lib/i18n";
 
 // Defaults used before settings load (and as fallback)
 const DEFAULTS: SiteSettings = {
@@ -37,12 +20,29 @@ const DEFAULTS: SiteSettings = {
 
 export default function Footer() {
   const [s, setS] = useState<SiteSettings>(DEFAULTS);
+  const { t } = useT();
 
   useEffect(() => {
     getSiteSettings().then((data) => {
       if (Object.keys(data).length > 0) setS({ ...DEFAULTS, ...data });
     });
   }, []);
+
+  const platform = [
+    { label: t("footer.catalog"), href: "/catalog" },
+    { label: t("footer.howItWorks"), href: "/#how" },
+    { label: t("footer.listSpace"), href: "/#form" },
+  ];
+  const companyLinks = [
+    { label: t("footer.about"), href: "/about" },
+    { label: t("footer.faq"), href: "/faq" },
+    { label: t("footer.blog"), href: "/blog" },
+  ];
+  const legal = [
+    { label: t("footer.privacy"), href: "/privacy" },
+    { label: t("footer.offer"), href: "/terms" },
+    { label: t("footer.terms"), href: "/terms" },
+  ];
 
   const hasInstagram = s.instagram && s.instagram.trim() !== "";
   const hasTelegram = s.telegram && s.telegram.trim() !== "";
@@ -104,7 +104,7 @@ export default function Footer() {
           {/* Platform */}
           <div>
             <h3 className="text-white text-sm font-semibold uppercase tracking-wider mb-4">
-              Платформа
+              {t("footer.platform")}
             </h3>
             <ul className="space-y-2.5">
               {platform.map((item) => (
@@ -120,7 +120,7 @@ export default function Footer() {
           {/* Company */}
           <div>
             <h3 className="text-white text-sm font-semibold uppercase tracking-wider mb-4">
-              Компания
+              {t("footer.company")}
             </h3>
             <ul className="space-y-2.5">
               {companyLinks.map((item) => (
@@ -136,7 +136,7 @@ export default function Footer() {
           {/* Legal */}
           <div>
             <h3 className="text-white text-sm font-semibold uppercase tracking-wider mb-4">
-              Юридическое
+              {t("footer.legal")}
             </h3>
             <ul className="space-y-2.5">
               {legal.map((item) => (
@@ -152,7 +152,7 @@ export default function Footer() {
           {/* Contacts */}
           <div>
             <h3 className="text-white text-sm font-semibold uppercase tracking-wider mb-4">
-              Контакты
+              {t("footer.contacts")}
             </h3>
             <ul className="space-y-2.5 text-sm">
               <li>
@@ -172,8 +172,8 @@ export default function Footer() {
 
         {/* Bottom bar */}
         <div className="mt-12 pt-8 border-t border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm">
-          <span>&copy; {new Date().getFullYear()} {s.site_name}. Все права защищены.</span>
-          <span className="text-gray-500">Сделано в Казахстане</span>
+          <span>&copy; {new Date().getFullYear()} {s.site_name}. {t("footer.rights")}</span>
+          <span className="text-gray-500">{t("footer.madeIn")}</span>
         </div>
       </div>
     </footer>

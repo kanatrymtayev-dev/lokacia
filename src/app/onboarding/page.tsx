@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAuth } from "@/lib/auth-context";
+import { useT } from "@/lib/i18n";
 import { updateProfile } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 
@@ -16,6 +17,7 @@ const CITIES = [
 
 export default function OnboardingPage() {
   const { user, loading: authLoading } = useAuth();
+  const { t } = useT();
   const router = useRouter();
   const [step, setStep] = useState(1);
 
@@ -123,8 +125,8 @@ export default function OnboardingPage() {
           {/* Step 1: Avatar + Name + Phone */}
           {step === 1 && (
             <>
-              <h2 className="text-xl font-bold text-gray-900 mb-1">Добро пожаловать!</h2>
-              <p className="text-sm text-gray-500 mb-6">Давайте настроим ваш профиль</p>
+              <h2 className="text-xl font-bold text-gray-900 mb-1">{t("onboarding.step1.title")}</h2>
+              <p className="text-sm text-gray-500 mb-6">{t("onboarding.step1.subtitle")}</p>
 
               <div className="flex items-center gap-5 mb-6">
                 <div className="relative w-20 h-20 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center shrink-0">
@@ -138,7 +140,7 @@ export default function OnboardingPage() {
                 </div>
                 <div>
                   <label className="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors">
-                    {uploading ? "Загрузка..." : "Загрузить фото"}
+                    {uploading ? t("common.uploading") : t("onboarding.step1.uploadPhoto")}
                     <input
                       type="file"
                       accept="image/*"
@@ -178,8 +180,8 @@ export default function OnboardingPage() {
           {/* Step 2: Bio + City */}
           {step === 2 && (
             <>
-              <h2 className="text-xl font-bold text-gray-900 mb-1">Расскажите о себе</h2>
-              <p className="text-sm text-gray-500 mb-6">Это поможет другим пользователям узнать вас лучше</p>
+              <h2 className="text-xl font-bold text-gray-900 mb-1">{t("onboarding.step2.title")}</h2>
+              <p className="text-sm text-gray-500 mb-6">{t("onboarding.step2.subtitle")}</p>
 
               <div className="space-y-4">
                 <div>
@@ -230,12 +232,10 @@ export default function OnboardingPage() {
                 )}
               </div>
               <h2 className="text-xl font-bold text-gray-900 mb-2">
-                {user.role === "host" ? "Всё готово! Создайте первую локацию" : "Всё готово! Найдите локацию"}
+                {user.role === "host" ? t("onboarding.step3.hostTitle") : t("onboarding.step3.renterTitle")}
               </h2>
               <p className="text-sm text-gray-500 mb-6">
-                {user.role === "host"
-                  ? "Добавьте фото, описание и цену — и ваша площадка появится в каталоге"
-                  : "Используйте поиск с фильтрами и картой для поиска идеальной площадки"}
+                {user.role === "host" ? t("onboarding.step3.hostSubtitle") : t("onboarding.step3.renterSubtitle")}
               </p>
             </div>
           )}
@@ -247,14 +247,14 @@ export default function OnboardingPage() {
                 onClick={() => setStep(step - 1)}
                 className="text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors"
               >
-                Назад
+                {t("onboarding.back")}
               </button>
             ) : (
               <button
                 onClick={handleSkip}
                 className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
               >
-                Пропустить
+                {t("onboarding.skip")}
               </button>
             )}
 
@@ -263,7 +263,7 @@ export default function OnboardingPage() {
                 onClick={() => setStep(step + 1)}
                 className="bg-primary text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
               >
-                Далее
+                {t("onboarding.next")}
               </button>
             ) : (
               <button
@@ -272,10 +272,10 @@ export default function OnboardingPage() {
                 className="bg-primary text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
                 {saving
-                  ? "Сохранение..."
+                  ? t("profile.saving")
                   : user.role === "host"
-                    ? "Создать локацию"
-                    : "Найти локацию"}
+                    ? t("onboarding.step3.hostCta")
+                    : t("onboarding.step3.renterCta")}
               </button>
             )}
           </div>
@@ -283,7 +283,7 @@ export default function OnboardingPage() {
 
         {/* Step indicator */}
         <div className="text-center mt-4 text-xs text-gray-400">
-          Шаг {step} из 3
+          {t("onboarding.stepOf", { n: String(step) })}
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { I18nProvider } from "@/lib/i18n";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
@@ -11,7 +12,6 @@ function OnboardingGuard({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (loading || !user) return;
-    // Skip redirect if already on onboarding, login, register, or reset-password
     const skip = ["/onboarding", "/login", "/register", "/reset-password"];
     if (skip.some((p) => pathname.startsWith(p))) return;
 
@@ -25,8 +25,10 @@ function OnboardingGuard({ children }: { children: ReactNode }) {
 
 export default function Providers({ children }: { children: ReactNode }) {
   return (
-    <AuthProvider>
-      <OnboardingGuard>{children}</OnboardingGuard>
-    </AuthProvider>
+    <I18nProvider>
+      <AuthProvider>
+        <OnboardingGuard>{children}</OnboardingGuard>
+      </AuthProvider>
+    </I18nProvider>
   );
 }

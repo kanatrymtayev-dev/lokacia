@@ -7,6 +7,7 @@ import Image from "next/image";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import { useAuth } from "@/lib/auth-context";
+import { useT } from "@/lib/i18n";
 import { getRenterBookings, cancelBooking } from "@/lib/api";
 import { ACTIVITY_TYPE_LABELS } from "@/lib/types";
 import type { BookingRequest } from "@/lib/types";
@@ -14,22 +15,7 @@ import { formatPrice } from "@/lib/utils";
 
 type StatusFilter = "all" | BookingRequest["status"];
 
-const TABS: { key: StatusFilter; label: string }[] = [
-  { key: "all", label: "Все" },
-  { key: "pending", label: "Ожидают" },
-  { key: "confirmed", label: "Подтверждённые" },
-  { key: "completed", label: "Завершённые" },
-  { key: "cancelled", label: "Отменённые" },
-  { key: "rejected", label: "Отклонённые" },
-];
-
-const STATUS_LABELS: Record<BookingRequest["status"], string> = {
-  pending: "Ожидает подтверждения",
-  confirmed: "Подтверждено",
-  rejected: "Отклонено",
-  completed: "Завершено",
-  cancelled: "Отменено",
-};
+const TAB_KEYS: StatusFilter[] = ["all", "pending", "confirmed", "completed", "cancelled", "rejected"];
 
 const STATUS_COLORS: Record<BookingRequest["status"], string> = {
   pending: "bg-amber-100 text-amber-700",
@@ -41,6 +27,7 @@ const STATUS_COLORS: Record<BookingRequest["status"], string> = {
 
 export default function BookingsPage() {
   const { user, loading: authLoading } = useAuth();
+  const { t } = useT();
   const router = useRouter();
   const [bookings, setBookings] = useState<Array<Record<string, unknown>>>([]);
   const [tab, setTab] = useState<StatusFilter>("all");
@@ -144,7 +131,7 @@ export default function BookingsPage() {
       <main className="flex-1 bg-gray-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-bold">Мои бронирования</h1>
+            <h1 className="text-2xl font-bold">{t("bookings.title")}</h1>
             <button
               onClick={() => setSortNewest(!sortNewest)}
               className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
@@ -152,28 +139,28 @@ export default function BookingsPage() {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 7.5 7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" />
               </svg>
-              {sortNewest ? "Сначала новые" : "Сначала старые"}
+              {sortNewest ? t("bookings.newestFirst") : t("bookings.oldestFirst")}
             </button>
           </div>
 
           {/* Tabs */}
           <div className="flex gap-1 overflow-x-auto pb-1 mb-6 -mx-1 px-1">
-            {TABS.map((t) => {
-              const count = tabCounts[t.key] ?? 0;
-              if (t.key !== "all" && count === 0) return null;
+            {TAB_KEYS.map((key) => {
+              const count = tabCounts[key] ?? 0;
+              if (key !== "all" && count === 0) return null;
               return (
                 <button
-                  key={t.key}
-                  onClick={() => setTab(t.key)}
+                  key={key}
+                  onClick={() => setTab(key)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
-                    tab === t.key
+                    tab === key
                       ? "bg-primary text-white"
                       : "bg-white border border-gray-200 text-gray-600 hover:border-primary/30 hover:text-primary"
                   }`}
                 >
-                  {t.label}
+                  {t(`bookings.${key}`)}
                   {count > 0 && (
-                    <span className={`ml-1.5 text-xs ${tab === t.key ? "text-white/70" : "text-gray-400"}`}>
+                    <span className={`ml-1.5 text-xs ${tab === key ? "text-white/70" : "text-gray-400"}`}>
                       {count}
                     </span>
                   )}
@@ -185,13 +172,13 @@ export default function BookingsPage() {
           {filtered.length === 0 ? (
             <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
               <p className="text-gray-500 mb-4">
-                {tab === "all" ? "У вас пока нет бронирований" : "Нет бронирований в этой категории"}
+                {tab === "all" ? t("bookings.noBookings") : t("bookings.noInCategory")}
               </p>
               <Link
                 href="/catalog"
                 className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-primary/90 transition-colors"
               >
-                Найти локацию
+                {t("bookings.findLocation")}
               </Link>
             </div>
           ) : (
@@ -232,7 +219,7 @@ export default function BookingsPage() {
                             </div>
                           </div>
                           <span className={`text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 ${STATUS_COLORS[status]}`}>
-                            {STATUS_LABELS[status]}
+                            {t(`bookings.status.${status}`)}
                           </span>
                         </div>
                         {booking.description ? (
@@ -249,7 +236,7 @@ export default function BookingsPage() {
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
                                 </svg>
-                                Скачать счёт
+                                {t("bookings.downloadInvoice")}
                               </a>
                             )}
                             {status === "confirmed" && booking.payment_status !== "paid" && (
@@ -261,7 +248,7 @@ export default function BookingsPage() {
                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
                                 </svg>
-                                {paying === bookingId ? "Оплата..." : "Оплатить"}
+                                {paying === bookingId ? t("bookings.paying") : t("bookings.pay")}
                               </button>
                             )}
                             {status === "confirmed" && booking.payment_status === "paid" && (
@@ -269,7 +256,7 @@ export default function BookingsPage() {
                                 <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                                   <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clipRule="evenodd" />
                                 </svg>
-                                Оплачено
+                                {t("bookings.paid")}
                               </span>
                             )}
                             {canCancel && confirmCancel !== bookingId && (
@@ -277,7 +264,7 @@ export default function BookingsPage() {
                                 onClick={() => setConfirmCancel(bookingId)}
                                 className="text-xs text-red-500 hover:text-red-700 font-medium transition-colors"
                               >
-                                Отменить
+                                {t("bookings.cancel")}
                               </button>
                             )}
                           </div>
@@ -286,19 +273,19 @@ export default function BookingsPage() {
                         {/* Cancel confirmation */}
                         {confirmCancel === bookingId && (
                           <div className="mt-3 flex items-center gap-2 bg-red-50 rounded-lg p-3">
-                            <span className="text-sm text-red-700">Отменить бронирование?</span>
+                            <span className="text-sm text-red-700">{t("bookings.cancelConfirm")}</span>
                             <button
                               onClick={() => handleCancel(bookingId)}
                               disabled={cancelling === bookingId}
                               className="bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-semibold hover:bg-red-700 disabled:opacity-50"
                             >
-                              {cancelling === bookingId ? "Отмена..." : "Да, отменить"}
+                              {cancelling === bookingId ? t("bookings.cancelling") : t("bookings.cancelYes")}
                             </button>
                             <button
                               onClick={() => setConfirmCancel(null)}
                               className="text-xs text-gray-500 hover:text-gray-700"
                             >
-                              Нет
+                              {t("bookings.cancelNo")}
                             </button>
                           </div>
                         )}

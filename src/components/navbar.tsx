@@ -4,22 +4,15 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useT, type Lang } from "@/lib/i18n";
 import { isAdmin, getUnreadCount, getFavoriteIds } from "@/lib/api";
 
-const browseCategories = [
-  { label: "Фотостудии", type: "photo_studio" },
-  { label: "Видеостудии", type: "video_studio" },
-  { label: "Ивент-площадки", type: "banquet_hall" },
-  { label: "Жильё для съёмок", type: "apartment" },
-  { label: "Sound Stages", type: "sound_stage" },
-  { label: "Этно-пространства", type: "ethno" },
-  { label: "Рестораны и кафе", type: "restaurant" },
-  { label: "Переговорные", type: "office" },
-  { label: "Горные шале", type: "chalet" },
-  { label: "Лофты", type: "loft" },
+const browseCategoryTypes = [
+  "photo_studio", "video_studio", "banquet_hall", "apartment", "sound_stage",
+  "ethno", "restaurant", "office", "chalet", "loft",
 ];
 
-const languages = [
+const languages: { code: Lang; label: string }[] = [
   { code: "ru", label: "RU" },
   { code: "en", label: "EN" },
   { code: "kz", label: "KZ" },
@@ -27,6 +20,7 @@ const languages = [
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const { lang, setLang, t } = useT();
   const [profileOpen, setProfileOpen] = useState(false);
   const [browseOpen, setBrowseOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
@@ -34,16 +28,10 @@ export default function Navbar() {
   const [admin, setAdmin] = useState(false);
   const [unread, setUnread] = useState(0);
   const [favoritesCount, setFavoritesCount] = useState(0);
-  const [lang, setLang] = useState("ru");
 
   const browseRef = useRef<HTMLDivElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("lokacia_lang");
-    if (saved && ["ru", "en", "kz"].includes(saved)) setLang(saved);
-  }, []);
 
   useEffect(() => {
     if (user) {
@@ -68,9 +56,8 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  function changeLang(code: string) {
+  function changeLang(code: Lang) {
     setLang(code);
-    localStorage.setItem("lokacia_lang", code);
     setLangOpen(false);
   }
 
@@ -105,21 +92,21 @@ export default function Navbar() {
                 onClick={() => { setBrowseOpen(!browseOpen); setLangOpen(false); setProfileOpen(false); }}
                 className="flex items-center gap-1 text-gray-700 hover:text-primary transition-colors"
               >
-                Найти локацию
+                {t("nav.browse")}
                 <svg className={`w-4 h-4 transition-transform ${browseOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                 </svg>
               </button>
               {browseOpen && (
                 <div className="absolute left-0 top-full mt-2 w-56 bg-white rounded-xl border border-gray-200 shadow-lg py-2 z-50">
-                  {browseCategories.map((cat) => (
+                  {browseCategoryTypes.map((type) => (
                     <Link
-                      key={cat.type}
-                      href={`/catalog?type=${cat.type}`}
+                      key={type}
+                      href={`/catalog?type=${type}`}
                       onClick={() => setBrowseOpen(false)}
                       className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-primary/5 hover:text-primary transition-colors"
                     >
-                      {cat.label}
+                      {t(`cat.${type}`)}
                     </Link>
                   ))}
                   <div className="border-t border-gray-100 mt-1 pt-1">
@@ -128,7 +115,7 @@ export default function Navbar() {
                       onClick={() => setBrowseOpen(false)}
                       className="block px-4 py-2.5 text-sm font-semibold text-primary hover:bg-primary/5 transition-colors"
                     >
-                      Все локации
+                      {t("nav.allLocations")}
                     </Link>
                   </div>
                 </div>
@@ -140,7 +127,7 @@ export default function Navbar() {
               href={listSpaceHref}
               className="text-gray-700 hover:text-primary transition-colors"
             >
-              Разместить площадку
+              {t("nav.list")}
             </Link>
           </div>
         </div>
@@ -237,7 +224,7 @@ export default function Navbar() {
                       onClick={() => setProfileOpen(false)}
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                     >
-                      Профиль
+                      {t("nav.profile")}
                     </Link>
                     {user.role === "host" && (
                       <Link
@@ -245,7 +232,7 @@ export default function Navbar() {
                         onClick={() => setProfileOpen(false)}
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                       >
-                        Мои локации
+                        {t("nav.myListings")}
                       </Link>
                     )}
                     <Link
@@ -253,7 +240,7 @@ export default function Navbar() {
                       onClick={() => setProfileOpen(false)}
                       className="flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                     >
-                      Сообщения
+                      {t("nav.messages")}
                       {unread > 0 && (
                         <span className="bg-primary text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
                           {unread}
@@ -265,14 +252,14 @@ export default function Navbar() {
                       onClick={() => setProfileOpen(false)}
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                     >
-                      Бронирования
+                      {t("nav.bookings")}
                     </Link>
                     <Link
                       href="/favorites"
                       onClick={() => setProfileOpen(false)}
                       className="flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                     >
-                      Избранное
+                      {t("nav.favorites")}
                       {favoritesCount > 0 && (
                         <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
                           {favoritesCount}
@@ -285,14 +272,14 @@ export default function Navbar() {
                         onClick={() => setProfileOpen(false)}
                         className="block px-4 py-2 text-sm text-purple-600 hover:bg-gray-50"
                       >
-                        Админ-панель
+                        {t("nav.admin")}
                       </Link>
                     )}
                     <button
                       onClick={() => { logout(); setProfileOpen(false); }}
                       className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
                     >
-                      Выйти
+                      {t("nav.logout")}
                     </button>
                   </div>
                 )}
@@ -304,13 +291,13 @@ export default function Navbar() {
                 href="/login"
                 className="text-sm font-medium text-gray-700 hover:text-primary transition-colors"
               >
-                Войти
+                {t("nav.login")}
               </Link>
               <Link
                 href={listSpaceHref}
                 className="hidden sm:inline-flex bg-primary text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-primary/90 transition-colors"
               >
-                Разместить
+                {t("nav.register")}
               </Link>
             </>
           )}
@@ -337,16 +324,16 @@ export default function Navbar() {
         <div className="lg:hidden border-t border-gray-100 bg-white/95 backdrop-blur-md">
           <div className="max-w-7xl mx-auto px-4 py-4 space-y-1">
             <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 py-2">
-              Найти локацию
+              {t("nav.browse")}
             </div>
-            {browseCategories.map((cat) => (
+            {browseCategoryTypes.map((type) => (
               <Link
-                key={cat.type}
-                href={`/catalog?type=${cat.type}`}
+                key={type}
+                href={`/catalog?type=${type}`}
                 onClick={() => setMobileOpen(false)}
                 className="block px-3 py-2 text-sm text-gray-700 hover:bg-primary/5 hover:text-primary rounded-lg transition-colors"
               >
-                {cat.label}
+                {t(`cat.${type}`)}
               </Link>
             ))}
             <Link
@@ -362,7 +349,7 @@ export default function Navbar() {
               onClick={() => setMobileOpen(false)}
               className="block px-3 py-2 text-sm text-gray-700 hover:bg-primary/5 hover:text-primary rounded-lg transition-colors"
             >
-              Разместить площадку
+              {t("nav.list")}
             </Link>
             <div className="border-t border-gray-100 my-2" />
             <div className="flex gap-2 px-3 py-2">

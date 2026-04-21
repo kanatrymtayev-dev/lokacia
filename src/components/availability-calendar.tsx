@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { useT } from "@/lib/i18n";
 
 interface Props {
   listingId: string;
@@ -42,6 +43,7 @@ function getMonthDays(year: number, month: number) {
 }
 
 export default function AvailabilityCalendar({ listingId }: Props) {
+  const { t } = useT();
   const [booked, setBooked] = useState<DateRange[]>([]);
   const [blocked, setBlocked] = useState<DateRange[]>([]);
   const [offset, setOffset] = useState(0); // 0 = current month, 1 = next, etc.
@@ -161,15 +163,15 @@ export default function AvailabilityCalendar({ listingId }: Props) {
       <div className="flex items-center gap-4 mt-4 pt-3 border-t border-gray-100 text-xs text-gray-500">
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded bg-white border border-gray-200" />
-          Свободно
+          {t("availability.free")}
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded bg-red-100" />
-          Занято
+          {t("availability.booked")}
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded bg-gray-100" />
-          Недоступно
+          {t("availability.blocked")}
         </span>
       </div>
     </div>
