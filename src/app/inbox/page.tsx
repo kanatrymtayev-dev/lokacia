@@ -266,14 +266,20 @@ function InboxContent() {
     (b) => b.status === "confirmed" || b.status === "completed"
   );
 
+  const [contactWarning, setContactWarning] = useState(false);
+
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
     if (!newMsg.trim() || !activeId || !user) return;
 
     setSending(true);
-    const { error } = await sendMessage(activeId, user.id, newMsg.trim());
-    if (!error) {
+    const result = await sendMessage(activeId, user.id, newMsg.trim());
+    if (!result.error) {
       setNewMsg("");
+      if ((result as Record<string, unknown>).contactBlocked) {
+        setContactWarning(true);
+        setTimeout(() => setContactWarning(false), 5000);
+      }
       await loadMessages();
       loadConversations();
     }
@@ -457,6 +463,26 @@ function InboxContent() {
                   </div>
                 ) : (
                   <>
+                    {/* Contact exchange banner */}
+                    {!hasConfirmedBooking && (
+                      <div className="mx-4 mt-3 mb-1 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700 flex items-center gap-2">
+                        <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clipRule="evenodd" />
+                        </svg>
+                        Обмен контактами откроется после подтверждения бронирования
+                      </div>
+                    )}
+
+                    {/* Contact blocked toast */}
+                    {contactWarning && (
+                      <div className="mx-4 mt-2 mb-1 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700 flex items-center gap-2 animate-pulse">
+                        <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 6a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 6Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
+                        </svg>
+                        Контакты скрыты. Подтвердите бронирование для обмена контактами.
+                      </div>
+                    )}
+
                     {messages.map((msg, i) => {
                       const isMine = msg.sender_id === user.id;
                       const showDate =

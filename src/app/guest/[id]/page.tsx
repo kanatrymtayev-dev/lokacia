@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import { getProfile, getReviewsAboutGuest } from "@/lib/api";
+import VerifiedBadge, { TrustSection } from "@/components/verified-badge";
 
 export const revalidate = 60;
 
@@ -33,6 +34,7 @@ export default async function GuestProfilePage({
   const name = (profile.name as string) ?? "Пользователь";
   const avatarUrl = profile.avatar_url as string | null;
   const idVerified = (profile.id_verified as boolean) ?? false;
+  const phoneVerified = (profile.phone_verified as boolean) ?? false;
   const createdAt = profile.created_at as string | undefined;
 
   const reviews = await getReviewsAboutGuest(id);
@@ -81,14 +83,7 @@ export default async function GuestProfilePage({
               <div className="flex-1 text-center sm:text-left">
                 <h1 className="text-2xl sm:text-3xl font-bold flex items-center justify-center sm:justify-start gap-2">
                   {name}
-                  {idVerified && (
-                    <span className="inline-flex items-center gap-1 bg-emerald-500 text-white text-xs font-bold px-2 py-0.5 rounded-full" title="Пользователь прошёл ID-верификацию">
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clipRule="evenodd" />
-                      </svg>
-                      Verified
-                    </span>
-                  )}
+                  <VerifiedBadge idVerified={idVerified} />
                 </h1>
                 <div className="mt-2 flex flex-wrap items-center justify-center sm:justify-start gap-3 text-sm text-gray-500">
                   {joinedDate && (
@@ -123,6 +118,16 @@ export default async function GuestProfilePage({
                 </div>
               </div>
             )}
+
+            {/* Trust & Safety */}
+            <div className="mt-6 pt-6 border-t border-gray-100">
+              <TrustSection
+                phoneVerified={phoneVerified}
+                idVerified={idVerified}
+                reviewCount={totalReviews}
+                memberSince={createdAt}
+              />
+            </div>
           </div>
 
           {/* Reviews */}

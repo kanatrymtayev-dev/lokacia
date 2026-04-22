@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 import { getProfile, updateProfile } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
+import VerificationTab from "@/app/dashboard/verification-tab";
 
 export default function ProfilePage() {
   const { user, loading: authLoading } = useAuth();
@@ -26,6 +27,15 @@ export default function ProfilePage() {
   const [companyName, setCompanyName] = useState("");
   const [companyBin, setCompanyBin] = useState("");
   const [companyAddress, setCompanyAddress] = useState("");
+
+  // Phone OTP
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState("");
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [otpCooldown, setOtpCooldown] = useState(0);
+  const [originalPhone, setOriginalPhone] = useState("");
 
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -56,9 +66,67 @@ export default function ProfilePage() {
       if ((p.company_name as string)?.trim() || (p.company_bin as string)?.trim()) {
         setEntityType("company");
       }
+      setPhoneVerified((p.phone_verified as boolean) ?? false);
+      setOriginalPhone((p.phone as string) ?? "");
       setLoaded(true);
     });
   }, [user]);
+
+  // OTP cooldown timer
+  useEffect(() => {
+    if (otpCooldown <= 0) return;
+    const timer = setTimeout(() => setOtpCooldown(otpCooldown - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [otpCooldown]);
+
+  async function handleSendOtp() {
+    if (!user || !phone.trim()) return;
+    setOtpLoading(true);
+    setOtpError("");
+    try {
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id, phone: phone.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setOtpError(data.error || "Ошибка отправки SMS");
+      } else {
+        setOtpSent(true);
+        setOtpCooldown(60);
+      }
+    } catch {
+      setOtpError("Ошибка сети");
+    }
+    setOtpLoading(false);
+  }
+
+  async function handleVerifyOtp() {
+    if (!user || !otpCode.trim()) return;
+    setOtpLoading(true);
+    setOtpError("");
+    try {
+      const res = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id, code: otpCode.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setOtpError(data.error || "Неверный код");
+      } else {
+        setPhoneVerified(true);
+        setOriginalPhone(phone);
+        setOtpSent(false);
+        setOtpCode("");
+        showToast("success", "Телефон подтверждён");
+      }
+    } catch {
+      setOtpError("Ошибка сети");
+    }
+    setOtpLoading(false);
+  }
 
   function showToast(type: "success" | "error", msg: string) {
     setToast({ type, msg });
@@ -182,13 +250,73 @@ export default function ProfilePage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Телефон</label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+7 777 123 45 67"
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => {
+                      setPhone(e.target.value);
+                      // If phone changed from verified one, reset verification
+                      if (e.target.value.replace(/[\s\-()]/g, "") !== originalPhone.replace(/[\s\-()]/g, "")) {
+                        setPhoneVerified(false);
+                        setOtpSent(false);
+                        setOtpCode("");
+                        setOtpError("");
+                      }
+                    }}
+                    placeholder="+7 777 123 45 67"
+                    disabled={phoneVerified}
+                    className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:bg-gray-50 disabled:text-gray-500"
+                  />
+                  {phoneVerified ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-green-50 text-green-700 text-sm font-medium whitespace-nowrap">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clipRule="evenodd"/>
+                      </svg>
+                      Подтверждён
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSendOtp}
+                      disabled={otpLoading || !phone.trim() || otpCooldown > 0}
+                      className="px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 whitespace-nowrap"
+                    >
+                      {otpLoading ? "..." : otpCooldown > 0 ? `${otpCooldown}с` : otpSent ? "Ещё раз" : "Подтвердить"}
+                    </button>
+                  )}
+                </div>
+
+                {otpSent && !phoneVerified && (
+                  <div className="mt-3">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={4}
+                        value={otpCode}
+                        onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                        placeholder="4 цифры"
+                        className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary tracking-[0.3em] text-center font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleVerifyOtp}
+                        disabled={otpLoading || otpCode.length < 4}
+                        className="px-4 py-2.5 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 transition-colors disabled:opacity-50"
+                      >
+                        {otpLoading ? "..." : "Ввести"}
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1.5">Поднимите трубку — робот продиктует 4 цифры</p>
+                  </div>
+                )}
+
+                {otpError && <p className="text-xs text-red-600 mt-1.5">{otpError}</p>}
+
+                {!phoneVerified && !otpSent && phone.trim() && (
+                  <p className="text-xs text-amber-600 mt-1.5">Телефон не подтверждён. Подтвердите для бронирования.</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
@@ -202,6 +330,14 @@ export default function ProfilePage() {
               </div>
             </div>
           </div>
+
+          {/* Verification */}
+          {user && (
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">Верификация</h2>
+              <VerificationTab userId={user.id} userRole={user.role} />
+            </div>
+          )}
 
           {/* Bio & Socials */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">

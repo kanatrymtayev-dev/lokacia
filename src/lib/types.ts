@@ -107,6 +107,10 @@ export interface Listing {
   hasLoadingDock?: boolean;
   hasWhiteCyc?: boolean;
   hostIdVerified?: boolean;
+  hostPhoneVerified?: boolean;
+  hostCreatedAt?: string;
+  moderationStatus?: "pending_review" | "approved" | "rejected";
+  moderationNote?: string | null;
   createdAt: string;
 }
 
@@ -119,6 +123,12 @@ export interface HostVerification {
   reviewerNote: string | null;
   submittedAt: string;
   reviewedAt: string | null;
+  entityType: "individual" | "company";
+  iin: string | null;
+  companyBin: string | null;
+  companyName: string | null;
+  companyDocUrl: string | null;
+  userRole: string | null;
 }
 
 export interface ListingView {

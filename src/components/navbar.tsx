@@ -61,7 +61,7 @@ export default function Navbar() {
     setLangOpen(false);
   }
 
-  const listSpaceHref = user?.role === "host" ? "/dashboard" : "/#form";
+  const listSpaceHref = user ? "/dashboard" : "/register";
 
   return (
     <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
@@ -226,15 +226,13 @@ export default function Navbar() {
                     >
                       {t("nav.profile")}
                     </Link>
-                    {user.role === "host" && (
-                      <Link
-                        href="/dashboard"
-                        onClick={() => setProfileOpen(false)}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        {t("nav.myListings")}
-                      </Link>
-                    )}
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setProfileOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      Панель хоста
+                    </Link>
                     <Link
                       href="/inbox"
                       onClick={() => setProfileOpen(false)}

@@ -13,6 +13,7 @@ import BookingSidebar from "./booking-sidebar";
 import AvailabilityCalendar from "@/components/availability-calendar";
 import { getListings, getListingBySlug, getReviewsByListingId } from "@/lib/api";
 import { CITY_LABELS, SPACE_TYPE_LABELS, ACTIVITY_TYPE_LABELS } from "@/lib/types";
+import VerifiedBadge, { TrustSection } from "@/components/verified-badge";
 import { formatPrice, formatRating } from "@/lib/utils";
 
 export const revalidate = 60;
@@ -162,7 +163,10 @@ export default async function ListingPage({
                   )}
                 </div>
                 <div className="flex-1">
-                  <div className="font-semibold group-hover:text-primary transition-colors">{listing.hostName}</div>
+                  <div className="flex items-center gap-2 font-semibold group-hover:text-primary transition-colors">
+                    {listing.hostName}
+                    <VerifiedBadge idVerified={listing.hostIdVerified} />
+                  </div>
                   <div className="text-sm text-gray-500">
                     {listing.superhost ? "Суперхост" : "Хост"} · На платформе с {new Date(listing.createdAt).toLocaleDateString("ru-RU", { month: "long", year: "numeric" })}
                   </div>
@@ -171,6 +175,14 @@ export default async function ListingPage({
                   <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                 </svg>
               </Link>
+
+              {/* Trust & Safety */}
+              <TrustSection
+                phoneVerified={listing.hostPhoneVerified}
+                idVerified={listing.hostIdVerified}
+                reviewCount={listing.reviewCount}
+                memberSince={listing.hostCreatedAt}
+              />
 
               {/* Location */}
               <div>

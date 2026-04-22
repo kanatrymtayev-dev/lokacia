@@ -15,6 +15,10 @@ export default function MessageHostButton({
 }) {
   const { user } = useAuth();
   const router = useRouter();
+
+  // Don't show "Message" button on own profile
+  if (user?.id === hostId) return null;
+
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);

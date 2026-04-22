@@ -64,6 +64,7 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
   const [existingBookings, setExistingBookings] = useState<ListingBooking[]>([]);
   const [blackouts, setBlackouts] = useState<ListingBlackout[]>([]);
   const [selectedAddOns, setSelectedAddOns] = useState<Set<string>>(new Set());
+  const [bookingTerms, setBookingTerms] = useState(false);
 
   // Message host state
   const [msgOpen, setMsgOpen] = useState(false);
@@ -185,6 +186,16 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
 
     if (!user) {
       router.push("/login");
+      return;
+    }
+
+    if (!user.phone_verified) {
+      setError("Подтвердите номер телефона в профиле перед бронированием");
+      return;
+    }
+
+    if (grandTotal >= 100000 && !user.id_verified) {
+      setError("Для бронирований от 100 000 ₸ требуется верификация личности. Пройдите верификацию в профиле.");
       return;
     }
 
@@ -485,11 +496,28 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
           </div>
         )}
 
+        {/* Terms checkbox */}
+        {user && (
+          <label className="flex items-start gap-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={bookingTerms}
+              onChange={(e) => setBookingTerms(e.target.checked)}
+              className="mt-0.5 w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary/20"
+            />
+            <span className="text-xs text-gray-500">
+              Принимаю{" "}
+              <a href="/terms" target="_blank" className="text-primary hover:underline">условия аренды</a>
+              {" "}площадки
+            </span>
+          </label>
+        )}
+
         {/* Submit */}
         {user ? (
           <button
             type="submit"
-            disabled={saving || isBlocked || !date}
+            disabled={saving || isBlocked || !date || !bookingTerms}
             className="w-full bg-primary text-white py-3.5 rounded-xl text-sm font-bold hover:bg-primary-dark transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary"
           >
             {saving ? "Бронирование..." : listing.instantBook ? (

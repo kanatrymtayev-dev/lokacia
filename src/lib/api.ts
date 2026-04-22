@@ -7,7 +7,10 @@ import {
   sendBookingConfirmedEmail,
   sendBookingRejectedEmail,
   sendNewMessageEmail,
+  sendListingApprovedEmail,
+  sendListingRejectedEmail,
 } from "./email";
+import { sanitizeMessage } from "./sanitize-message";
 
 const SITE_URL = "https://lokacia.kz";
 
@@ -82,6 +85,10 @@ function rowToListing(row: Record<string, unknown>): Listing {
     hasLoadingDock: (row.has_loading_dock as boolean) ?? false,
     hasWhiteCyc: (row.has_white_cyc as boolean) ?? false,
     hostIdVerified: (row.host_id_verified as boolean) ?? false,
+    hostPhoneVerified: (row.host_phone_verified as boolean) ?? false,
+    hostCreatedAt: (row.host_created_at as string | null) ?? undefined,
+    moderationStatus: (row.moderation_status as Listing["moderationStatus"]) ?? "approved",
+    moderationNote: (row.moderation_note as string | null) ?? null,
     createdAt: row.created_at as string,
   };
 }
@@ -89,8 +96,9 @@ function rowToListing(row: Record<string, unknown>): Listing {
 export async function getListings(): Promise<Listing[]> {
   const { data, error } = await supabase
     .from("listings")
-    .select("*, profiles!listings_host_id_fkey(name, phone, avatar_url, id_verified)")
+    .select("*, profiles!listings_host_id_fkey(name, phone, avatar_url, id_verified, phone_verified, created_at)")
     .eq("status", "active")
+    .eq("moderation_status", "approved")
     .order("created_at", { ascending: false });
 
   if (error || !data || data.length === 0) {
@@ -105,6 +113,8 @@ export async function getListings(): Promise<Listing[]> {
       host_name: profile?.name ?? "Хост",
       host_avatar: profile?.avatar_url ?? "",
       host_id_verified: profile?.id_verified ?? false,
+      host_phone_verified: profile?.phone_verified ?? false,
+      host_created_at: profile?.created_at ?? null,
       host_phone: profile?.phone ?? "",
     });
   });
@@ -120,7 +130,7 @@ export async function getListings(): Promise<Listing[]> {
 export async function getListingBySlug(slug: string): Promise<Listing | null> {
   const { data, error } = await supabase
     .from("listings")
-    .select("*, profiles!listings_host_id_fkey(name, phone, avatar_url, id_verified)")
+    .select("*, profiles!listings_host_id_fkey(name, phone, avatar_url, id_verified, phone_verified, created_at)")
     .eq("slug", slug)
     .single();
 
@@ -136,6 +146,8 @@ export async function getListingBySlug(slug: string): Promise<Listing | null> {
     host_name: profile?.name ?? "Хост",
     host_avatar: profile?.avatar_url ?? "",
       host_id_verified: profile?.id_verified ?? false,
+      host_phone_verified: profile?.phone_verified ?? false,
+      host_created_at: profile?.created_at ?? null,
     host_phone: profile?.phone ?? "",
   });
 }
@@ -195,7 +207,7 @@ export async function getFavoriteIds(userId: string): Promise<Set<string>> {
 export async function getFavoriteListings(userId: string): Promise<Listing[]> {
   const { data, error } = await supabase
     .from("favorites")
-    .select("created_at, listings!favorites_listing_id_fkey(*, profiles!listings_host_id_fkey(name, phone, avatar_url, id_verified))")
+    .select("created_at, listings!favorites_listing_id_fkey(*, profiles!listings_host_id_fkey(name, phone, avatar_url, id_verified, phone_verified, created_at))")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
@@ -211,6 +223,8 @@ export async function getFavoriteListings(userId: string): Promise<Listing[]> {
         host_name: profile?.name ?? "Хост",
         host_avatar: profile?.avatar_url ?? "",
       host_id_verified: profile?.id_verified ?? false,
+      host_phone_verified: profile?.phone_verified ?? false,
+      host_created_at: profile?.created_at ?? null,
         host_phone: profile?.phone ?? "",
       });
     })
@@ -221,7 +235,7 @@ export async function getListingsByIds(ids: string[]): Promise<Listing[]> {
   if (ids.length === 0) return [];
   const { data, error } = await supabase
     .from("listings")
-    .select("*, profiles!listings_host_id_fkey(name, phone, avatar_url, id_verified)")
+    .select("*, profiles!listings_host_id_fkey(name, phone, avatar_url, id_verified, phone_verified, created_at)")
     .in("id", ids);
 
   if (error || !data) return [];
@@ -233,6 +247,8 @@ export async function getListingsByIds(ids: string[]): Promise<Listing[]> {
       host_name: profile?.name ?? "Хост",
       host_avatar: profile?.avatar_url ?? "",
       host_id_verified: profile?.id_verified ?? false,
+      host_phone_verified: profile?.phone_verified ?? false,
+      host_created_at: profile?.created_at ?? null,
       host_phone: profile?.phone ?? "",
     });
   });
@@ -441,7 +457,7 @@ export async function getReviewedBookingIds(bookingIds: string[]): Promise<Set<s
 export async function getHostProfile(hostId: string) {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, name, phone, role, avatar_url, response_rate, response_time, created_at, id_verified, bio, instagram, telegram")
+    .select("id, name, phone, role, avatar_url, response_rate, response_time, created_at, id_verified, phone_verified, bio, instagram, telegram")
     .eq("id", hostId)
     .single();
 
@@ -465,9 +481,10 @@ export async function getHostProfile(hostId: string) {
 export async function getHostActiveListings(hostId: string): Promise<Listing[]> {
   const { data, error } = await supabase
     .from("listings")
-    .select("*, profiles!listings_host_id_fkey(name, phone, avatar_url, id_verified)")
+    .select("*, profiles!listings_host_id_fkey(name, phone, avatar_url, id_verified, phone_verified, created_at)")
     .eq("host_id", hostId)
     .eq("status", "active")
+    .eq("moderation_status", "approved")
     .order("created_at", { ascending: false });
 
   if (error || !data || data.length === 0) return [];
@@ -479,6 +496,8 @@ export async function getHostActiveListings(hostId: string): Promise<Listing[]> 
       host_name: profile?.name ?? "Хост",
       host_avatar: profile?.avatar_url ?? "",
       host_id_verified: profile?.id_verified ?? false,
+      host_phone_verified: profile?.phone_verified ?? false,
+      host_created_at: profile?.created_at ?? null,
       host_phone: profile?.phone ?? "",
     });
   });
@@ -487,7 +506,7 @@ export async function getHostActiveListings(hostId: string): Promise<Listing[]> 
 export async function getHostListings(hostId: string): Promise<Listing[]> {
   const { data, error } = await supabase
     .from("listings")
-    .select("*, profiles!listings_host_id_fkey(name, phone, avatar_url, id_verified)")
+    .select("*, profiles!listings_host_id_fkey(name, phone, avatar_url, id_verified, phone_verified, created_at)")
     .eq("host_id", hostId)
     .order("created_at", { ascending: false });
 
@@ -502,6 +521,8 @@ export async function getHostListings(hostId: string): Promise<Listing[]> {
       host_name: profile?.name ?? "Хост",
       host_avatar: profile?.avatar_url ?? "",
       host_id_verified: profile?.id_verified ?? false,
+      host_phone_verified: profile?.phone_verified ?? false,
+      host_created_at: profile?.created_at ?? null,
       host_phone: profile?.phone ?? "",
     });
   });
@@ -624,6 +645,7 @@ export async function createListing(listing: {
       allows_food: listing.allows.food,
       host_id: listing.hostId,
       status: "active",
+      moderation_status: "pending_review",
       instant_book: false,
       superhost: false,
       rating: 0,
@@ -1011,17 +1033,55 @@ export async function sendMessage(
   opts?: { type?: "text" | "system"; bookingId?: string | null }
 ) {
   const type = opts?.type ?? "text";
+
+  // Sanitize text messages — skip system/quote messages
+  let finalContent = content;
+  let contactBlocked = false;
+
+  if (type === "text") {
+    // Check if this conversation has a confirmed/completed booking (contacts allowed)
+    const { data: convo } = await supabase
+      .from("conversations")
+      .select("guest_id, host_id, listing_id")
+      .eq("id", conversationId)
+      .single();
+
+    let hasConfirmedBooking = false;
+    if (convo) {
+      const c = convo as Record<string, unknown>;
+      const { data: confirmed } = await supabase
+        .from("bookings")
+        .select("id")
+        .eq("listing_id", c.listing_id as string)
+        .eq("renter_id", c.guest_id as string)
+        .in("status", ["confirmed", "completed"])
+        .limit(1);
+      hasConfirmedBooking = !!confirmed && confirmed.length > 0;
+    }
+
+    if (!hasConfirmedBooking) {
+      const result = sanitizeMessage(content);
+      finalContent = result.text;
+      contactBlocked = result.blocked;
+    }
+  }
+
   const { data, error } = await supabase
     .from("messages")
     .insert({
       conversation_id: conversationId,
       sender_id: senderId,
-      content,
+      content: finalContent,
       type,
       booking_id: opts?.bookingId ?? null,
     })
     .select()
     .single();
+
+  // Return contactBlocked so UI can show a warning
+  if (contactBlocked && !error) {
+    return { data, error, contactBlocked: true };
+  }
 
   // Email получателю — только для обычных text-сообщений + rate-limit 5 мин на conversation
   if (!error && type === "text") {
@@ -1535,12 +1595,18 @@ function rowToVerification(r: Record<string, unknown>): HostVerification {
     reviewerNote: (r.reviewer_note as string | null) ?? null,
     submittedAt: r.submitted_at as string,
     reviewedAt: (r.reviewed_at as string | null) ?? null,
+    entityType: (r.entity_type as "individual" | "company") ?? "individual",
+    iin: (r.iin as string | null) ?? null,
+    companyBin: (r.company_bin as string | null) ?? null,
+    companyName: (r.company_name as string | null) ?? null,
+    companyDocUrl: (r.company_doc_url as string | null) ?? null,
+    userRole: (r.user_role as string | null) ?? null,
   };
 }
 
 export async function uploadVerificationFile(
   userId: string,
-  kind: "id" | "selfie",
+  kind: "id" | "selfie" | "company_doc",
   file: File
 ): Promise<string | null> {
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
@@ -1564,15 +1630,37 @@ export async function submitHostVerification(
   idDocUrl: string,
   selfieUrl: string
 ) {
+  return submitVerification(userId, { idDocUrl, selfieUrl });
+}
+
+export async function submitVerification(
+  userId: string,
+  input: {
+    idDocUrl: string;
+    selfieUrl: string;
+    entityType?: "individual" | "company";
+    iin?: string;
+    companyBin?: string;
+    companyName?: string;
+    companyDocUrl?: string | null;
+    userRole?: string;
+  }
+) {
   const { data, error } = await supabase
     .from("host_verifications")
     .upsert(
       {
         host_id: userId,
-        id_doc_url: idDocUrl,
-        selfie_url: selfieUrl,
+        id_doc_url: input.idDocUrl,
+        selfie_url: input.selfieUrl,
         status: "pending",
         reviewer_note: null,
+        entity_type: input.entityType ?? "individual",
+        iin: input.iin ?? null,
+        company_bin: input.companyBin ?? null,
+        company_name: input.companyName ?? null,
+        company_doc_url: input.companyDocUrl ?? null,
+        user_role: input.userRole ?? null,
       },
       { onConflict: "host_id" }
     )
@@ -1591,10 +1679,10 @@ export async function getMyVerification(userId: string): Promise<HostVerificatio
   return rowToVerification(data as Record<string, unknown>);
 }
 
-export async function getAllPendingVerifications(): Promise<Array<HostVerification & { hostName: string; hostEmail: string | null }>> {
+export async function getAllPendingVerifications(): Promise<Array<HostVerification & { hostName: string; hostEmail: string | null; hostRole: string }>> {
   const { data, error } = await supabase
     .from("host_verifications")
-    .select("*, profiles!host_verifications_host_id_fkey(name, email)")
+    .select("*, profiles!host_verifications_host_id_fkey(name, email, role)")
     .eq("status", "pending")
     .order("submitted_at", { ascending: true });
   if (error || !data) return [];
@@ -1604,6 +1692,7 @@ export async function getAllPendingVerifications(): Promise<Array<HostVerificati
       ...rowToVerification(r),
       hostName: (p?.name as string) ?? "",
       hostEmail: (p?.email as string | null) ?? null,
+      hostRole: (p?.role as string) ?? "host",
     };
   });
 }
@@ -1777,12 +1866,80 @@ export async function updateSiteSetting(key: string, value: string) {
   return { error };
 }
 
+// ---- Listing Moderation ----
+
+export async function getPendingListings() {
+  const { data, error } = await supabase
+    .from("listings")
+    .select("id, title, slug, images, city, price_per_hour, created_at, host_id, moderation_status, moderation_note, profiles!listings_host_id_fkey(name, email)")
+    .eq("moderation_status", "pending_review")
+    .order("created_at", { ascending: true });
+  if (error || !data) return [];
+  return data as Array<Record<string, unknown>>;
+}
+
+export async function moderateListing(
+  listingId: string,
+  status: "approved" | "rejected",
+  note?: string
+) {
+  const { error } = await supabase
+    .from("listings")
+    .update({
+      moderation_status: status,
+      moderation_note: note ?? null,
+      moderated_at: new Date().toISOString(),
+    })
+    .eq("id", listingId);
+
+  // Email хосту (fire-and-forget)
+  if (!error) {
+    void (async () => {
+      try {
+        const { data: listing } = await supabase
+          .from("listings")
+          .select("title, slug, host_id")
+          .eq("id", listingId)
+          .single();
+        if (!listing) return;
+        const row = listing as Record<string, unknown>;
+        const hostId = row.host_id as string;
+        const title = row.title as string;
+        const slug = row.slug as string;
+
+        const host = await getUserEmailName(hostId);
+        if (!host?.email) return;
+
+        if (status === "approved") {
+          await sendListingApprovedEmail({
+            to: host.email,
+            hostName: host.name,
+            listingTitle: title,
+            listingUrl: `${SITE_URL}/listing/${slug}`,
+          });
+        } else {
+          await sendListingRejectedEmail({
+            to: host.email,
+            hostName: host.name,
+            listingTitle: title,
+            reason: note,
+          });
+        }
+      } catch (e) {
+        console.error("[email] moderation notification failed:", e);
+      }
+    })();
+  }
+
+  return { error };
+}
+
 // ---- Profile ----
 
 export async function getProfile(userId: string) {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, name, phone, avatar_url, role, email, company_name, company_bin, company_address, iin, created_at, id_verified, bio, instagram, telegram")
+    .select("id, name, phone, phone_verified, avatar_url, role, email, company_name, company_bin, company_address, iin, created_at, id_verified, bio, instagram, telegram")
     .eq("id", userId)
     .single();
   if (error || !data) return null;

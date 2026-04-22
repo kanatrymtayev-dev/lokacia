@@ -186,7 +186,7 @@ export default function DashboardPage() {
           </div>
 
           {tab === "analytics" && <AnalyticsTab hostId={user.id} />}
-          {tab === "verification" && <VerificationTab userId={user.id} />}
+          {tab === "verification" && <VerificationTab userId={user.id} userRole={user.role} />}
           {productionModal && (
             <ProductionModal
               listing={productionModal}
@@ -304,12 +304,21 @@ export default function DashboardPage() {
             <div className="space-y-4">
               {myListings.length === 0 ? (
                 <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-                  <p className="text-gray-500 mb-4">У вас пока нет локаций</p>
+                  <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">Хотите сдавать площадку?</h3>
+                  <p className="text-gray-500 mb-5 max-w-sm mx-auto">Добавьте свою локацию и начните получать бронирования от арендаторов со всего Казахстана</p>
                   <Link
                     href="/dashboard/new"
                     className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-primary-dark transition-colors"
                   >
-                    Добавить первую локацию
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    Добавить локацию
                   </Link>
                 </div>
               ) : (
@@ -333,9 +342,20 @@ export default function DashboardPage() {
                         )}
                       </Link>
                       <div className="flex-1">
-                        <Link href={`/listing/${listing.slug}`} className="font-semibold hover:text-primary transition-colors">
-                          {listing.title}
-                        </Link>
+                        <div className="flex items-center gap-2">
+                          <Link href={`/listing/${listing.slug}`} className="font-semibold hover:text-primary transition-colors">
+                            {listing.title}
+                          </Link>
+                          {listing.moderationStatus === "pending_review" && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">На модерации</span>
+                          )}
+                          {listing.moderationStatus === "rejected" && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">Отклонён</span>
+                          )}
+                        </div>
+                        {listing.moderationStatus === "rejected" && listing.moderationNote && (
+                          <p className="text-xs text-red-600 mt-0.5">{listing.moderationNote}</p>
+                        )}
                         <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
                           <span>{formatPrice(listing.pricePerHour)}/час</span>
                           <span>•</span>

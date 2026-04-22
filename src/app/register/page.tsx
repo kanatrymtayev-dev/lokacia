@@ -12,6 +12,7 @@ export default function RegisterPage() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"host" | "renter">("host");
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [emailSent, setEmailSent] = useState(false);
@@ -74,7 +75,7 @@ export default function RegisterPage() {
             )}
             {/* Role toggle */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Я хочу</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Что хотите делать в первую очередь?</label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -162,9 +163,24 @@ export default function RegisterPage() {
               />
             </div>
 
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={termsAccepted}
+                onChange={(e) => setTermsAccepted(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary/20"
+              />
+              <span className="text-sm text-gray-600">
+                Я принимаю{" "}
+                <Link href="/terms" target="_blank" className="text-primary hover:underline">Правила платформы</Link>
+                {" "}и{" "}
+                <Link href="/privacy" target="_blank" className="text-primary hover:underline">Политику конфиденциальности</Link>
+              </span>
+            </label>
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !termsAccepted}
               className="w-full bg-primary text-white py-3.5 rounded-xl text-sm font-bold hover:bg-primary-dark transition-colors disabled:opacity-50"
             >
               {loading ? "Создаём аккаунт..." : "Зарегистрироваться"}

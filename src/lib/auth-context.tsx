@@ -9,6 +9,8 @@ export interface User {
   name: string;
   email: string;
   phone: string | null;
+  phone_verified: boolean;
+  id_verified: boolean;
   role: "host" | "renter";
   avatar_url: string | null;
   onboarding_completed: boolean;
@@ -58,6 +60,8 @@ async function fetchProfile(supabaseUser: SupabaseUser): Promise<User | null> {
       name: (newProfile as Record<string, unknown>).name as string,
       email: supabaseUser.email ?? "",
       phone: (newProfile as Record<string, unknown>).phone as string | null,
+      phone_verified: ((newProfile as Record<string, unknown>).phone_verified as boolean) ?? false,
+      id_verified: ((newProfile as Record<string, unknown>).id_verified as boolean) ?? false,
       role: ((newProfile as Record<string, unknown>).role as string) as "host" | "renter",
       avatar_url: (newProfile as Record<string, unknown>).avatar_url as string | null,
       onboarding_completed: ((newProfile as Record<string, unknown>).onboarding_completed as boolean) ?? false,
@@ -68,6 +72,8 @@ async function fetchProfile(supabaseUser: SupabaseUser): Promise<User | null> {
     id: string;
     name: string;
     phone: string | null;
+    phone_verified: boolean;
+    id_verified: boolean;
     role: string;
     avatar_url: string | null;
     onboarding_completed: boolean;
@@ -78,6 +84,8 @@ async function fetchProfile(supabaseUser: SupabaseUser): Promise<User | null> {
     name: profile.name,
     email: supabaseUser.email ?? "",
     phone: profile.phone,
+    phone_verified: profile.phone_verified ?? false,
+    id_verified: profile.id_verified ?? false,
     role: profile.role as "host" | "renter",
     avatar_url: profile.avatar_url,
     onboarding_completed: profile.onboarding_completed ?? false,
@@ -154,7 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (authData.user) {
       await supabase
         .from("profiles")
-        .update({ phone: data.phone })
+        .update({ phone: data.phone, terms_accepted_at: new Date().toISOString() })
         .eq("id", authData.user.id);
     }
 

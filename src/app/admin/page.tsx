@@ -17,6 +17,8 @@ import {
   setListingFeatured,
   getAllPendingVerifications,
   reviewVerification,
+  getPendingListings,
+  moderateListing,
   getSiteSettings,
   updateSiteSetting,
 } from "@/lib/api";
@@ -24,7 +26,7 @@ import type { SiteSettings } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
 import type { Listing, HostVerification } from "@/lib/types";
 
-type Tab = "overview" | "bookings" | "payouts" | "featured" | "verifications" | "settings";
+type Tab = "overview" | "bookings" | "payouts" | "featured" | "moderation" | "verifications" | "settings";
 
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
   unpaid: "Не оплачено",
@@ -176,6 +178,7 @@ export default function AdminPage() {
                 ["overview", "Бронирования"],
                 ["payouts", "Выплаты"],
                 ["featured", "Топ-листинги"],
+                ["moderation", "Модерация"],
                 ["verifications", "Верификация"],
               ["settings", "Настройки"],
               ] as const
@@ -373,6 +376,7 @@ export default function AdminPage() {
           )}
 
           {tab === "featured" && <FeaturedTab />}
+          {tab === "moderation" && <ModerationTab />}
           {tab === "verifications" && <VerificationsTab />}
           {tab === "settings" && <SettingsTab />}
         </div>
@@ -381,8 +385,104 @@ export default function AdminPage() {
   );
 }
 
+function ModerationTab() {
+  const [items, setItems] = useState<Array<Record<string, unknown>>>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setItems(await getPendingListings());
+    setLoading(false);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  async function decide(id: string, status: "approved" | "rejected") {
+    setBusy(id);
+    await moderateListing(id, status, notes[id]);
+    setBusy(null);
+    await load();
+  }
+
+  if (loading) return <div className="text-gray-400 text-sm py-8 text-center">Загрузка...</div>;
+  if (items.length === 0) return (
+    <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500 text-sm">
+      Нет листингов на модерации
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      {items.map((item) => {
+        const id = item.id as string;
+        const title = item.title as string;
+        const slug = item.slug as string;
+        const images = item.images as string[];
+        const city = item.city as string;
+        const pricePerHour = item.price_per_hour as number;
+        const profile = item.profiles as Record<string, unknown> | null;
+        const hostName = (profile?.name as string) ?? "Хост";
+        const hostEmail = (profile?.email as string | null) ?? null;
+        const createdAt = item.created_at as string;
+        const firstImage = images?.[0];
+
+        return (
+          <div key={id} className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="flex gap-4 mb-4">
+              {firstImage && typeof firstImage === "string" && firstImage.trim() !== "" ? (
+                <Link href={`/listing/${slug}`} target="_blank" className="relative w-28 h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                  <Image src={firstImage} alt={title} fill sizes="112px" className="object-cover" />
+                </Link>
+              ) : (
+                <div className="w-28 h-20 rounded-lg bg-gray-100 flex items-center justify-center text-xs text-gray-400 flex-shrink-0">Нет фото</div>
+              )}
+              <div className="flex-1 min-w-0">
+                <Link href={`/listing/${slug}`} target="_blank" className="font-semibold hover:text-primary transition-colors">
+                  {title}
+                </Link>
+                <div className="text-sm text-gray-500 mt-0.5">{hostName}{hostEmail && ` · ${hostEmail}`}</div>
+                <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
+                  <span>{city}</span>
+                  <span>•</span>
+                  <span>{formatPrice(pricePerHour)}/час</span>
+                  <span>•</span>
+                  <span>{new Date(createdAt).toLocaleDateString("ru-RU")}</span>
+                </div>
+              </div>
+            </div>
+            <textarea
+              value={notes[id] ?? ""}
+              onChange={(e) => setNotes((p) => ({ ...p, [id]: e.target.value }))}
+              placeholder="Причина отклонения (опционально, виден хосту)"
+              rows={2}
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 outline-none text-sm resize-none mb-3"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => decide(id, "rejected")}
+                disabled={busy === id}
+                className="flex-1 py-2 rounded-lg border-2 border-gray-200 text-sm font-semibold text-gray-700 hover:border-red-300 hover:text-red-600 disabled:opacity-50"
+              >
+                Отклонить
+              </button>
+              <button
+                onClick={() => decide(id, "approved")}
+                disabled={busy === id}
+                className="flex-1 py-2 rounded-lg bg-green-600 text-white text-sm font-bold hover:bg-green-700 disabled:opacity-50"
+              >
+                Одобрить
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function VerificationsTab() {
-  const [items, setItems] = useState<Array<HostVerification & { hostName: string; hostEmail: string | null }>>([]);
+  const [items, setItems] = useState<Array<HostVerification & { hostName: string; hostEmail: string | null; hostRole: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -416,10 +516,36 @@ function VerificationsTab() {
             <div>
               <div className="font-semibold">{v.hostName}</div>
               {v.hostEmail && <div className="text-xs text-gray-500">{v.hostEmail}</div>}
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                  v.hostRole === "host" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
+                }`}>
+                  {v.hostRole === "host" ? "Хост" : "Арендатор"}
+                </span>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                  v.entityType === "company" ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-600"
+                }`}>
+                  {v.entityType === "company" ? "Юрлицо" : "Физлицо"}
+                </span>
+              </div>
               <div className="text-xs text-gray-400 mt-1">Подано: {new Date(v.submittedAt).toLocaleString("ru-RU")}</div>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3 mb-4">
+
+          {/* IIN / BIN info for cross-checking with document */}
+          <div className="bg-gray-50 rounded-lg p-3 mb-4 text-sm">
+            {v.entityType === "individual" && v.iin && (
+              <div><span className="text-gray-500">ИИН:</span> <span className="font-mono font-semibold">{v.iin}</span></div>
+            )}
+            {v.entityType === "company" && (
+              <>
+                {v.companyName && <div><span className="text-gray-500">Компания:</span> <span className="font-semibold">{v.companyName}</span></div>}
+                {v.companyBin && <div><span className="text-gray-500">БИН:</span> <span className="font-mono font-semibold">{v.companyBin}</span></div>}
+              </>
+            )}
+          </div>
+
+          <div className={`grid gap-3 mb-4 ${v.entityType === "company" && v.companyDocUrl ? "grid-cols-3" : "grid-cols-2"}`}>
             {v.idDocUrl && typeof v.idDocUrl === 'string' && v.idDocUrl.trim() !== '' ? (
               <a href={v.idDocUrl} target="_blank" rel="noopener" className="block relative aspect-[4/3] bg-gray-100 rounded-lg overflow-hidden">
                 <Image src={v.idDocUrl} alt="Удостоверение" fill sizes="240px" className="object-cover" unoptimized />
@@ -436,11 +562,17 @@ function VerificationsTab() {
             ) : (
               <div className="aspect-[4/3] bg-gray-100 rounded-lg flex items-center justify-center text-xs text-gray-400">Нет фото</div>
             )}
+            {v.entityType === "company" && v.companyDocUrl && typeof v.companyDocUrl === 'string' && v.companyDocUrl.trim() !== '' && (
+              <a href={v.companyDocUrl} target="_blank" rel="noopener" className="block relative aspect-[4/3] bg-gray-100 rounded-lg overflow-hidden">
+                <Image src={v.companyDocUrl} alt="Свидетельство" fill sizes="240px" className="object-cover" unoptimized />
+                <div className="absolute bottom-1 left-1 text-[10px] bg-white/90 px-1.5 py-0.5 rounded">Свидетельство</div>
+              </a>
+            )}
           </div>
           <textarea
             value={notes[v.id] ?? ""}
             onChange={(e) => setNotes((p) => ({ ...p, [v.id]: e.target.value }))}
-            placeholder="Комментарий (опционально, виден хосту при отклонении)"
+            placeholder="Комментарий (опционально, виден пользователю при отклонении)"
             rows={2}
             className="w-full px-3 py-2 rounded-lg border border-gray-200 outline-none text-sm resize-none mb-3"
           />

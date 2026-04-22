@@ -175,6 +175,52 @@ export function sendBookingRejectedEmail(input: {
   });
 }
 
+export function sendListingApprovedEmail(input: {
+  to: string;
+  hostName: string;
+  listingTitle: string;
+  listingUrl: string;
+}): Promise<SendResult> {
+  const heading = "Локация одобрена!";
+  const body = `
+    <p>Здравствуйте, ${input.hostName}.</p>
+    <p>Ваша локация <strong>${input.listingTitle}</strong> прошла модерацию и опубликована в каталоге.</p>
+    <p>Арендаторы уже могут её найти и забронировать.</p>
+  `;
+  const text = `Локация "${input.listingTitle}" одобрена и опубликована. Смотреть: ${input.listingUrl}`;
+  return send({
+    to: input.to,
+    subject: `Локация одобрена: ${input.listingTitle}`,
+    html: layout({ preheader: "Локация опубликована в каталоге", heading, body, cta: { label: "Посмотреть", url: input.listingUrl } }),
+    text,
+  });
+}
+
+export function sendListingRejectedEmail(input: {
+  to: string;
+  hostName: string;
+  listingTitle: string;
+  reason?: string;
+}): Promise<SendResult> {
+  const heading = "Локация не прошла модерацию";
+  const reasonBlock = input.reason
+    ? `<p>Причина: <em>${input.reason}</em></p>`
+    : "";
+  const body = `
+    <p>Здравствуйте, ${input.hostName}.</p>
+    <p>К сожалению, ваша локация <strong>${input.listingTitle}</strong> не прошла модерацию.</p>
+    ${reasonBlock}
+    <p>Вы можете исправить замечания и отправить листинг на повторную проверку.</p>
+  `;
+  const text = `Локация "${input.listingTitle}" не прошла модерацию.${input.reason ? ` Причина: ${input.reason}` : ""} Исправьте и отправьте повторно: ${SITE}/dashboard`;
+  return send({
+    to: input.to,
+    subject: `Локация отклонена: ${input.listingTitle}`,
+    html: layout({ preheader: "Локация не прошла модерацию", heading, body, cta: { label: "В панель хоста", url: `${SITE}/dashboard` } }),
+    text,
+  });
+}
+
 export function sendNewMessageEmail(input: {
   to: string;
   recipientName: string;

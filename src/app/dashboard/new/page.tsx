@@ -109,12 +109,11 @@ export default function NewListingPage() {
         return;
       }
 
-      // Bust Next.js cache so new listing appears everywhere
+      // Bust Next.js cache
       await fetch("/api/revalidate", { method: "POST" });
 
-      // Redirect to the new listing page
-      const slug = (newListing as Record<string, unknown>)?.slug as string;
-      router.push(slug ? `/listing/${slug}` : "/dashboard");
+      // Show moderation success screen
+      setSubmitted(true);
     } catch {
       setError("Произошла ошибка. Попробуйте снова.");
     } finally {
