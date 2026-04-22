@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { sendOtpCall } from "@/lib/sms";
-import { createHash } from "crypto";
+
+export const runtime = "nodejs";
 
 const OTP_EXPIRY_MINUTES = 5;
 const OTP_COOLDOWN_SECONDS = 60;
 
-function hashCode(code: string): string {
-  return createHash("sha256").update(code).digest("hex");
+async function hashCode(code: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(code);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 export async function POST(req: NextRequest) {
@@ -63,7 +69,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const codeHash = hashCode(callResult.code);
+    const codeHash = await hashCode(callResult.code);
 
     // Invalidate previous unused codes for this user
     await supabaseAdmin

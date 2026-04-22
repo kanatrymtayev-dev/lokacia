@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { createHash } from "crypto";
+
+export const runtime = "nodejs";
 
 const MAX_ATTEMPTS = 5;
 
-function hashCode(code: string): string {
-  return createHash("sha256").update(code).digest("hex");
+async function hashCode(code: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(code);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 export async function POST(req: NextRequest) {
@@ -63,7 +69,7 @@ export async function POST(req: NextRequest) {
       .eq("id", row.id);
 
     // Verify code
-    const inputHash = hashCode(code.trim());
+    const inputHash = await hashCode(code.trim());
     if (inputHash !== row.code_hash) {
       const remaining = MAX_ATTEMPTS - (row.attempts as number) - 1;
       return NextResponse.json(
