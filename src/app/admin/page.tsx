@@ -30,18 +30,20 @@ import {
   getAdminDisputes,
   resolveDispute,
   getOpenDisputeCount,
+  getAdminClaims,
+  resolveClaim,
   getMessages,
   getAdminOverviewStats,
   getSiteSettings,
   updateSiteSetting,
 } from "@/lib/api";
-import type { AdminUser, AdminListing, PromoCode, Dispute } from "@/lib/api";
+import type { AdminUser, AdminListing, PromoCode, Dispute, Claim } from "@/lib/api";
 import type { SiteSettings } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
 import { downloadCSV } from "@/lib/csv";
 import type { Listing, HostVerification } from "@/lib/types";
 
-type Tab = "overview" | "bookings" | "payouts" | "featured" | "listings" | "moderation" | "verifications" | "users" | "promos" | "disputes" | "settings";
+type Tab = "overview" | "bookings" | "payouts" | "featured" | "listings" | "moderation" | "verifications" | "users" | "promos" | "disputes" | "claims" | "settings";
 
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
   unpaid: "Не оплачено",
@@ -229,6 +231,7 @@ export default function AdminPage() {
                 ["users", "Пользователи"],
                 ["promos", "Промокоды"],
                 ["disputes", "Жалобы"],
+                ["claims", "Претензии"],
               ["settings", "Настройки"],
               ] as const
             ).map(([key, label]) => (
@@ -596,6 +599,7 @@ export default function AdminPage() {
           {tab === "users" && <UsersTab />}
           {tab === "promos" && <PromosTab />}
           {tab === "disputes" && <DisputesTab />}
+          {tab === "claims" && <ClaimsTab />}
           {tab === "settings" && <SettingsTab />}
         </div>
       </main>
@@ -1217,6 +1221,194 @@ function ChatModal({ conversationId, onClose }: { conversationId: string; onClos
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function ClaimsTab() {
+  const [claims, setClaims] = useState<Claim[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [resolveModal, setResolveModal] = useState<Claim | null>(null);
+  const [resolution, setResolution] = useState("");
+  const [depositHeld, setDepositHeld] = useState(false);
+  const [fundAmount, setFundAmount] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string[] | null>(null);
+  const [chatConvoId, setChatConvoId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setClaims(await getAdminClaims());
+    setLoading(false);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  async function handleResolve(status: "approved" | "rejected") {
+    if (!resolveModal) return;
+    setBusy(true);
+    await resolveClaim(
+      resolveModal.id,
+      status,
+      resolution,
+      depositHeld,
+      parseInt(fundAmount || "0", 10)
+    );
+    setBusy(false);
+    setResolveModal(null);
+    setResolution("");
+    setDepositHeld(false);
+    setFundAmount("");
+    await load();
+  }
+
+  const statusBadge = (status: string) => {
+    switch (status) {
+      case "open": return <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">Открыта</span>;
+      case "approved": return <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">Одобрена</span>;
+      case "rejected": return <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-200 text-gray-600 font-medium">Отклонена</span>;
+      default: return null;
+    }
+  };
+
+  if (loading) return <div className="text-gray-400 text-sm py-8 text-center">Загрузка...</div>;
+  if (claims.length === 0) return (
+    <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500 text-sm">
+      Нет претензий
+    </div>
+  );
+
+  return (
+    <div>
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Дата</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Локация</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Хост</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Ущерб</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Залог</th>
+                <th className="text-center px-4 py-3 font-medium text-gray-600">Фото</th>
+                <th className="text-center px-4 py-3 font-medium text-gray-600">Статус</th>
+                <th className="text-center px-4 py-3 font-medium text-gray-600">Действия</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {claims.map((c) => (
+                <tr key={c.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-xs text-gray-500">{new Date(c.createdAt).toLocaleDateString("ru-RU")}</td>
+                  <td className="px-4 py-3 text-xs">{c.listingTitle}</td>
+                  <td className="px-4 py-3 text-xs">{c.hostName}</td>
+                  <td className="px-4 py-3 text-right text-xs font-semibold">{formatPrice(c.damageAmount)}</td>
+                  <td className="px-4 py-3 text-right text-xs text-gray-500">{c.securityDeposit > 0 ? formatPrice(c.securityDeposit) : "—"}</td>
+                  <td className="px-4 py-3 text-center">
+                    {c.photos.length > 0 ? (
+                      <button
+                        onClick={() => setPhotoPreview(c.photos)}
+                        className="text-[11px] text-primary hover:text-primary/80 font-medium"
+                      >
+                        {c.photos.length} фото
+                      </button>
+                    ) : <span className="text-xs text-gray-300">—</span>}
+                  </td>
+                  <td className="px-4 py-3 text-center">{statusBadge(c.status)}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-center gap-2">
+                      {c.conversationId && (
+                        <button onClick={() => setChatConvoId(c.conversationId)} className="text-[11px] text-primary hover:text-primary/80 font-medium">
+                          Чат
+                        </button>
+                      )}
+                      {c.status === "open" && (
+                        <button
+                          onClick={() => { setResolveModal(c); setResolution(""); setDepositHeld(false); setFundAmount(""); }}
+                          className="text-[11px] text-green-600 hover:text-green-800 font-medium"
+                        >
+                          Решить
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Photo preview */}
+      {photoPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setPhotoPreview(null)}>
+          <div className="max-w-2xl mx-4 space-y-3 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            {photoPreview.map((url, i) => (
+              <a key={i} href={url} target="_blank" rel="noopener">
+                <Image src={url} alt={`Фото ${i + 1}`} width={600} height={400} className="rounded-lg object-contain bg-white" unoptimized />
+              </a>
+            ))}
+            <button onClick={() => setPhotoPreview(null)} className="w-full py-2 bg-white rounded-lg text-sm font-medium">Закрыть</button>
+          </div>
+        </div>
+      )}
+
+      {/* Chat modal */}
+      {chatConvoId && <ChatModal conversationId={chatConvoId} onClose={() => setChatConvoId(null)} />}
+
+      {/* Resolve modal */}
+      {resolveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setResolveModal(null)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-bold text-lg mb-2">Решить претензию</h3>
+            <div className="bg-gray-50 rounded-lg p-3 mb-4 text-sm space-y-1">
+              <div><span className="text-gray-500">Ущерб:</span> <span className="font-semibold">{formatPrice(resolveModal.damageAmount)}</span></div>
+              {resolveModal.securityDeposit > 0 && <div><span className="text-gray-500">Залог:</span> {formatPrice(resolveModal.securityDeposit)}</div>}
+              <div><span className="text-gray-500">Описание:</span> {resolveModal.description}</div>
+            </div>
+            <div className="space-y-3 mb-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={depositHeld} onChange={(e) => setDepositHeld(e.target.checked)} className="w-4 h-4 rounded" />
+                <span className="text-sm">Удержать залог ({resolveModal.securityDeposit > 0 ? formatPrice(resolveModal.securityDeposit) : "нет залога"})</span>
+              </label>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Выплата из гарантийного фонда (₸)</label>
+                <input
+                  type="number"
+                  value={fundAmount}
+                  onChange={(e) => setFundAmount(e.target.value)}
+                  placeholder="0"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Решение</label>
+                <textarea
+                  value={resolution}
+                  onChange={(e) => setResolution(e.target.value)}
+                  placeholder="Описание решения..."
+                  rows={2}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none resize-none"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleResolve("rejected")}
+                disabled={busy}
+                className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Отклонить
+              </button>
+              <button
+                onClick={() => handleResolve("approved")}
+                disabled={busy || !resolution.trim()}
+                className="flex-1 py-2.5 rounded-lg bg-green-600 text-white text-sm font-bold hover:bg-green-700 disabled:opacity-50"
+              >
+                {busy ? "..." : "Одобрить"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

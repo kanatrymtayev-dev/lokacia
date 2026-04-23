@@ -261,6 +261,7 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
         selected_tier: selectedTier,
         selected_add_ons: Array.from(selectedAddOns),
         add_ons_snapshot: addOnsBreakdown,
+        security_deposit: listing.securityDeposit ?? 0,
       },
     });
 
@@ -503,6 +504,15 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
             <span>Итого</span>
             <span>{formatPrice(grandTotal)}</span>
           </div>
+          {(listing.securityDeposit ?? 0) > 0 && (
+            <div className="flex justify-between text-sm pt-2 border-t border-gray-100 mt-2">
+              <div>
+                <span className="text-gray-600">Залог</span>
+                <p className="text-[10px] text-gray-400 mt-0.5">Возвращается через 48ч</p>
+              </div>
+              <span className="text-gray-600">{formatPrice(listing.securityDeposit!)}</span>
+            </div>
+          )}
         </div>
 
         {/* Заблокированные хостом даты в ближайшие 60 дней */}

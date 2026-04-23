@@ -106,6 +106,7 @@ export interface Listing {
   hasFreightAccess?: boolean;
   hasLoadingDock?: boolean;
   hasWhiteCyc?: boolean;
+  securityDeposit?: number;
   hostIdVerified?: boolean;
   hostPhoneVerified?: boolean;
   hostCreatedAt?: string;

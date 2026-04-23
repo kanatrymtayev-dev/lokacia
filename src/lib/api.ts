@@ -84,6 +84,7 @@ function rowToListing(row: Record<string, unknown>): Listing {
     hasFreightAccess: (row.has_freight_access as boolean) ?? false,
     hasLoadingDock: (row.has_loading_dock as boolean) ?? false,
     hasWhiteCyc: (row.has_white_cyc as boolean) ?? false,
+    securityDeposit: (row.security_deposit as number) ?? 0,
     hostIdVerified: (row.host_id_verified as boolean) ?? false,
     hostPhoneVerified: (row.host_phone_verified as boolean) ?? false,
     hostCreatedAt: (row.host_created_at as string | null) ?? undefined,
@@ -601,6 +602,7 @@ export async function createListing(listing: {
   hasFreightAccess?: boolean;
   hasLoadingDock?: boolean;
   hasWhiteCyc?: boolean;
+  securityDeposit?: number;
 }) {
   const slug = generateSlug(listing.title);
 
@@ -655,6 +657,7 @@ export async function createListing(listing: {
       has_freight_access: listing.hasFreightAccess ?? false,
       has_loading_dock: listing.hasLoadingDock ?? false,
       has_white_cyc: listing.hasWhiteCyc ?? false,
+      security_deposit: listing.securityDeposit ?? 0,
     })
     .select()
     .single();
@@ -1996,6 +1999,158 @@ export async function updateSiteSetting(key: string, value: string) {
     .from("site_settings")
     .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" });
   return { error };
+}
+
+// ---- Claims (damage claims by hosts) ----
+
+export interface Claim {
+  id: string;
+  bookingId: string;
+  hostId: string;
+  hostName: string;
+  description: string;
+  damageAmount: number;
+  photos: string[];
+  status: "open" | "approved" | "rejected";
+  resolution: string | null;
+  depositHeld: boolean;
+  fundPayout: number;
+  createdAt: string;
+  resolvedAt: string | null;
+  listingTitle: string;
+  securityDeposit: number;
+  conversationId: string | null;
+}
+
+export async function uploadClaimPhoto(hostId: string, file: File): Promise<string | null> {
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+  const path = `${hostId}/claim-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const { error } = await supabase.storage
+    .from("verifications") // reuse private bucket
+    .upload(path, file, { contentType: file.type });
+  if (error) {
+    console.error("uploadClaimPhoto:", error.message);
+    return null;
+  }
+  const { data: signed } = await supabase.storage
+    .from("verifications")
+    .createSignedUrl(path, 60 * 60 * 24 * 30); // 30 days
+  return signed?.signedUrl ?? null;
+}
+
+export async function createClaim(input: {
+  bookingId: string;
+  hostId: string;
+  description: string;
+  damageAmount: number;
+  photos: string[];
+}) {
+  const { data, error } = await supabase
+    .from("claims")
+    .insert({
+      booking_id: input.bookingId,
+      host_id: input.hostId,
+      description: input.description,
+      damage_amount: input.damageAmount,
+      photos: input.photos,
+    })
+    .select()
+    .single();
+  return { data, error };
+}
+
+export async function getHostClaims(hostId: string): Promise<Claim[]> {
+  const { data, error } = await supabase
+    .from("claims")
+    .select("*, bookings!claims_booking_id_fkey(conversation_id, metadata, listings!bookings_listing_id_fkey(title))")
+    .eq("host_id", hostId)
+    .order("created_at", { ascending: false });
+  if (error || !data) return [];
+  return (data as Array<Record<string, unknown>>).map((r) => {
+    const booking = r.bookings as Record<string, unknown> | null;
+    const listing = booking?.listings as Record<string, unknown> | null;
+    const meta = booking?.metadata as Record<string, unknown> | null;
+    return {
+      id: r.id as string,
+      bookingId: r.booking_id as string,
+      hostId: r.host_id as string,
+      hostName: "",
+      description: r.description as string,
+      damageAmount: r.damage_amount as number,
+      photos: (r.photos as string[]) ?? [],
+      status: r.status as Claim["status"],
+      resolution: (r.resolution as string | null) ?? null,
+      depositHeld: (r.deposit_held as boolean) ?? false,
+      fundPayout: (r.fund_payout as number) ?? 0,
+      createdAt: r.created_at as string,
+      resolvedAt: (r.resolved_at as string | null) ?? null,
+      listingTitle: (listing?.title as string) ?? "—",
+      securityDeposit: (meta?.security_deposit as number) ?? 0,
+      conversationId: (booking?.conversation_id as string | null) ?? null,
+    };
+  });
+}
+
+export async function getAdminClaims(): Promise<Claim[]> {
+  const { data, error } = await supabase
+    .from("claims")
+    .select("*, profiles!claims_host_id_fkey(name), bookings!claims_booking_id_fkey(conversation_id, metadata, listings!bookings_listing_id_fkey(title))")
+    .order("created_at", { ascending: false });
+  if (error || !data) return [];
+  return (data as Array<Record<string, unknown>>).map((r) => {
+    const profile = r.profiles as Record<string, unknown> | null;
+    const booking = r.bookings as Record<string, unknown> | null;
+    const listing = booking?.listings as Record<string, unknown> | null;
+    const meta = booking?.metadata as Record<string, unknown> | null;
+    return {
+      id: r.id as string,
+      bookingId: r.booking_id as string,
+      hostId: r.host_id as string,
+      hostName: (profile?.name as string) ?? "—",
+      description: r.description as string,
+      damageAmount: r.damage_amount as number,
+      photos: (r.photos as string[]) ?? [],
+      status: r.status as Claim["status"],
+      resolution: (r.resolution as string | null) ?? null,
+      depositHeld: (r.deposit_held as boolean) ?? false,
+      fundPayout: (r.fund_payout as number) ?? 0,
+      createdAt: r.created_at as string,
+      resolvedAt: (r.resolved_at as string | null) ?? null,
+      listingTitle: (listing?.title as string) ?? "—",
+      securityDeposit: (meta?.security_deposit as number) ?? 0,
+      conversationId: (booking?.conversation_id as string | null) ?? null,
+    };
+  });
+}
+
+export async function resolveClaim(
+  id: string,
+  status: "approved" | "rejected",
+  resolution: string,
+  depositHeld: boolean,
+  fundPayout: number
+) {
+  const { error } = await supabase
+    .from("claims")
+    .update({
+      status,
+      resolution,
+      deposit_held: depositHeld,
+      fund_payout: fundPayout,
+      resolved_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+  return { error };
+}
+
+export async function hasOpenClaim(bookingId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("claims")
+    .select("id")
+    .eq("booking_id", bookingId)
+    .in("status", ["open", "approved"])
+    .maybeSingle();
+  return !!data;
 }
 
 // ---- Disputes ----

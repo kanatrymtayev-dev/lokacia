@@ -251,7 +251,14 @@ export default function BookingsPage() {
                           <p className="mt-2 text-sm text-gray-600 line-clamp-2">{String(booking.description)}</p>
                         ) : null}
                         <div className="mt-3 flex items-center justify-between gap-3">
-                          <span className="font-bold">{formatPrice(booking.total_price as number)}</span>
+                          <span className="font-bold">
+                            {formatPrice(booking.total_price as number)}
+                            {(() => {
+                              const meta = booking.metadata as Record<string, unknown> | null;
+                              const deposit = (meta?.security_deposit as number) ?? 0;
+                              return deposit > 0 ? <span className="text-xs font-normal text-gray-400 ml-1">+ залог {formatPrice(deposit)}</span> : null;
+                            })()}
+                          </span>
                           <div className="flex items-center gap-3">
                             {(status === "confirmed" || status === "completed") && (
                               <a

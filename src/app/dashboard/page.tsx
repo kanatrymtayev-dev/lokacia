@@ -8,7 +8,7 @@ import Image from "next/image";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import { useAuth } from "@/lib/auth-context";
-import { getHostListings, getHostBookings, updateBookingStatus, getHostBlackouts, createBlackout, deleteBlackout } from "@/lib/api";
+import { getHostListings, getHostBookings, updateBookingStatus, getHostBlackouts, createBlackout, deleteBlackout, createClaim, uploadClaimPhoto, hasOpenClaim } from "@/lib/api";
 
 const AnalyticsTab = dynamic(() => import("./analytics-tab"), {
   ssr: false,
@@ -44,6 +44,14 @@ export default function DashboardPage() {
   const [myListings, setMyListings] = useState<Listing[]>([]);
   const [tab, setTab] = useState<"listings" | "bookings" | "calendar" | "availability" | "analytics" | "verification">("bookings");
   const [productionModal, setProductionModal] = useState<Listing | null>(null);
+
+  // Claims
+  const [claimModal, setClaimModal] = useState<{ bookingId: string; deposit: number } | null>(null);
+  const [claimDesc, setClaimDesc] = useState("");
+  const [claimAmount, setClaimAmount] = useState("");
+  const [claimFiles, setClaimFiles] = useState<File[]>([]);
+  const [claimSending, setClaimSending] = useState(false);
+  const [claimSent, setClaimSent] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -271,15 +279,36 @@ export default function DashboardPage() {
                               </div>
                             )}
                             {(status === "confirmed" || status === "completed") && (
-                              <a
-                                href={`/api/invoice/${booking.id as string}`}
-                                className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
-                              >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                                </svg>
-                                Скачать счёт
-                              </a>
+                              <div className="flex items-center gap-3">
+                                <a
+                                  href={`/api/invoice/${booking.id as string}`}
+                                  className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+                                >
+                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                                  </svg>
+                                  Скачать счёт
+                                </a>
+                                <button
+                                  onClick={() => {
+                                    const meta = booking.metadata as Record<string, unknown> | null;
+                                    setClaimModal({
+                                      bookingId: booking.id as string,
+                                      deposit: (meta?.security_deposit as number) ?? 0,
+                                    });
+                                    setClaimSent(false);
+                                    setClaimDesc("");
+                                    setClaimAmount("");
+                                    setClaimFiles([]);
+                                  }}
+                                  className="inline-flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700"
+                                >
+                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                                  </svg>
+                                  Претензия
+                                </button>
+                              </div>
                             )}
                           </div>
                         </div>
@@ -393,6 +422,106 @@ export default function DashboardPage() {
           )}
         </div>
       </main>
+      {/* Claim Modal */}
+      {claimModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setClaimModal(null)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            {claimSent ? (
+              <div className="text-center py-4">
+                <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  </svg>
+                </div>
+                <h3 className="font-bold text-lg">Претензия отправлена</h3>
+                <p className="text-sm text-gray-500 mt-2">Мы рассмотрим вашу претензию и свяжемся с вами.</p>
+                <button onClick={() => setClaimModal(null)} className="mt-4 px-6 py-2 rounded-lg bg-primary text-white text-sm font-semibold">
+                  Закрыть
+                </button>
+              </div>
+            ) : (
+              <>
+                <h3 className="font-bold text-lg mb-1">Подать претензию</h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  Опишите повреждения и приложите фото.
+                  {claimModal.deposit > 0 && ` Залог: ${formatPrice(claimModal.deposit)}`}
+                </p>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Описание повреждений</label>
+                    <textarea
+                      value={claimDesc}
+                      onChange={(e) => setClaimDesc(e.target.value)}
+                      placeholder="Что было повреждено?"
+                      rows={3}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none resize-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Сумма ущерба (₸)</label>
+                    <input
+                      type="number"
+                      value={claimAmount}
+                      onChange={(e) => setClaimAmount(e.target.value)}
+                      placeholder="50000"
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Фото повреждений (до 5)</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files ?? []).slice(0, 5);
+                        setClaimFiles(files);
+                      }}
+                      className="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white"
+                    />
+                    {claimFiles.length > 0 && (
+                      <p className="text-xs text-gray-400 mt-1">{claimFiles.length} файл(ов) выбрано</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-5">
+                  <button
+                    onClick={() => setClaimModal(null)}
+                    className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Отмена
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!claimDesc.trim() || !claimAmount || !user) return;
+                      setClaimSending(true);
+                      // Upload photos
+                      const photoUrls: string[] = [];
+                      for (const file of claimFiles) {
+                        const url = await uploadClaimPhoto(user.id, file);
+                        if (url) photoUrls.push(url);
+                      }
+                      await createClaim({
+                        bookingId: claimModal.bookingId,
+                        hostId: user.id,
+                        description: claimDesc.trim(),
+                        damageAmount: parseInt(claimAmount, 10),
+                        photos: photoUrls,
+                      });
+                      setClaimSending(false);
+                      setClaimSent(true);
+                    }}
+                    disabled={claimSending || !claimDesc.trim() || !claimAmount}
+                    className="flex-1 py-2.5 rounded-lg bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {claimSending ? "Отправка..." : "Отправить претензию"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
       <Footer />
     </div>
   );

@@ -41,6 +41,7 @@ export default function NewListingPage() {
   const [capacity, setCapacity] = useState(10);
   const [ceilingHeight, setCeilingHeight] = useState(3);
   const [pricePerHour, setPricePerHour] = useState(10000);
+  const [securityDeposit, setSecurityDeposit] = useState(0);
   const [pricePerDay, setPricePerDay] = useState(0);
   const [minHours, setMinHours] = useState(2);
   const [selectedStyles, setSelectedStyles] = useState<Style[]>([]);
@@ -101,6 +102,7 @@ export default function NewListingPage() {
         minHours, styles: selectedStyles, amenities: selectedAmenities,
         allows, rules: rules.split("\n").filter(Boolean),
         images: imageUrls, hostId: user.id,
+        securityDeposit: securityDeposit || 0,
       });
 
       if (dbError) {
@@ -307,6 +309,11 @@ export default function NewListingPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Цена за день (₸)</label>
                   <input type="number" min={0} step={1000} value={pricePerDay} onChange={(e) => setPricePerDay(Number(e.target.value))} placeholder="Опционально" className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-gray-900" />
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Залоговый депозит (₸)</label>
+                <input type="number" min={0} step={5000} value={securityDeposit} onChange={(e) => setSecurityDeposit(Number(e.target.value))} placeholder="0" className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-gray-900" />
+                <p className="text-xs text-gray-400 mt-1">Необязательно. Рекомендуем для мероприятий и вечеринок. 0 = без залога. Возвращается арендатору через 48ч после завершения.</p>
               </div>
               <p className="text-xs text-gray-400">Комиссия платформы: 15% с каждого бронирования. Первые 100 хостов — 0% на 6 месяцев.</p>
             </section>
