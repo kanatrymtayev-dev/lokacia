@@ -145,7 +145,7 @@ function HostOwnerPanel({ listing }: { listing: Listing }) {
   );
 }
 
-export default function BookingSidebar({ listing, referralCode }: { listing: Listing; referralCode?: string }) {
+export default function BookingSidebar({ listing }: { listing: Listing }) {
   const { user } = useAuth();
 
   // If the current user is the host of this listing, show owner panel
@@ -345,7 +345,6 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
       activityType: activity,
       description,
       totalPrice: grandTotal,
-      referralCode,
       metadata: {
         base_price: basePricePerHour,
         selected_tier: selectedTier,
@@ -714,13 +713,8 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
         </p>
       </div>
 
-      {referralCode && (
-        <div className="mt-3 bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded-lg text-xs text-center">
-          Реферальное бронирование — комиссия хоста 3%
-        </div>
-      )}
       <p className="mt-3 text-xs text-gray-400 text-center">
-        Оплата через Kaspi Pay после подтверждения хостом
+        Оплата после подтверждения хостом
       </p>
 
       {/* Message Host Modal */}

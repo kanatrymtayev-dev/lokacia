@@ -157,7 +157,9 @@ export default function AdminPage() {
 
   const pendingPayoutTotal = pendingPayouts.reduce((sum, p) => sum + p.amount, 0);
 
-  const referralBookings = stats.bookings.filter((b) => b.referral_code).length;
+  const promoHosts = overviewStats.totalUsers > 0
+    ? stats.bookings.filter((b) => (b.commission_rate as number) === 0).length
+    : 0;
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -187,9 +189,9 @@ export default function AdminPage() {
               <div className="text-xl font-bold mt-1 text-amber-600">{formatPrice(pendingPayoutTotal)}</div>
             </div>
             <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <div className="text-sm text-gray-500">Реферальных</div>
-              <div className="text-xl font-bold mt-1">{referralBookings}</div>
-              <div className="text-xs text-gray-400">бронирований (3%)</div>
+              <div className="text-sm text-gray-500">Промо (0%)</div>
+              <div className="text-xl font-bold mt-1">{promoHosts}</div>
+              <div className="text-xs text-gray-400">бронирований (промо-период)</div>
             </div>
           </div>
 

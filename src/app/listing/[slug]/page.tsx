@@ -60,7 +60,6 @@ export default async function ListingPage({
   searchParams: Promise<{ ref?: string }>;
 }) {
   const { slug } = await params;
-  const { ref: referralCode } = await searchParams;
   const listing = await getListingBySlug(slug);
   if (!listing) notFound();
 
@@ -343,7 +342,7 @@ export default async function ListingPage({
 
             {/* Right — Booking sidebar */}
             <div className="lg:col-span-1">
-              <BookingSidebar listing={listing} referralCode={referralCode} />
+              <BookingSidebar listing={listing} />
             </div>
           </div>
         </div>

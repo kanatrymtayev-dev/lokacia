@@ -793,9 +793,8 @@ export async function createBooking(booking: {
   description: string;
   totalPrice: number;
   status: string;
-  referralCode?: string;
 }) {
-  const commissionRate = booking.referralCode ? 0.03 : 0.15;
+  const commissionRate = 0.15;
   const { data, error } = await supabase.from("bookings").insert({
     listing_id: booking.listingId,
     renter_id: booking.renterId,
@@ -807,7 +806,7 @@ export async function createBooking(booking: {
     description: booking.description,
     total_price: booking.totalPrice,
     status: booking.status,
-    referral_code: booking.referralCode || null,
+    referral_code: null,
     commission_rate: commissionRate,
     payment_status: "unpaid",
   }).select().single();
@@ -1230,17 +1229,28 @@ export async function createBookingRequest(input: {
   activityType: string;
   description: string;
   totalPrice: number;
-  referralCode?: string;
-  promoCode?: string;
-  discountAmount?: number;
   metadata?: Record<string, unknown>;
 }) {
   // 1. Получаем/создаём conversation
   const convo = await getOrCreateConversation(input.listingId, input.renterId, input.hostId);
   if (!convo) return { data: null, error: { message: "Не удалось создать диалог" } };
 
-  // 2. Создаём бронирование со статусом pending
-  const commissionRate = input.referralCode ? 0.03 : 0.15;
+  // 2. Determine commission rate: 0% for hosts registered < 90 days, otherwise 15%
+  let commissionRate = 0.15;
+  const { data: hostProfile } = await supabase
+    .from("profiles")
+    .select("created_at")
+    .eq("id", input.hostId)
+    .single();
+  if (hostProfile) {
+    const hostCreated = new Date((hostProfile as Record<string, unknown>).created_at as string);
+    const daysSinceRegistration = (Date.now() - hostCreated.getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceRegistration < 90) {
+      commissionRate = 0;
+    }
+  }
+
+  // 3. Создаём бронирование со статусом pending
   const { data: booking, error: bookingError } = await supabase
     .from("bookings")
     .insert({
@@ -1255,9 +1265,6 @@ export async function createBookingRequest(input: {
       total_price: input.totalPrice,
       status: "pending",
       conversation_id: convo.id,
-      referral_code: input.referralCode || null,
-      promo_code: input.promoCode || null,
-      discount_amount: input.discountAmount || 0,
       commission_rate: commissionRate,
       payment_status: "unpaid",
       metadata: input.metadata ?? {},
@@ -1270,11 +1277,6 @@ export async function createBookingRequest(input: {
   }
 
   const bookingId = (booking as Record<string, unknown>).id as string;
-
-  // 2b. Increment promo code usage
-  if (input.promoCode) {
-    void incrementPromoCodeUsage(input.promoCode);
-  }
 
   // 3. Системное сообщение в чат со ссылкой на booking_id
   const summary = `Запрос на бронирование · ${input.date} ${input.startTime}–${input.endTime} · ${input.guestCount} гостей`;
