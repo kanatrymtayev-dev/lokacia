@@ -20,6 +20,7 @@ import {
   acceptQuote,
   rejectQuote,
   hasHostReviewedGuest,
+  createDispute,
 } from "@/lib/api";
 import type { QuoteMetadata } from "@/lib/types";
 
@@ -268,6 +269,12 @@ function InboxContent() {
 
   const [contactWarning, setContactWarning] = useState(false);
 
+  // Dispute
+  const [disputeOpen, setDisputeOpen] = useState(false);
+  const [disputeReason, setDisputeReason] = useState("");
+  const [disputeSending, setDisputeSending] = useState(false);
+  const [disputeSent, setDisputeSent] = useState(false);
+
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
     if (!newMsg.trim() || !activeId || !user) return;
@@ -449,7 +456,79 @@ function InboxContent() {
                     />
                   </Link>
                 )}
+
+                {/* Report button */}
+                {Object.keys(bookingsMap).length > 0 && (
+                  <button
+                    onClick={() => { setDisputeOpen(true); setDisputeSent(false); setDisputeReason(""); }}
+                    className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
+                    title="Пожаловаться"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5" />
+                    </svg>
+                  </button>
+                )}
               </div>
+
+              {/* Dispute modal */}
+              {disputeOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setDisputeOpen(false)}>
+                  <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+                    {disputeSent ? (
+                      <div className="text-center py-4">
+                        <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
+                          <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                          </svg>
+                        </div>
+                        <h3 className="font-bold text-lg">Жалоба отправлена</h3>
+                        <p className="text-sm text-gray-500 mt-2">Мы разберёмся в ситуации и свяжемся с вами.</p>
+                        <button onClick={() => setDisputeOpen(false)} className="mt-4 px-6 py-2 rounded-lg bg-primary text-white text-sm font-semibold">
+                          Закрыть
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <h3 className="font-bold text-lg mb-2">Пожаловаться</h3>
+                        <p className="text-sm text-gray-500 mb-4">Опишите проблему — мы разберёмся и примем меры.</p>
+                        <textarea
+                          value={disputeReason}
+                          onChange={(e) => setDisputeReason(e.target.value)}
+                          placeholder="Что произошло?"
+                          rows={4}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none resize-none mb-4"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setDisputeOpen(false)}
+                            className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                          >
+                            Отмена
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (!disputeReason.trim() || !user) return;
+                              setDisputeSending(true);
+                              // Find a booking ID from this conversation
+                              const bookingIds = Object.keys(bookingsMap);
+                              if (bookingIds.length > 0) {
+                                await createDispute(bookingIds[0], user.id, disputeReason.trim());
+                              }
+                              setDisputeSending(false);
+                              setDisputeSent(true);
+                            }}
+                            disabled={disputeSending || !disputeReason.trim()}
+                            className="flex-1 py-2.5 rounded-lg bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:opacity-50"
+                          >
+                            {disputeSending ? "Отправка..." : "Отправить жалобу"}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 bg-gray-50">

@@ -1655,13 +1655,42 @@ export async function getAdminStats() {
   const [paymentsRes, payoutsRes, bookingsRes] = await Promise.all([
     supabase.from("payments").select("*").eq("status", "completed"),
     supabase.from("payouts").select("*"),
-    supabase.from("bookings").select("id, total_price, commission_rate, payment_status, status, date, created_at, referral_code, listings!bookings_listing_id_fkey(title, host_id), profiles!bookings_renter_id_fkey(name)").order("created_at", { ascending: false }),
+    supabase.from("bookings").select("id, total_price, commission_rate, payment_status, status, date, created_at, referral_code, conversation_id, listings!bookings_listing_id_fkey(title, host_id), profiles!bookings_renter_id_fkey(name)").order("created_at", { ascending: false }),
   ]);
 
   return {
     payments: (paymentsRes.data ?? []) as Array<Record<string, unknown>>,
     payouts: (payoutsRes.data ?? []) as Array<Record<string, unknown>>,
     bookings: (bookingsRes.data ?? []) as Array<Record<string, unknown>>,
+  };
+}
+
+export async function getAdminOverviewStats(): Promise<{
+  totalUsers: number;
+  hostCount: number;
+  renterCount: number;
+  totalListings: number;
+  activeListings: number;
+  pendingListings: number;
+  totalViews: number;
+}> {
+  const [usersRes, listingsRes, viewsRes] = await Promise.all([
+    supabase.from("profiles").select("role"),
+    supabase.from("listings").select("status, moderation_status"),
+    supabase.from("listing_views").select("id", { count: "exact", head: true }),
+  ]);
+
+  const users = (usersRes.data ?? []) as Array<Record<string, unknown>>;
+  const listings = (listingsRes.data ?? []) as Array<Record<string, unknown>>;
+
+  return {
+    totalUsers: users.length,
+    hostCount: users.filter((u) => u.role === "host").length,
+    renterCount: users.filter((u) => u.role === "renter").length,
+    totalListings: listings.length,
+    activeListings: listings.filter((l) => l.status === "active" && l.moderation_status === "approved").length,
+    pendingListings: listings.filter((l) => l.moderation_status === "pending_review").length,
+    totalViews: viewsRes.count ?? 0,
   };
 }
 
@@ -1967,6 +1996,92 @@ export async function updateSiteSetting(key: string, value: string) {
     .from("site_settings")
     .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" });
   return { error };
+}
+
+// ---- Disputes ----
+
+export interface Dispute {
+  id: string;
+  bookingId: string;
+  reporterId: string;
+  reporterRole: string;
+  reporterName: string;
+  reason: string;
+  status: "open" | "in_progress" | "resolved";
+  adminNote: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  listingTitle: string;
+  conversationId: string | null;
+}
+
+export async function createDispute(bookingId: string, reporterId: string, reason: string) {
+  // Determine reporter role
+  const { data: booking } = await supabase
+    .from("bookings")
+    .select("renter_id")
+    .eq("id", bookingId)
+    .single();
+  const reporterRole = booking && (booking as Record<string, unknown>).renter_id === reporterId ? "renter" : "host";
+
+  const { data, error } = await supabase
+    .from("disputes")
+    .insert({
+      booking_id: bookingId,
+      reporter_id: reporterId,
+      reporter_role: reporterRole,
+      reason,
+    })
+    .select()
+    .single();
+  return { data, error };
+}
+
+export async function getAdminDisputes(): Promise<Dispute[]> {
+  const { data, error } = await supabase
+    .from("disputes")
+    .select("*, profiles!disputes_reporter_id_fkey(name), bookings!disputes_booking_id_fkey(conversation_id, listings!bookings_listing_id_fkey(title))")
+    .order("created_at", { ascending: false });
+  if (error || !data) return [];
+  return (data as Array<Record<string, unknown>>).map((r) => {
+    const profile = r.profiles as Record<string, unknown> | null;
+    const booking = r.bookings as Record<string, unknown> | null;
+    const listing = booking?.listings as Record<string, unknown> | null;
+    return {
+      id: r.id as string,
+      bookingId: r.booking_id as string,
+      reporterId: r.reporter_id as string,
+      reporterRole: r.reporter_role as string,
+      reporterName: (profile?.name as string) ?? "—",
+      reason: r.reason as string,
+      status: r.status as Dispute["status"],
+      adminNote: (r.admin_note as string | null) ?? null,
+      resolvedAt: (r.resolved_at as string | null) ?? null,
+      createdAt: r.created_at as string,
+      listingTitle: (listing?.title as string) ?? "—",
+      conversationId: (booking?.conversation_id as string | null) ?? null,
+    };
+  });
+}
+
+export async function resolveDispute(id: string, adminNote: string) {
+  const { error } = await supabase
+    .from("disputes")
+    .update({
+      status: "resolved",
+      admin_note: adminNote,
+      resolved_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+  return { error };
+}
+
+export async function getOpenDisputeCount(): Promise<number> {
+  const { count } = await supabase
+    .from("disputes")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "open");
+  return count ?? 0;
 }
 
 // ---- Promo Codes ----

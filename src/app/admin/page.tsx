@@ -27,15 +27,21 @@ import {
   getAdminPromoCodes,
   createPromoCode,
   togglePromoCode,
+  getAdminDisputes,
+  resolveDispute,
+  getOpenDisputeCount,
+  getMessages,
+  getAdminOverviewStats,
   getSiteSettings,
   updateSiteSetting,
 } from "@/lib/api";
-import type { AdminUser, AdminListing, PromoCode } from "@/lib/api";
+import type { AdminUser, AdminListing, PromoCode, Dispute } from "@/lib/api";
 import type { SiteSettings } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
+import { downloadCSV } from "@/lib/csv";
 import type { Listing, HostVerification } from "@/lib/types";
 
-type Tab = "overview" | "bookings" | "payouts" | "featured" | "listings" | "moderation" | "verifications" | "users" | "promos" | "settings";
+type Tab = "overview" | "bookings" | "payouts" | "featured" | "listings" | "moderation" | "verifications" | "users" | "promos" | "disputes" | "settings";
 
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
   unpaid: "Не оплачено",
@@ -63,6 +69,7 @@ export default function AdminPage() {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
   const [tab, setTab] = useState<Tab>("overview");
+  const [bookingChatId, setBookingChatId] = useState<string | null>(null);
   const [stats, setStats] = useState<{
     payments: Array<Record<string, unknown>>;
     payouts: Array<Record<string, unknown>>;
@@ -86,16 +93,20 @@ export default function AdminPage() {
     }
   }, [user, router]);
 
+  const [overviewStats, setOverviewStats] = useState({ totalUsers: 0, hostCount: 0, renterCount: 0, totalListings: 0, activeListings: 0, pendingListings: 0, totalViews: 0 });
+
   const loadData = useCallback(async () => {
     if (!authorized) return;
-    const [s, pp, ap] = await Promise.all([
+    const [s, pp, ap, os] = await Promise.all([
       getAdminStats(),
       getPendingPayouts(),
       getAllPayouts(),
+      getAdminOverviewStats(),
     ]);
     setStats(s);
     setPendingPayouts(pp);
     setAllPayouts(ap);
+    setOverviewStats(os);
   }, [authorized]);
 
   useEffect(() => {
@@ -154,8 +165,8 @@ export default function AdminPage() {
           <h1 className="text-2xl font-bold mb-2">Админ-панель</h1>
           <p className="text-gray-600 mb-8">Управление платежами и выплатами LOKACIA.KZ</p>
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+          {/* Stats — row 1: financial */}
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
             <div className="bg-white rounded-xl border border-gray-200 p-5">
               <div className="text-sm text-gray-500">Общий оборот</div>
               <div className="text-xl font-bold mt-1">{formatPrice(totalRevenue)}</div>
@@ -180,6 +191,31 @@ export default function AdminPage() {
             </div>
           </div>
 
+          {/* Stats — row 2: platform */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="text-sm text-gray-500">Пользователи</div>
+              <div className="text-xl font-bold mt-1">{overviewStats.totalUsers}</div>
+              <div className="text-xs text-gray-400">{overviewStats.hostCount} хостов · {overviewStats.renterCount} арендаторов</div>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="text-sm text-gray-500">Листинги</div>
+              <div className="text-xl font-bold mt-1">{overviewStats.activeListings}</div>
+              <div className="text-xs text-gray-400">{overviewStats.totalListings} всего · {overviewStats.pendingListings} на модерации</div>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="text-sm text-gray-500">Просмотры</div>
+              <div className="text-xl font-bold mt-1">{overviewStats.totalViews}</div>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="text-sm text-gray-500">Конверсия</div>
+              <div className="text-xl font-bold mt-1">
+                {overviewStats.totalViews > 0 ? `${((stats.bookings.length / overviewStats.totalViews) * 100).toFixed(1)}%` : "—"}
+              </div>
+              <div className="text-xs text-gray-400">просмотры → брони</div>
+            </div>
+          </div>
+
           {/* Tabs */}
           <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6 w-fit">
             {(
@@ -192,6 +228,7 @@ export default function AdminPage() {
                 ["verifications", "Верификация"],
                 ["users", "Пользователи"],
                 ["promos", "Промокоды"],
+                ["disputes", "Жалобы"],
               ["settings", "Настройки"],
               ] as const
             ).map(([key, label]) => (
@@ -211,6 +248,139 @@ export default function AdminPage() {
 
           {/* Bookings tab */}
           {tab === "overview" && (
+            <>
+            {/* Charts */}
+            {(() => {
+              // Group bookings by week
+              function weekKey(dateStr: string) {
+                const d = new Date(dateStr);
+                const day = d.getUTCDay();
+                const offset = (day + 6) % 7;
+                const monday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - offset));
+                return monday.toISOString().slice(0, 10);
+              }
+              const weeks = new Map<string, { bookings: number; revenue: number }>();
+              for (const b of stats.bookings) {
+                const k = weekKey(b.created_at as string);
+                const prev = weeks.get(k) ?? { bookings: 0, revenue: 0 };
+                prev.bookings++;
+                if (b.status === "confirmed" || b.status === "completed") {
+                  prev.revenue += (b.total_price as number);
+                }
+                weeks.set(k, prev);
+              }
+              const sorted = Array.from(weeks.entries()).sort((a, b) => a[0].localeCompare(b[0])).slice(-8);
+              const maxB = Math.max(...sorted.map(([, v]) => v.bookings), 1);
+              const maxR = Math.max(...sorted.map(([, v]) => v.revenue), 1);
+              const fmt = (d: string) => new Date(d).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+
+              return sorted.length > 0 ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+                  {/* Bookings chart */}
+                  <div className="bg-white rounded-xl border border-gray-200 p-5">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-4">Бронирования по неделям</h3>
+                    <div className="flex items-end gap-1.5 h-32">
+                      {sorted.map(([week, val]) => (
+                        <div key={week} className="flex-1 flex flex-col items-center gap-1">
+                          <span className="text-[10px] font-medium text-gray-700">{val.bookings}</span>
+                          <div className="w-full bg-primary/80 rounded-t" style={{ height: `${(val.bookings / maxB) * 100}%`, minHeight: val.bookings > 0 ? 4 : 0 }} />
+                          <span className="text-[9px] text-gray-400">{fmt(week)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Revenue chart */}
+                  <div className="bg-white rounded-xl border border-gray-200 p-5">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-4">Оборот по неделям</h3>
+                    <div className="flex items-end gap-1.5 h-32">
+                      {sorted.map(([week, val]) => (
+                        <div key={week} className="flex-1 flex flex-col items-center gap-1">
+                          <span className="text-[10px] font-medium text-gray-700">{val.revenue > 0 ? formatPrice(val.revenue) : ""}</span>
+                          <div className="w-full bg-green-500/80 rounded-t" style={{ height: `${(val.revenue / maxR) * 100}%`, minHeight: val.revenue > 0 ? 4 : 0 }} />
+                          <span className="text-[9px] text-gray-400">{fmt(week)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : null;
+            })()}
+
+            {/* Top venues */}
+            {(() => {
+              const venueMap = new Map<string, { title: string; bookings: number; revenue: number }>();
+              for (const b of stats.bookings) {
+                const listing = b.listings as Record<string, unknown> | null;
+                const title = (listing?.title as string) ?? "—";
+                const key = title;
+                const prev = venueMap.get(key) ?? { title, bookings: 0, revenue: 0 };
+                prev.bookings++;
+                if (b.status === "confirmed" || b.status === "completed") {
+                  prev.revenue += (b.total_price as number);
+                }
+                venueMap.set(key, prev);
+              }
+              const topByBookings = Array.from(venueMap.values()).sort((a, b) => b.bookings - a.bookings).slice(0, 5);
+              const topByRevenue = Array.from(venueMap.values()).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+
+              return topByBookings.length > 0 ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+                  <div className="bg-white rounded-xl border border-gray-200 p-5">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Топ-5 по бронированиям</h3>
+                    <div className="space-y-2">
+                      {topByBookings.map((v, i) => (
+                        <div key={i} className="flex items-center justify-between text-sm">
+                          <span className="text-gray-700 truncate flex-1">{i + 1}. {v.title}</span>
+                          <span className="font-semibold ml-2">{v.bookings}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-xl border border-gray-200 p-5">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Топ-5 по выручке</h3>
+                    <div className="space-y-2">
+                      {topByRevenue.map((v, i) => (
+                        <div key={i} className="flex items-center justify-between text-sm">
+                          <span className="text-gray-700 truncate flex-1">{i + 1}. {v.title}</span>
+                          <span className="font-semibold ml-2">{formatPrice(v.revenue)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : null;
+            })()}
+
+            {/* CSV export + bookings table */}
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-700">Все бронирования</h3>
+              <button
+                onClick={() => {
+                  const headers = ["ID", "Локация", "Арендатор", "Дата", "Сумма", "Комиссия", "Статус", "Оплата"];
+                  const rows = stats.bookings.map((b) => {
+                    const listing = b.listings as Record<string, unknown> | null;
+                    const renter = b.profiles as Record<string, unknown> | null;
+                    return [
+                      b.id as string,
+                      (listing?.title as string) ?? "",
+                      (renter?.name as string) ?? "",
+                      b.date as string,
+                      b.total_price as number,
+                      `${Math.round(((b.commission_rate as number) ?? 0.15) * 100)}%`,
+                      b.status as string,
+                      b.payment_status as string,
+                    ];
+                  });
+                  downloadCSV(`lokacia-bookings-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+                }}
+                className="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                </svg>
+                Скачать CSV
+              </button>
+            </div>
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -223,6 +393,7 @@ export default function AdminPage() {
                       <th className="text-center px-4 py-3 font-medium text-gray-600">Комиссия</th>
                       <th className="text-center px-4 py-3 font-medium text-gray-600">Статус</th>
                       <th className="text-center px-4 py-3 font-medium text-gray-600">Оплата</th>
+                      <th className="text-center px-4 py-3 font-medium text-gray-600">Чат</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -269,6 +440,18 @@ export default function AdminPage() {
                               {PAYMENT_STATUS_LABELS[(b.payment_status as string)] ?? "Не оплачено"}
                             </span>
                           </td>
+                          <td className="px-4 py-3 text-center">
+                            {(b.conversation_id as string | null) ? (
+                              <button
+                                onClick={() => setBookingChatId(b.conversation_id as string)}
+                                className="text-[11px] text-primary hover:text-primary/80 font-medium"
+                              >
+                                Открыть
+                              </button>
+                            ) : (
+                              <span className="text-xs text-gray-300">—</span>
+                            )}
+                          </td>
                         </tr>
                       );
                     })}
@@ -283,7 +466,8 @@ export default function AdminPage() {
                 </table>
               </div>
             </div>
-          )}
+            {bookingChatId && <ChatModal conversationId={bookingChatId} onClose={() => setBookingChatId(null)} />}
+            </>)}
 
           {/* Payouts tab */}
           {tab === "payouts" && (
@@ -321,7 +505,25 @@ export default function AdminPage() {
 
               {/* All payouts */}
               <div>
-                <h3 className="text-lg font-bold mb-3">История выплат</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-bold">История выплат</h3>
+                  <button
+                    onClick={() => {
+                      const headers = ["ID", "Хост", "Сумма", "Статус", "Дата"];
+                      const rows = allPayouts.map((p) => {
+                        const profile = p.profiles as Record<string, unknown> | null;
+                        return [p.id as string, (profile?.name as string) ?? "", p.amount as number, p.status as string, new Date(p.created_at as string).toLocaleDateString("ru-RU")];
+                      });
+                      downloadCSV(`lokacia-payouts-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+                    }}
+                    className="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                    </svg>
+                    CSV
+                  </button>
+                </div>
                 <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                   <table className="w-full text-sm">
                     <thead className="bg-gray-50 border-b border-gray-200">
@@ -393,6 +595,7 @@ export default function AdminPage() {
           {tab === "verifications" && <VerificationsTab />}
           {tab === "users" && <UsersTab />}
           {tab === "promos" && <PromosTab />}
+          {tab === "disputes" && <DisputesTab />}
           {tab === "settings" && <SettingsTab />}
         </div>
       </main>
@@ -972,6 +1175,191 @@ const SETTINGS_FIELDS: { key: string; label: string; type: "text" | "textarea" }
   { key: "whatsapp", label: "WhatsApp (ссылка или номер)", type: "text" },
 ];
 
+function ChatModal({ conversationId, onClose }: { conversationId: string; onClose: () => void }) {
+  const [msgs, setMsgs] = useState<Array<Record<string, unknown>>>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getMessages(conversationId).then((m) => { setMsgs(m); setLoading(false); });
+  }, [conversationId]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div className="bg-white rounded-2xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="px-5 py-3 border-b border-gray-200 flex items-center justify-between">
+          <h3 className="font-bold">Переписка</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+          {loading ? (
+            <div className="text-center text-gray-400 text-sm py-8">Загрузка...</div>
+          ) : msgs.length === 0 ? (
+            <div className="text-center text-gray-400 text-sm py-8">Нет сообщений</div>
+          ) : (
+            msgs.map((msg) => {
+              const isSystem = msg.type === "system" || msg.type === "quote";
+              return (
+                <div key={msg.id as string} className={isSystem ? "text-center" : ""}>
+                  {isSystem ? (
+                    <span className="text-xs text-gray-400 bg-gray-50 px-3 py-1 rounded-full">{msg.content as string}</span>
+                  ) : (
+                    <div className="bg-gray-50 rounded-lg px-3 py-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-mono text-gray-400">{(msg.sender_id as string).slice(0, 8)}</span>
+                        <span className="text-[10px] text-gray-400">{new Date(msg.created_at as string).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                      </div>
+                      <p className="text-sm text-gray-700">{msg.content as string}</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DisputesTab() {
+  const [disputes, setDisputes] = useState<Dispute[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [resolveModal, setResolveModal] = useState<Dispute | null>(null);
+  const [resolveNote, setResolveNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [chatConvoId, setChatConvoId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setDisputes(await getAdminDisputes());
+    setLoading(false);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  async function handleResolve() {
+    if (!resolveModal) return;
+    setBusy(true);
+    await resolveDispute(resolveModal.id, resolveNote);
+    setBusy(false);
+    setResolveModal(null);
+    setResolveNote("");
+    await load();
+  }
+
+  const statusBadge = (status: string) => {
+    switch (status) {
+      case "open": return <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">Открыта</span>;
+      case "in_progress": return <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">В работе</span>;
+      case "resolved": return <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">Решена</span>;
+      default: return null;
+    }
+  };
+
+  if (loading) return <div className="text-gray-400 text-sm py-8 text-center">Загрузка...</div>;
+  if (disputes.length === 0) return (
+    <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500 text-sm">
+      Нет жалоб
+    </div>
+  );
+
+  return (
+    <div>
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Дата</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Локация</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Кто подал</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Причина</th>
+                <th className="text-center px-4 py-3 font-medium text-gray-600">Статус</th>
+                <th className="text-center px-4 py-3 font-medium text-gray-600">Действия</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {disputes.map((d) => (
+                <tr key={d.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-xs text-gray-500">{new Date(d.createdAt).toLocaleDateString("ru-RU")}</td>
+                  <td className="px-4 py-3 text-xs">{d.listingTitle}</td>
+                  <td className="px-4 py-3">
+                    <div className="text-xs">{d.reporterName}</div>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                      d.reporterRole === "host" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
+                    }`}>
+                      {d.reporterRole === "host" ? "Хост" : "Арендатор"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-gray-700 max-w-[200px] truncate">{d.reason}</td>
+                  <td className="px-4 py-3 text-center">{statusBadge(d.status)}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-center gap-2">
+                      {d.conversationId && (
+                        <button
+                          onClick={() => setChatConvoId(d.conversationId)}
+                          className="text-[11px] text-primary hover:text-primary/80 font-medium"
+                        >
+                          Чат
+                        </button>
+                      )}
+                      {d.status !== "resolved" && (
+                        <button
+                          onClick={() => { setResolveModal(d); setResolveNote(""); }}
+                          className="text-[11px] text-green-600 hover:text-green-800 font-medium"
+                        >
+                          Решено
+                        </button>
+                      )}
+                      {d.status === "resolved" && d.adminNote && (
+                        <span className="text-[10px] text-gray-400" title={d.adminNote}>Решение</span>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Chat modal */}
+      {chatConvoId && <ChatModal conversationId={chatConvoId} onClose={() => setChatConvoId(null)} />}
+
+      {/* Resolve modal */}
+      {resolveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setResolveModal(null)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-bold text-lg mb-2">Решить жалобу</h3>
+            <div className="bg-gray-50 rounded-lg p-3 mb-4 text-sm">
+              <div className="text-gray-500 mb-1">Причина:</div>
+              <div className="text-gray-800">{resolveModal.reason}</div>
+            </div>
+            <textarea
+              value={resolveNote}
+              onChange={(e) => setResolveNote(e.target.value)}
+              placeholder="Какое решение было принято?"
+              rows={3}
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none resize-none mb-4"
+            />
+            <div className="flex gap-2">
+              <button onClick={() => setResolveModal(null)} className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Отмена
+              </button>
+              <button
+                onClick={handleResolve}
+                disabled={busy || !resolveNote.trim()}
+                className="flex-1 py-2.5 rounded-lg bg-green-600 text-white text-sm font-bold hover:bg-green-700 disabled:opacity-50"
+              >
+                {busy ? "..." : "Решено"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PromosTab() {
   const [promos, setPromos] = useState<PromoCode[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1268,6 +1656,19 @@ function UsersTab() {
           <option value="unverified">Не верифицированы</option>
         </select>
         <span className="text-xs text-gray-400">{filtered.length} из {users.length}</span>
+        <button
+          onClick={() => {
+            const headers = ["ID", "Имя", "Email", "Телефон", "Роль", "Верифицирован", "Листингов", "Бронирований", "Регистрация"];
+            const rows = filtered.map((u) => [u.id, u.name, u.email ?? "", u.phone ?? "", u.role, u.idVerified ? "Да" : "Нет", u.listingCount, u.bookingCount, new Date(u.createdAt).toLocaleDateString("ru-RU")]);
+            downloadCSV(`lokacia-users-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+          }}
+          className="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+          </svg>
+          CSV
+        </button>
       </div>
 
       {/* Table */}
