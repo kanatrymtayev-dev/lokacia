@@ -8,7 +8,8 @@ import Image from "next/image";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import { useAuth } from "@/lib/auth-context";
-import { getHostListings, getHostBookings, updateBookingStatus, getHostBlackouts, createBlackout, deleteBlackout, createClaim, uploadClaimPhoto, hasOpenClaim } from "@/lib/api";
+import { getHostListings, getHostBookings, updateBookingStatus, getHostBlackouts, createBlackout, deleteBlackout, createClaim, uploadClaimPhoto, hasOpenClaim, getListingDiscounts, createListingDiscount, deleteListingDiscount } from "@/lib/api";
+import type { ListingDiscount } from "@/lib/api";
 
 const AnalyticsTab = dynamic(() => import("./analytics-tab"), {
   ssr: false,
@@ -42,7 +43,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [bookings, setBookings] = useState<Array<Record<string, unknown>>>([]);
   const [myListings, setMyListings] = useState<Listing[]>([]);
-  const [tab, setTab] = useState<"listings" | "bookings" | "calendar" | "availability" | "analytics" | "verification">("bookings");
+  const [tab, setTab] = useState<"listings" | "bookings" | "calendar" | "availability" | "discounts" | "analytics" | "verification">("bookings");
   const [productionModal, setProductionModal] = useState<Listing | null>(null);
 
   // Claims
@@ -176,6 +177,14 @@ export default function DashboardPage() {
               Доступность
             </button>
             <button
+              onClick={() => setTab("discounts")}
+              className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
+                tab === "discounts" ? "bg-white shadow-sm text-gray-900" : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Скидки
+            </button>
+            <button
               onClick={() => setTab("analytics")}
               className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
                 tab === "analytics" ? "bg-white shadow-sm text-gray-900" : "text-gray-600 hover:text-gray-900"
@@ -193,6 +202,7 @@ export default function DashboardPage() {
             </button>
           </div>
 
+          {tab === "discounts" && <DiscountsTab listings={myListings} />}
           {tab === "analytics" && <AnalyticsTab hostId={user.id} />}
           {tab === "verification" && <VerificationTab userId={user.id} userRole={user.role} />}
           {productionModal && (
@@ -523,6 +533,199 @@ export default function DashboardPage() {
         </div>
       )}
       <Footer />
+    </div>
+  );
+}
+
+function DiscountsTab({ listings }: { listings: Listing[] }) {
+  const [selectedListingId, setSelectedListingId] = useState(listings[0]?.id ?? "");
+  const [discounts, setDiscounts] = useState<ListingDiscount[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [percent, setPercent] = useState(20);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const loadDiscounts = useCallback(async () => {
+    if (!selectedListingId) return;
+    setLoading(true);
+    setDiscounts(await getListingDiscounts(selectedListingId));
+    setLoading(false);
+  }, [selectedListingId]);
+
+  useEffect(() => { loadDiscounts(); }, [loadDiscounts]);
+
+  async function handleCreate() {
+    if (!startDate || !endDate) { setError("Выберите даты"); return; }
+    if (endDate < startDate) { setError("Дата окончания не может быть раньше начала"); return; }
+    setSaving(true);
+    setError("");
+    const { error: err } = await createListingDiscount(selectedListingId, startDate, endDate, percent);
+    if (err) {
+      setError("Ошибка создания. Возможно, скидка на эти даты уже существует.");
+    } else {
+      setShowForm(false);
+      setStartDate("");
+      setEndDate("");
+    }
+    setSaving(false);
+    await loadDiscounts();
+  }
+
+  async function handleDelete(id: string) {
+    await deleteListingDiscount(id);
+    await loadDiscounts();
+  }
+
+  const today = new Date().toISOString().split("T")[0];
+  const activeDiscounts = discounts.filter((d) => d.endDate >= today);
+  const pastDiscounts = discounts.filter((d) => d.endDate < today);
+  const fmt = (d: string) => new Date(d).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" });
+
+  if (listings.length === 0) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500 text-sm">
+        Сначала создайте локацию, чтобы управлять скидками.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Listing selector */}
+      {listings.length > 1 && (
+        <select
+          value={selectedListingId}
+          onChange={(e) => setSelectedListingId(e.target.value)}
+          className="px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+        >
+          {listings.map((l) => (
+            <option key={l.id} value={l.id}>{l.title}</option>
+          ))}
+        </select>
+      )}
+
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-bold">Скидки на даты</h3>
+          <p className="text-xs text-gray-500 mt-0.5">Установите скидки на непиковые дни чтобы привлечь больше арендаторов</p>
+        </div>
+        <button
+          onClick={() => setShowForm(!showForm)}
+          className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
+        >
+          {showForm ? "Отмена" : "+ Добавить скидку"}
+        </button>
+      </div>
+
+      {/* Create form */}
+      {showForm && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Дата начала</label>
+              <input
+                type="date"
+                value={startDate}
+                min={today}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Дата окончания</label>
+              <input
+                type="date"
+                value={endDate}
+                min={startDate || today}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Скидка</label>
+              <select
+                value={percent}
+                onChange={(e) => setPercent(Number(e.target.value))}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+              >
+                {[10, 15, 20, 25, 30, 40, 50].map((p) => (
+                  <option key={p} value={p}>{p}%</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          {error && <p className="text-xs text-red-600 mt-3">{error}</p>}
+          <button
+            onClick={handleCreate}
+            disabled={saving || !startDate || !endDate}
+            className="mt-4 px-6 py-2.5 rounded-lg bg-green-600 text-white text-sm font-bold hover:bg-green-700 disabled:opacity-50"
+          >
+            {saving ? "Создание..." : "Создать скидку"}
+          </button>
+        </div>
+      )}
+
+      {/* Active discounts */}
+      {loading ? (
+        <div className="text-gray-400 text-sm py-8 text-center">Загрузка...</div>
+      ) : activeDiscounts.length === 0 && pastDiscounts.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+          <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center mx-auto mb-3">
+            <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6Z" />
+            </svg>
+          </div>
+          <p className="text-sm text-gray-500">Нет активных скидок</p>
+          <p className="text-xs text-gray-400 mt-1">Добавьте скидку чтобы привлечь арендаторов в непиковые дни</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {activeDiscounts.map((d) => (
+            <div key={d.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-bold text-green-700 bg-green-100 px-2.5 py-1 rounded-lg">
+                  −{d.discountPercent}%
+                </span>
+                <div>
+                  <div className="text-sm font-medium">
+                    {d.startDate === d.endDate ? fmt(d.startDate) : `${fmt(d.startDate)} — ${fmt(d.endDate)}`}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => handleDelete(d.id)}
+                className="text-xs text-red-500 hover:text-red-700 font-medium"
+              >
+                Удалить
+              </button>
+            </div>
+          ))}
+
+          {/* Past discounts */}
+          {pastDiscounts.length > 0 && (
+            <>
+              <div className="text-xs text-gray-400 mt-4 mb-2">Прошедшие</div>
+              {pastDiscounts.map((d) => (
+                <div key={d.id} className="bg-gray-50 rounded-xl border border-gray-100 p-4 flex items-center justify-between opacity-50">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-bold text-gray-500 bg-gray-200 px-2.5 py-1 rounded-lg">
+                      −{d.discountPercent}%
+                    </span>
+                    <div className="text-sm text-gray-500">
+                      {d.startDate === d.endDate ? fmt(d.startDate) : `${fmt(d.startDate)} — ${fmt(d.endDate)}`}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -14,7 +14,7 @@ import {
   sendMessage,
   getListingBookings,
   getListingBlackouts,
-  validatePromoCode,
+  getDiscountForDate,
 } from "@/lib/api";
 import type { ListingBlackout } from "@/lib/types";
 
@@ -67,11 +67,8 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
   const [selectedAddOns, setSelectedAddOns] = useState<Set<string>>(new Set());
   const [bookingTerms, setBookingTerms] = useState(false);
 
-  // Promo code
-  const [promoInput, setPromoInput] = useState("");
-  const [promoApplied, setPromoApplied] = useState<{ code: string; type: "percent" | "fixed"; value: number } | null>(null);
-  const [promoLoading, setPromoLoading] = useState(false);
-  const [promoError, setPromoError] = useState("");
+  // Host discount for selected date
+  const [hostDiscount, setHostDiscount] = useState(0);
 
   // Message host state
   const [msgOpen, setMsgOpen] = useState(false);
@@ -103,28 +100,10 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
   const addOnsTotal = addOnsBreakdown.reduce((s, a) => s + a.total, 0);
 
   const subtotal = baseTotal + addOnsTotal;
-  const promoDiscount = promoApplied
-    ? promoApplied.type === "percent"
-      ? Math.round(subtotal * promoApplied.value / 100)
-      : Math.min(promoApplied.value, subtotal)
-    : 0;
-  const discountedSubtotal = subtotal - promoDiscount;
+  const hostDiscountAmount = hostDiscount > 0 ? Math.round(subtotal * hostDiscount / 100) : 0;
+  const discountedSubtotal = subtotal - hostDiscountAmount;
   const serviceFee = Math.round(discountedSubtotal * 0.075);
   const grandTotal = discountedSubtotal + serviceFee;
-
-  async function handleApplyPromo() {
-    if (!promoInput.trim()) return;
-    setPromoLoading(true);
-    setPromoError("");
-    const result = await validatePromoCode(promoInput.trim());
-    if (result.valid && result.discountType && result.discountValue) {
-      setPromoApplied({ code: promoInput.trim().toUpperCase(), type: result.discountType, value: result.discountValue });
-    } else {
-      setPromoError(result.error || "Промокод недействителен");
-      setPromoApplied(null);
-    }
-    setPromoLoading(false);
-  }
 
   function toggleAddOn(id: string) {
     setSelectedAddOns((prev) => {
@@ -154,6 +133,12 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
     });
     return () => { cancelled = true; };
   }, [listing.id]);
+
+  // Fetch host discount for selected date
+  useEffect(() => {
+    if (!date) { setHostDiscount(0); return; }
+    getDiscountForDate(listing.id, date).then(setHostDiscount);
+  }, [listing.id, date]);
 
   // Конец смены — могут быть переходы через полночь, но мы их запрещаем (см. валидацию)
   const endTime = calculateEndTime(startTime, hours);
@@ -254,14 +239,14 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
       description,
       totalPrice: grandTotal,
       referralCode,
-      promoCode: promoApplied?.code,
-      discountAmount: promoDiscount,
       metadata: {
         base_price: basePricePerHour,
         selected_tier: selectedTier,
         selected_add_ons: Array.from(selectedAddOns),
         add_ons_snapshot: addOnsBreakdown,
         security_deposit: listing.securityDeposit ?? 0,
+        host_discount_percent: hostDiscount,
+        host_discount_amount: hostDiscountAmount,
       },
     });
 
@@ -445,7 +430,16 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
         <div className="border-t border-gray-100 pt-4 space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-600">
-              {formatPrice(basePricePerHour)} × {hours} ч
+              {hostDiscount > 0 ? (
+                <>
+                  <span className="line-through text-gray-400">{formatPrice(basePricePerHour)}</span>
+                  {" "}
+                  <span className="text-green-600">{formatPrice(Math.round(basePricePerHour * (1 - hostDiscount / 100)))}</span>
+                  <span className="text-green-600 text-xs ml-1">−{hostDiscount}%</span>
+                </>
+              ) : (
+                formatPrice(basePricePerHour)
+              )} × {hours} ч
             </span>
             <span>{formatPrice(baseTotal)}</span>
           </div>
@@ -458,41 +452,13 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
               <span>{formatPrice(a.total)}</span>
             </div>
           ))}
-          {/* Promo code */}
-          {promoApplied ? (
+          {/* Host discount */}
+          {hostDiscount > 0 && (
             <div className="flex justify-between text-green-600">
               <span className="flex items-center gap-1">
-                Скидка ({promoApplied.code})
-                <button
-                  type="button"
-                  onClick={() => { setPromoApplied(null); setPromoInput(""); setPromoError(""); }}
-                  className="text-gray-400 hover:text-red-500 text-xs"
-                >
-                  ✕
-                </button>
+                Скидка хоста −{hostDiscount}%
               </span>
-              <span>−{formatPrice(promoDiscount)}</span>
-            </div>
-          ) : (
-            <div>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={promoInput}
-                  onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromoError(""); }}
-                  placeholder="Промокод"
-                  className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 text-xs focus:outline-none focus:ring-1 focus:ring-primary/20 focus:border-primary uppercase"
-                />
-                <button
-                  type="button"
-                  onClick={handleApplyPromo}
-                  disabled={promoLoading || !promoInput.trim()}
-                  className="px-3 py-1.5 rounded-lg bg-gray-100 text-xs font-medium text-gray-700 hover:bg-gray-200 disabled:opacity-50"
-                >
-                  {promoLoading ? "..." : "Применить"}
-                </button>
-              </div>
-              {promoError && <p className="text-[11px] text-red-500 mt-1">{promoError}</p>}
+              <span>−{formatPrice(hostDiscountAmount)}</span>
             </div>
           )}
 

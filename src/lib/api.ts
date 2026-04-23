@@ -2001,6 +2001,75 @@ export async function updateSiteSetting(key: string, value: string) {
   return { error };
 }
 
+// ---- Listing Discounts ----
+
+export interface ListingDiscount {
+  id: string;
+  listingId: string;
+  startDate: string;
+  endDate: string;
+  discountPercent: number;
+  createdAt: string;
+}
+
+export async function getListingDiscounts(listingId: string): Promise<ListingDiscount[]> {
+  const { data, error } = await supabase
+    .from("listing_discounts")
+    .select("*")
+    .eq("listing_id", listingId)
+    .order("start_date", { ascending: true });
+  if (error || !data) return [];
+  return (data as Array<Record<string, unknown>>).map((r) => ({
+    id: r.id as string,
+    listingId: r.listing_id as string,
+    startDate: r.start_date as string,
+    endDate: r.end_date as string,
+    discountPercent: r.discount_percent as number,
+    createdAt: r.created_at as string,
+  }));
+}
+
+export async function createListingDiscount(
+  listingId: string,
+  startDate: string,
+  endDate: string,
+  discountPercent: number
+) {
+  const { data, error } = await supabase
+    .from("listing_discounts")
+    .insert({
+      listing_id: listingId,
+      start_date: startDate,
+      end_date: endDate,
+      discount_percent: discountPercent,
+    })
+    .select()
+    .single();
+  return { data, error };
+}
+
+export async function deleteListingDiscount(id: string) {
+  const { error } = await supabase
+    .from("listing_discounts")
+    .delete()
+    .eq("id", id);
+  return { error };
+}
+
+export async function getDiscountForDate(listingId: string, date: string): Promise<number> {
+  const { data } = await supabase
+    .from("listing_discounts")
+    .select("discount_percent")
+    .eq("listing_id", listingId)
+    .lte("start_date", date)
+    .gte("end_date", date)
+    .order("discount_percent", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data) return 0;
+  return (data as Record<string, unknown>).discount_percent as number;
+}
+
 // ---- Claims (damage claims by hosts) ----
 
 export interface Claim {
