@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import Navbar from "@/components/navbar";
@@ -36,22 +36,21 @@ export default function BookingsPage() {
   const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
   const [paying, setPaying] = useState<string | null>(null);
   const [paymentToast, setPaymentToast] = useState<"success" | "failed" | null>(null);
-  const searchParams = useSearchParams();
 
-  // Payment result toast from PayBox redirect
+  // Payment result toast from PayBox redirect (check URL on mount)
   useEffect(() => {
-    const payment = searchParams.get("payment");
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get("payment");
     if (payment === "success") {
       setPaymentToast("success");
       setTimeout(() => setPaymentToast(null), 5000);
-      // Clean URL
       window.history.replaceState({}, "", "/bookings");
     } else if (payment === "failed") {
       setPaymentToast("failed");
       setTimeout(() => setPaymentToast(null), 5000);
       window.history.replaceState({}, "", "/bookings");
     }
-  }, [searchParams]);
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !user) router.push("/login");
