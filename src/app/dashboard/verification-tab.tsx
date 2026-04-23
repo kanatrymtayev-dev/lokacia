@@ -35,7 +35,9 @@ export default function VerificationTab({ userId, userRole }: { userId: string; 
 
   function canSubmit(): boolean {
     if (entityType === "individual") {
-      return !!(idFile && selfieFile && iin && iinResult?.valid);
+      // IIN optional (for foreigners), but if entered must be valid
+      if (iin && !iinResult?.valid) return false;
+      return !!(idFile && selfieFile);
     }
     return !!(idFile && selfieFile && companyDocFile && companyBin && binResult?.valid && companyName.trim());
   }
@@ -43,7 +45,7 @@ export default function VerificationTab({ userId, userRole }: { userId: string; 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (entityType === "individual" && (!iinResult?.valid)) {
+    if (entityType === "individual" && iin && !iinResult?.valid) {
       setError(iinResult?.error || "Введите корректный ИИН");
       return;
     }
@@ -197,7 +199,7 @@ export default function VerificationTab({ userId, userRole }: { userId: string; 
           {/* Individual: IIN */}
           {entityType === "individual" && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">ИИН</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">ИИН <span className="text-gray-400 font-normal">(необязательно для иностранцев)</span></label>
               <input
                 type="text"
                 inputMode="numeric"

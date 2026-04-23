@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import Navbar from "@/components/navbar";
@@ -35,6 +35,23 @@ export default function BookingsPage() {
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
   const [paying, setPaying] = useState<string | null>(null);
+  const [paymentToast, setPaymentToast] = useState<"success" | "failed" | null>(null);
+  const searchParams = useSearchParams();
+
+  // Payment result toast from PayBox redirect
+  useEffect(() => {
+    const payment = searchParams.get("payment");
+    if (payment === "success") {
+      setPaymentToast("success");
+      setTimeout(() => setPaymentToast(null), 5000);
+      // Clean URL
+      window.history.replaceState({}, "", "/bookings");
+    } else if (payment === "failed") {
+      setPaymentToast("failed");
+      setTimeout(() => setPaymentToast(null), 5000);
+      window.history.replaceState({}, "", "/bookings");
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!authLoading && !user) router.push("/login");
@@ -81,31 +98,22 @@ export default function BookingsPage() {
   async function handlePay(bookingId: string) {
     setPaying(bookingId);
     try {
-      // Create payment
-      const createRes = await fetch("/api/kaspi/create", {
+      const res = await fetch("/api/paybox/init", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bookingId }),
       });
-      const createData = await createRes.json();
+      const data = await res.json();
 
-      if (!createRes.ok) {
-        alert(createData.error ?? "Ошибка создания платежа");
+      if (!res.ok) {
+        alert(data.error ?? "Ошибка создания платежа");
         setPaying(null);
         return;
       }
 
-      if (createData.mock) {
-        // Mock mode: simulate payment immediately
-        await fetch("/api/kaspi/webhook", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ paymentId: createData.paymentId, status: "paid" }),
-        });
-        await loadBookings();
-      } else if (createData.paymentUrl) {
-        // Real Kaspi: redirect to payment page
-        window.location.href = createData.paymentUrl;
+      if (data.redirectUrl) {
+        // Redirect to PayBox payment page (or mock success)
+        window.location.href = data.redirectUrl;
         return;
       }
     } catch {
@@ -130,6 +138,24 @@ export default function BookingsPage() {
       <Navbar />
       <main className="flex-1 bg-gray-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Payment toast */}
+          {paymentToast === "success" && (
+            <div className="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-800 flex items-center gap-2">
+              <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clipRule="evenodd"/>
+              </svg>
+              Оплата прошла успешно!
+            </div>
+          )}
+          {paymentToast === "failed" && (
+            <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-800 flex items-center gap-2">
+              <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.28 7.22a.75.75 0 0 0-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 1 0 1.06 1.06L10 11.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L11.06 10l1.72-1.72a.75.75 0 0 0-1.06-1.06L10 8.94 8.28 7.22Z" clipRule="evenodd"/>
+              </svg>
+              Оплата не прошла. Попробуйте снова.
+            </div>
+          )}
+
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-2xl font-bold">{t("bookings.title")}</h1>
             <button

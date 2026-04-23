@@ -28,6 +28,11 @@ export default function ProfilePage() {
   const [companyBin, setCompanyBin] = useState("");
   const [companyAddress, setCompanyAddress] = useState("");
 
+  // Payout details
+  const [payoutMethod, setPayoutMethod] = useState("");
+  const [payoutDetails, setPayoutDetails] = useState("");
+  const [payoutHolderName, setPayoutHolderName] = useState("");
+
   // Phone OTP
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
@@ -62,6 +67,9 @@ export default function ProfilePage() {
       setCompanyName((p.company_name as string) ?? "");
       setCompanyBin((p.company_bin as string) ?? "");
       setCompanyAddress((p.company_address as string) ?? "");
+      setPayoutMethod((p.payout_method as string) ?? "");
+      setPayoutDetails((p.payout_details as string) ?? "");
+      setPayoutHolderName((p.payout_holder_name as string) ?? "");
       // Determine entity type from existing data
       if ((p.company_name as string)?.trim() || (p.company_bin as string)?.trim()) {
         setEntityType("company");
@@ -175,6 +183,9 @@ export default function ProfilePage() {
       bio: bio.trim() || null,
       instagram: instagram.trim() || null,
       telegram: telegram.trim() || null,
+      payout_method: payoutMethod.trim() || null,
+      payout_details: payoutDetails.trim() || null,
+      payout_holder_name: payoutHolderName.trim() || null,
       iin: entityType === "individual" ? (iin.trim() || null) : null,
       company_name: entityType === "company" ? (companyName.trim() || null) : null,
       company_bin: entityType === "company" ? (companyBin.trim() || null) : null,
@@ -370,6 +381,54 @@ export default function ProfilePage() {
                   value={telegram}
                   onChange={(e) => setTelegram(e.target.value)}
                   placeholder="https://t.me/username"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Payout details */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Реквизиты для выплат</h2>
+            <p className="text-sm text-gray-500 mb-5">
+              Укажите куда перечислять доход от бронирований. Выплаты производятся раз в неделю.
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Банк / метод</label>
+                <select
+                  value={payoutMethod}
+                  onChange={(e) => setPayoutMethod(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                >
+                  <option value="">Не указан</option>
+                  <option value="kaspi">Kaspi Gold</option>
+                  <option value="halyk">Halyk Bank</option>
+                  <option value="freedom">Freedom Bank</option>
+                  <option value="forte">Forte Bank</option>
+                  <option value="jusan">Jusan Bank</option>
+                  <option value="bank_transfer">Другой банк (IBAN)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  {payoutMethod === "bank_transfer" ? "IBAN (KZ...)" : "Номер карты или телефон"}
+                </label>
+                <input
+                  type="text"
+                  value={payoutDetails}
+                  onChange={(e) => setPayoutDetails(e.target.value)}
+                  placeholder={payoutMethod === "bank_transfer" ? "KZ00 0000 0000 0000 0000" : "+7 777 123 45 67"}
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">ФИО владельца карты/счёта</label>
+                <input
+                  type="text"
+                  value={payoutHolderName}
+                  onChange={(e) => setPayoutHolderName(e.target.value)}
+                  placeholder="Иванов Иван Иванович"
                   className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 />
               </div>

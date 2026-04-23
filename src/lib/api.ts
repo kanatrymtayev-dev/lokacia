@@ -2358,7 +2358,7 @@ export async function moderateListing(
 export async function getProfile(userId: string) {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, name, phone, phone_verified, avatar_url, role, email, company_name, company_bin, company_address, iin, created_at, id_verified, bio, instagram, telegram")
+    .select("id, name, phone, phone_verified, avatar_url, role, email, company_name, company_bin, company_address, iin, created_at, id_verified, bio, instagram, telegram, payout_method, payout_details, payout_holder_name")
     .eq("id", userId)
     .single();
   if (error || !data) return null;
@@ -2378,6 +2378,9 @@ export async function updateProfile(
     bio?: string | null;
     instagram?: string | null;
     telegram?: string | null;
+    payout_method?: string | null;
+    payout_details?: string | null;
+    payout_holder_name?: string | null;
   }
 ) {
   const { error } = await supabase
