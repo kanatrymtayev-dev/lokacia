@@ -54,10 +54,8 @@ export async function generateMetadata({
 
 export default async function ListingPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ ref?: string }>;
 }) {
   const { slug } = await params;
   const listing = await getListingBySlug(slug);
