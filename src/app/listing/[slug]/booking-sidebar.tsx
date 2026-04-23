@@ -44,8 +44,115 @@ function pickTier(tiers: PricingTier[] | undefined, guests: number): PricingTier
   return sorted.find((t) => guests <= t.max_guests) ?? null;
 }
 
+function HostOwnerPanel({ listing }: { listing: Listing }) {
+  const modStatus = listing.moderationStatus ?? "approved";
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 p-6 sticky top-24">
+      <h3 className="font-bold text-lg mb-1">Ваша локация</h3>
+      <p className="text-xs text-gray-500 mb-5">Управление листингом</p>
+
+      {/* Moderation status */}
+      {modStatus === "pending_review" && (
+        <div className="mb-4 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700 flex items-center gap-2">
+          <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clipRule="evenodd" />
+          </svg>
+          На модерации. Ожидайте одобрения.
+        </div>
+      )}
+      {modStatus === "rejected" && (
+        <div className="mb-4 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+          <div className="flex items-center gap-2 font-medium">
+            <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.28 7.22a.75.75 0 0 0-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 1 0 1.06 1.06L10 11.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L11.06 10l1.72-1.72a.75.75 0 0 0-1.06-1.06L10 8.94 8.28 7.22Z" clipRule="evenodd"/>
+            </svg>
+            Отклонён модератором
+          </div>
+          {listing.moderationNote && <p className="mt-1 ml-6">{listing.moderationNote}</p>}
+        </div>
+      )}
+
+      {/* Quick info */}
+      <div className="space-y-3 mb-5">
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-500">Цена за час</span>
+          <span className="font-semibold">{formatPrice(listing.pricePerHour)}</span>
+        </div>
+        {(listing.securityDeposit ?? 0) > 0 && (
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Залог</span>
+            <span>{formatPrice(listing.securityDeposit!)}</span>
+          </div>
+        )}
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-500">Рейтинг</span>
+          <span>{listing.rating > 0 ? `${listing.rating.toFixed(1)} (${listing.reviewCount})` : "Нет отзывов"}</span>
+        </div>
+      </div>
+
+      {/* Action buttons */}
+      <div className="space-y-2.5">
+        <Link
+          href={`/dashboard/edit/${listing.id}`}
+          className="w-full flex items-center justify-center gap-2 bg-primary text-white py-3 rounded-xl text-sm font-bold hover:bg-primary/90 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+          </svg>
+          Редактировать
+        </Link>
+        <Link
+          href="/dashboard?tab=discounts"
+          className="w-full flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-xl text-sm font-bold hover:bg-green-700 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6Z" />
+          </svg>
+          Скидки
+        </Link>
+        <div className="grid grid-cols-2 gap-2">
+          <Link
+            href="/dashboard?tab=availability"
+            className="flex items-center justify-center gap-1.5 bg-gray-100 text-gray-700 py-2.5 rounded-xl text-xs font-medium hover:bg-gray-200 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+            </svg>
+            Доступность
+          </Link>
+          <Link
+            href="/dashboard?tab=analytics"
+            className="flex items-center justify-center gap-1.5 bg-gray-100 text-gray-700 py-2.5 rounded-xl text-xs font-medium hover:bg-gray-200 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+            </svg>
+            Аналитика
+          </Link>
+        </div>
+      </div>
+
+      {/* Back to dashboard */}
+      <Link
+        href="/dashboard"
+        className="block text-center text-xs text-gray-400 hover:text-gray-600 mt-4"
+      >
+        ← Панель хоста
+      </Link>
+    </div>
+  );
+}
+
 export default function BookingSidebar({ listing, referralCode }: { listing: Listing; referralCode?: string }) {
   const { user } = useAuth();
+
+  // If the current user is the host of this listing, show owner panel
+  if (user?.id === listing.hostId) {
+    return <HostOwnerPanel listing={listing} />;
+  }
+
   const router = useRouter();
   const searchParams = useSearchParams();
 
