@@ -1140,6 +1140,8 @@ export async function createBookingRequest(input: {
   description: string;
   totalPrice: number;
   referralCode?: string;
+  promoCode?: string;
+  discountAmount?: number;
   metadata?: Record<string, unknown>;
 }) {
   // 1. Получаем/создаём conversation
@@ -1163,6 +1165,8 @@ export async function createBookingRequest(input: {
       status: "pending",
       conversation_id: convo.id,
       referral_code: input.referralCode || null,
+      promo_code: input.promoCode || null,
+      discount_amount: input.discountAmount || 0,
       commission_rate: commissionRate,
       payment_status: "unpaid",
       metadata: input.metadata ?? {},
@@ -1175,6 +1179,11 @@ export async function createBookingRequest(input: {
   }
 
   const bookingId = (booking as Record<string, unknown>).id as string;
+
+  // 2b. Increment promo code usage
+  if (input.promoCode) {
+    void incrementPromoCodeUsage(input.promoCode);
+  }
 
   // 3. Системное сообщение в чат со ссылкой на booking_id
   const summary = `Запрос на бронирование · ${input.date} ${input.startTime}–${input.endTime} · ${input.guestCount} гостей`;
@@ -1546,6 +1555,100 @@ export async function completePayout(payoutId: string) {
   return { error };
 }
 
+// ---- Admin: User Management ----
+
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  phoneVerified: boolean;
+  role: string;
+  avatarUrl: string | null;
+  idVerified: boolean;
+  suspended: boolean;
+  suspendReason: string | null;
+  createdAt: string;
+  listingCount: number;
+  bookingCount: number;
+}
+
+export async function getAllUsers(): Promise<AdminUser[]> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, name, email, phone, phone_verified, role, avatar_url, id_verified, suspended, suspend_reason, created_at")
+    .order("created_at", { ascending: false });
+
+  if (error || !data) return [];
+
+  const users = data as Array<Record<string, unknown>>;
+  const userIds = users.map((u) => u.id as string);
+
+  // Count listings per host
+  const { data: listingsData } = await supabase
+    .from("listings")
+    .select("host_id")
+    .in("host_id", userIds);
+
+  const listingCounts = new Map<string, number>();
+  for (const l of (listingsData ?? []) as Array<Record<string, unknown>>) {
+    const hid = l.host_id as string;
+    listingCounts.set(hid, (listingCounts.get(hid) ?? 0) + 1);
+  }
+
+  // Count bookings per renter
+  const { data: bookingsData } = await supabase
+    .from("bookings")
+    .select("renter_id")
+    .in("renter_id", userIds);
+
+  const bookingCounts = new Map<string, number>();
+  for (const b of (bookingsData ?? []) as Array<Record<string, unknown>>) {
+    const rid = b.renter_id as string;
+    bookingCounts.set(rid, (bookingCounts.get(rid) ?? 0) + 1);
+  }
+
+  return users.map((u) => ({
+    id: u.id as string,
+    name: (u.name as string) ?? "—",
+    email: (u.email as string | null) ?? null,
+    phone: (u.phone as string | null) ?? null,
+    phoneVerified: (u.phone_verified as boolean) ?? false,
+    role: (u.role as string) ?? "renter",
+    avatarUrl: (u.avatar_url as string | null) ?? null,
+    idVerified: (u.id_verified as boolean) ?? false,
+    suspended: (u.suspended as boolean) ?? false,
+    suspendReason: (u.suspend_reason as string | null) ?? null,
+    createdAt: u.created_at as string,
+    listingCount: listingCounts.get(u.id as string) ?? 0,
+    bookingCount: bookingCounts.get(u.id as string) ?? 0,
+  }));
+}
+
+export async function suspendUser(userId: string, reason: string) {
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      suspended: true,
+      suspended_at: new Date().toISOString(),
+      suspend_reason: reason || null,
+    })
+    .eq("id", userId);
+  return { error };
+}
+
+export async function unsuspendUser(userId: string) {
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      suspended: false,
+      suspended_at: null,
+      suspend_reason: null,
+    })
+    .eq("id", userId);
+  return { error };
+}
+
 // ---- Admin ----
 
 export async function getAdminStats() {
@@ -1863,6 +1966,207 @@ export async function updateSiteSetting(key: string, value: string) {
   const { error } = await supabase
     .from("site_settings")
     .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" });
+  return { error };
+}
+
+// ---- Promo Codes ----
+
+export interface PromoCode {
+  id: string;
+  code: string;
+  discountType: "percent" | "fixed";
+  discountValue: number;
+  maxUses: number | null;
+  usedCount: number;
+  validFrom: string | null;
+  validUntil: string | null;
+  active: boolean;
+  createdAt: string;
+}
+
+function rowToPromoCode(r: Record<string, unknown>): PromoCode {
+  return {
+    id: r.id as string,
+    code: r.code as string,
+    discountType: r.discount_type as "percent" | "fixed",
+    discountValue: r.discount_value as number,
+    maxUses: (r.max_uses as number | null) ?? null,
+    usedCount: (r.used_count as number) ?? 0,
+    validFrom: (r.valid_from as string | null) ?? null,
+    validUntil: (r.valid_until as string | null) ?? null,
+    active: (r.active as boolean) ?? true,
+    createdAt: r.created_at as string,
+  };
+}
+
+export async function validatePromoCode(code: string): Promise<{
+  valid: boolean;
+  discountType?: "percent" | "fixed";
+  discountValue?: number;
+  error?: string;
+}> {
+  const { data, error } = await supabase
+    .from("promo_codes")
+    .select("*")
+    .eq("code", code.toUpperCase().trim())
+    .maybeSingle();
+
+  if (error || !data) {
+    return { valid: false, error: "Промокод не найден" };
+  }
+
+  const row = data as Record<string, unknown>;
+
+  if (!(row.active as boolean)) {
+    return { valid: false, error: "Промокод неактивен" };
+  }
+
+  const maxUses = row.max_uses as number | null;
+  const usedCount = row.used_count as number;
+  if (maxUses !== null && usedCount >= maxUses) {
+    return { valid: false, error: "Промокод исчерпан" };
+  }
+
+  const now = new Date();
+  const validFrom = row.valid_from ? new Date(row.valid_from as string) : null;
+  const validUntil = row.valid_until ? new Date(row.valid_until as string) : null;
+
+  if (validFrom && now < validFrom) {
+    return { valid: false, error: "Промокод ещё не активен" };
+  }
+  if (validUntil && now > validUntil) {
+    return { valid: false, error: "Промокод истёк" };
+  }
+
+  return {
+    valid: true,
+    discountType: row.discount_type as "percent" | "fixed",
+    discountValue: row.discount_value as number,
+  };
+}
+
+export async function incrementPromoCodeUsage(code: string) {
+  // Increment used_count by 1
+  const { data } = await supabase
+    .from("promo_codes")
+    .select("id, used_count")
+    .eq("code", code.toUpperCase().trim())
+    .single();
+  if (!data) return;
+  const row = data as Record<string, unknown>;
+  await supabase
+    .from("promo_codes")
+    .update({ used_count: (row.used_count as number) + 1 })
+    .eq("id", row.id);
+}
+
+export async function getAdminPromoCodes(): Promise<PromoCode[]> {
+  const { data, error } = await supabase
+    .from("promo_codes")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error || !data) return [];
+  return (data as Array<Record<string, unknown>>).map(rowToPromoCode);
+}
+
+export async function createPromoCode(input: {
+  code: string;
+  discountType: "percent" | "fixed";
+  discountValue: number;
+  maxUses?: number | null;
+  validFrom?: string | null;
+  validUntil?: string | null;
+}) {
+  const { data, error } = await supabase
+    .from("promo_codes")
+    .insert({
+      code: input.code.toUpperCase().trim(),
+      discount_type: input.discountType,
+      discount_value: input.discountValue,
+      max_uses: input.maxUses ?? null,
+      valid_from: input.validFrom ?? null,
+      valid_until: input.validUntil ?? null,
+    })
+    .select()
+    .single();
+  return { data, error };
+}
+
+export async function togglePromoCode(id: string, active: boolean) {
+  const { error } = await supabase
+    .from("promo_codes")
+    .update({ active })
+    .eq("id", id);
+  return { error };
+}
+
+// ---- Admin: Listing Management ----
+
+export interface AdminListing {
+  id: string;
+  title: string;
+  slug: string;
+  image: string | null;
+  city: string;
+  pricePerHour: number;
+  status: string;
+  moderationStatus: string;
+  moderationNote: string | null;
+  hostId: string;
+  hostName: string;
+  rating: number;
+  reviewCount: number;
+  createdAt: string;
+}
+
+export async function getAdminListings(): Promise<AdminListing[]> {
+  const { data, error } = await supabase
+    .from("listings")
+    .select("id, title, slug, images, city, price_per_hour, status, moderation_status, moderation_note, host_id, rating, review_count, created_at, profiles!listings_host_id_fkey(name)")
+    .order("created_at", { ascending: false });
+  if (error || !data) return [];
+  return (data as Array<Record<string, unknown>>).map((r) => {
+    const images = r.images as string[] | null;
+    const profile = r.profiles as Record<string, unknown> | null;
+    return {
+      id: r.id as string,
+      title: r.title as string,
+      slug: r.slug as string,
+      image: images?.[0] ?? null,
+      city: r.city as string,
+      pricePerHour: r.price_per_hour as number,
+      status: r.status as string,
+      moderationStatus: (r.moderation_status as string) ?? "approved",
+      moderationNote: (r.moderation_note as string | null) ?? null,
+      hostId: r.host_id as string,
+      hostName: (profile?.name as string) ?? "—",
+      rating: r.rating as number,
+      reviewCount: r.review_count as number,
+      createdAt: r.created_at as string,
+    };
+  });
+}
+
+export async function adminUpdateListing(
+  listingId: string,
+  fields: {
+    status?: string;
+    moderationStatus?: string;
+    moderationNote?: string | null;
+  }
+) {
+  const update: Record<string, unknown> = {};
+  if (fields.status !== undefined) update.status = fields.status;
+  if (fields.moderationStatus !== undefined) {
+    update.moderation_status = fields.moderationStatus;
+    update.moderated_at = new Date().toISOString();
+  }
+  if (fields.moderationNote !== undefined) update.moderation_note = fields.moderationNote;
+
+  const { error } = await supabase
+    .from("listings")
+    .update(update)
+    .eq("id", listingId);
   return { error };
 }
 

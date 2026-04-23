@@ -68,6 +68,12 @@ async function fetchProfile(supabaseUser: SupabaseUser): Promise<User | null> {
     };
   }
 
+  // Check if user is suspended
+  if ((data as Record<string, unknown>).suspended === true) {
+    await supabase.auth.signOut();
+    return null;
+  }
+
   const profile = data as {
     id: string;
     name: string;

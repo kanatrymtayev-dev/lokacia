@@ -14,6 +14,7 @@ import {
   sendMessage,
   getListingBookings,
   getListingBlackouts,
+  validatePromoCode,
 } from "@/lib/api";
 import type { ListingBlackout } from "@/lib/types";
 
@@ -66,6 +67,12 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
   const [selectedAddOns, setSelectedAddOns] = useState<Set<string>>(new Set());
   const [bookingTerms, setBookingTerms] = useState(false);
 
+  // Promo code
+  const [promoInput, setPromoInput] = useState("");
+  const [promoApplied, setPromoApplied] = useState<{ code: string; type: "percent" | "fixed"; value: number } | null>(null);
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoError, setPromoError] = useState("");
+
   // Message host state
   const [msgOpen, setMsgOpen] = useState(false);
   const [msgText, setMsgText] = useState("");
@@ -96,8 +103,28 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
   const addOnsTotal = addOnsBreakdown.reduce((s, a) => s + a.total, 0);
 
   const subtotal = baseTotal + addOnsTotal;
-  const serviceFee = Math.round(subtotal * 0.075);
-  const grandTotal = subtotal + serviceFee;
+  const promoDiscount = promoApplied
+    ? promoApplied.type === "percent"
+      ? Math.round(subtotal * promoApplied.value / 100)
+      : Math.min(promoApplied.value, subtotal)
+    : 0;
+  const discountedSubtotal = subtotal - promoDiscount;
+  const serviceFee = Math.round(discountedSubtotal * 0.075);
+  const grandTotal = discountedSubtotal + serviceFee;
+
+  async function handleApplyPromo() {
+    if (!promoInput.trim()) return;
+    setPromoLoading(true);
+    setPromoError("");
+    const result = await validatePromoCode(promoInput.trim());
+    if (result.valid && result.discountType && result.discountValue) {
+      setPromoApplied({ code: promoInput.trim().toUpperCase(), type: result.discountType, value: result.discountValue });
+    } else {
+      setPromoError(result.error || "Промокод недействителен");
+      setPromoApplied(null);
+    }
+    setPromoLoading(false);
+  }
 
   function toggleAddOn(id: string) {
     setSelectedAddOns((prev) => {
@@ -227,6 +254,8 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
       description,
       totalPrice: grandTotal,
       referralCode,
+      promoCode: promoApplied?.code,
+      discountAmount: promoDiscount,
       metadata: {
         base_price: basePricePerHour,
         selected_tier: selectedTier,
@@ -428,6 +457,44 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
               <span>{formatPrice(a.total)}</span>
             </div>
           ))}
+          {/* Promo code */}
+          {promoApplied ? (
+            <div className="flex justify-between text-green-600">
+              <span className="flex items-center gap-1">
+                Скидка ({promoApplied.code})
+                <button
+                  type="button"
+                  onClick={() => { setPromoApplied(null); setPromoInput(""); setPromoError(""); }}
+                  className="text-gray-400 hover:text-red-500 text-xs"
+                >
+                  ✕
+                </button>
+              </span>
+              <span>−{formatPrice(promoDiscount)}</span>
+            </div>
+          ) : (
+            <div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={promoInput}
+                  onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromoError(""); }}
+                  placeholder="Промокод"
+                  className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 text-xs focus:outline-none focus:ring-1 focus:ring-primary/20 focus:border-primary uppercase"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyPromo}
+                  disabled={promoLoading || !promoInput.trim()}
+                  className="px-3 py-1.5 rounded-lg bg-gray-100 text-xs font-medium text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+                >
+                  {promoLoading ? "..." : "Применить"}
+                </button>
+              </div>
+              {promoError && <p className="text-[11px] text-red-500 mt-1">{promoError}</p>}
+            </div>
+          )}
+
           <div className="flex justify-between">
             <span className="text-gray-600">Сервисный сбор</span>
             <span>{formatPrice(serviceFee)}</span>
