@@ -153,6 +153,94 @@ export async function getListingBySlug(slug: string): Promise<Listing | null> {
   });
 }
 
+export async function getListingById(id: string): Promise<Listing | null> {
+  const { data, error } = await supabase
+    .from("listings")
+    .select("*, profiles!listings_host_id_fkey(name, phone, avatar_url, id_verified, phone_verified, created_at)")
+    .eq("id", id)
+    .single();
+
+  if (error || !data) return null;
+
+  const profile = (data as Record<string, unknown>).profiles as Record<string, unknown> | null;
+  return rowToListing({
+    ...(data as Record<string, unknown>),
+    host_name: profile?.name ?? "Хост",
+    host_avatar: profile?.avatar_url ?? "",
+    host_id_verified: profile?.id_verified ?? false,
+    host_phone_verified: profile?.phone_verified ?? false,
+    host_created_at: profile?.created_at ?? null,
+    host_phone: profile?.phone ?? "",
+  });
+}
+
+export async function updateListing(
+  listingId: string,
+  hostId: string,
+  fields: {
+    title?: string;
+    description?: string;
+    spaceType?: string;
+    activityTypes?: string[];
+    city?: string;
+    district?: string;
+    address?: string;
+    area?: number;
+    capacity?: number;
+    ceilingHeight?: number;
+    pricePerHour?: number;
+    pricePerDay?: number | null;
+    securityDeposit?: number;
+    minHours?: number;
+    styles?: string[];
+    amenities?: string[];
+    rules?: string[];
+    allows?: {
+      alcohol: boolean;
+      loudMusic: boolean;
+      pets: boolean;
+      smoking: boolean;
+      food: boolean;
+    };
+    images?: string[];
+  }
+) {
+  const update: Record<string, unknown> = {};
+  if (fields.title !== undefined) update.title = fields.title;
+  if (fields.description !== undefined) update.description = fields.description;
+  if (fields.spaceType !== undefined) update.space_type = fields.spaceType;
+  if (fields.activityTypes !== undefined) update.activity_types = fields.activityTypes;
+  if (fields.city !== undefined) update.city = fields.city;
+  if (fields.district !== undefined) update.district = fields.district;
+  if (fields.address !== undefined) update.address = fields.address;
+  if (fields.area !== undefined) update.area = fields.area;
+  if (fields.capacity !== undefined) update.capacity = fields.capacity;
+  if (fields.ceilingHeight !== undefined) update.ceiling_height = fields.ceilingHeight;
+  if (fields.pricePerHour !== undefined) update.price_per_hour = fields.pricePerHour;
+  if (fields.pricePerDay !== undefined) update.price_per_day = fields.pricePerDay;
+  if (fields.securityDeposit !== undefined) update.security_deposit = fields.securityDeposit;
+  if (fields.minHours !== undefined) update.min_hours = fields.minHours;
+  if (fields.styles !== undefined) update.styles = fields.styles;
+  if (fields.amenities !== undefined) update.amenities = fields.amenities;
+  if (fields.rules !== undefined) update.rules = fields.rules;
+  if (fields.allows !== undefined) {
+    update.allows_alcohol = fields.allows.alcohol;
+    update.allows_loud_music = fields.allows.loudMusic;
+    update.allows_pets = fields.allows.pets;
+    update.allows_smoking = fields.allows.smoking;
+    update.allows_food = fields.allows.food;
+  }
+  if (fields.images !== undefined) update.images = fields.images;
+
+  const { error } = await supabase
+    .from("listings")
+    .update(update)
+    .eq("id", listingId)
+    .eq("host_id", hostId); // security: only owner can update
+
+  return { error };
+}
+
 export async function getReviewsByListingId(listingId: string): Promise<Review[]> {
   const { data, error } = await supabase
     .from("reviews")
