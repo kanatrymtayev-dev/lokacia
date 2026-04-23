@@ -16,7 +16,7 @@ import { CITY_LABELS, SPACE_TYPE_LABELS, ACTIVITY_TYPE_LABELS } from "@/lib/type
 import VerifiedBadge, { TrustSection } from "@/components/verified-badge";
 import { formatPrice, formatRating } from "@/lib/utils";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export async function generateStaticParams() {
   const listings = await getListings();
