@@ -1235,7 +1235,7 @@ export async function createBookingRequest(input: {
   const convo = await getOrCreateConversation(input.listingId, input.renterId, input.hostId);
   if (!convo) return { data: null, error: { message: "Не удалось создать диалог" } };
 
-  // 2. Determine commission rate: 0% for hosts registered < 90 days, otherwise 15%
+  // 2. Determine commission rate: 0% for hosts registered < 30 days, otherwise 15%
   let commissionRate = 0.15;
   const { data: hostProfile } = await supabase
     .from("profiles")
@@ -1245,7 +1245,7 @@ export async function createBookingRequest(input: {
   if (hostProfile) {
     const hostCreated = new Date((hostProfile as Record<string, unknown>).created_at as string);
     const daysSinceRegistration = (Date.now() - hostCreated.getTime()) / (1000 * 60 * 60 * 24);
-    if (daysSinceRegistration < 90) {
+    if (daysSinceRegistration < 30) {
       commissionRate = 0;
     }
   }
