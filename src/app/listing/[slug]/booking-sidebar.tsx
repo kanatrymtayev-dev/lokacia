@@ -513,6 +513,9 @@ export default function BookingSidebar({ listing, referralCode }: { listing: Lis
               <span className="text-gray-600">{formatPrice(listing.securityDeposit!)}</span>
             </div>
           )}
+          <a href="/protection" target="_blank" className="block text-[10px] text-primary hover:underline mt-1">
+            Подробнее о программе защиты
+          </a>
         </div>
 
         {/* Заблокированные хостом даты в ближайшие 60 дней */}
