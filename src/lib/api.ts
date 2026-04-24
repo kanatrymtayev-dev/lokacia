@@ -1231,6 +1231,20 @@ export async function createBookingRequest(input: {
   totalPrice: number;
   metadata?: Record<string, unknown>;
 }) {
+  // 0. Validate date is not in the past
+  const today = new Date().toISOString().split("T")[0];
+  if (input.date < today) {
+    return { data: null, error: { message: "Нельзя забронировать на прошедшую дату" } };
+  }
+  if (input.date === today) {
+    const now = new Date();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const [h, m] = input.startTime.split(":").map(Number);
+    if (h * 60 + m <= nowMin) {
+      return { data: null, error: { message: "Время начала уже прошло" } };
+    }
+  }
+
   // 1. Получаем/создаём conversation
   const convo = await getOrCreateConversation(input.listingId, input.renterId, input.hostId);
   if (!convo) return { data: null, error: { message: "Не удалось создать диалог" } };

@@ -265,6 +265,11 @@ export default function BookingSidebar({ listing }: { listing: Listing }) {
       return `Для ${guests} гостей нет подходящего тарифа. Свяжитесь с хостом.`;
     }
     if (!date) return null; // дата ещё не выбрана — не показываем ошибку
+    // Прошедшая дата
+    const today = new Date().toISOString().split("T")[0];
+    if (date < today) {
+      return "Нельзя забронировать на прошедшую дату.";
+    }
     if (hours < listing.minHours) {
       return `Минимальное время бронирования — ${listing.minHours} ч.`;
     }
@@ -275,7 +280,6 @@ export default function BookingSidebar({ listing }: { listing: Listing }) {
       return "Бронирование не может выходить за пределы суток. Сократите длительность.";
     }
     // Сегодня + время уже прошло
-    const today = new Date().toISOString().split("T")[0];
     if (date === today) {
       const now = new Date();
       const nowMin = now.getHours() * 60 + now.getMinutes();
