@@ -58,5 +58,10 @@ BEGIN
   SET deactivated_at = NULL,
       deactivation_reason = NULL
   WHERE id = target_user_id;
+
+  -- Reactivate listings that were deactivated
+  UPDATE listings
+  SET status = 'active'
+  WHERE host_id = target_user_id AND status = 'inactive';
 END;
 $$;
