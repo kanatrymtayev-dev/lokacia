@@ -317,56 +317,77 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile menu */}
+      {/* Mobile menu — slide-in overlay */}
       {mobileOpen && (
-        <div className="lg:hidden border-t border-gray-100 bg-white/95 backdrop-blur-md">
-          <div className="max-w-7xl mx-auto px-4 py-4 space-y-1">
-            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 py-2">
-              {t("nav.browse")}
-            </div>
-            {browseCategoryTypes.map((type) => (
-              <Link
-                key={type}
-                href={`/catalog?type=${type}`}
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-40 bg-black/30 lg:hidden animate-[fadeIn_200ms_ease-out]"
+            onClick={() => setMobileOpen(false)}
+          />
+          {/* Panel */}
+          <div className="fixed top-0 right-0 bottom-0 z-50 w-72 bg-white shadow-xl lg:hidden overflow-y-auto animate-[slideInRight_250ms_ease-out]">
+            {/* Close button */}
+            <div className="flex items-center justify-between px-5 h-16 border-b border-gray-100">
+              <span className="text-sm font-bold text-gray-900">Меню</span>
+              <button
                 onClick={() => setMobileOpen(false)}
-                className="block px-3 py-2 text-sm text-gray-700 hover:bg-primary/5 hover:text-primary rounded-lg transition-colors"
+                className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-500"
               >
-                {t(`cat.${type}`)}
-              </Link>
-            ))}
-            <Link
-              href="/catalog"
-              onClick={() => setMobileOpen(false)}
-              className="block px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/5 rounded-lg transition-colors"
-            >
-              Все локации
-            </Link>
-            <div className="border-t border-gray-100 my-2" />
-            <Link
-              href={listSpaceHref}
-              onClick={() => setMobileOpen(false)}
-              className="block px-3 py-2 text-sm text-gray-700 hover:bg-primary/5 hover:text-primary rounded-lg transition-colors"
-            >
-              {t("nav.list")}
-            </Link>
-            <div className="border-t border-gray-100 my-2" />
-            <div className="flex gap-2 px-3 py-2">
-              {languages.map((l) => (
-                <button
-                  key={l.code}
-                  onClick={() => changeLang(l.code)}
-                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                    lang === l.code
-                      ? "bg-primary text-white font-semibold"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  }`}
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="px-4 py-4 space-y-1">
+              <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 py-2">
+                {t("nav.browse")}
+              </div>
+              {browseCategoryTypes.map((type) => (
+                <Link
+                  key={type}
+                  href={`/catalog?type=${type}`}
+                  onClick={() => setMobileOpen(false)}
+                  className="block px-3 py-2.5 text-sm text-gray-700 hover:bg-primary/5 hover:text-primary rounded-lg transition-colors"
                 >
-                  {l.label}
-                </button>
+                  {t(`cat.${type}`)}
+                </Link>
               ))}
+              <Link
+                href="/catalog"
+                onClick={() => setMobileOpen(false)}
+                className="block px-3 py-2.5 text-sm font-semibold text-primary hover:bg-primary/5 rounded-lg transition-colors"
+              >
+                Все локации
+              </Link>
+              <div className="border-t border-gray-100 my-3" />
+              <Link
+                href={listSpaceHref}
+                onClick={() => setMobileOpen(false)}
+                className="block px-3 py-2.5 text-sm text-gray-700 hover:bg-primary/5 hover:text-primary rounded-lg transition-colors"
+              >
+                {t("nav.list")}
+              </Link>
+              <div className="border-t border-gray-100 my-3" />
+              <div className="flex gap-2 px-3 py-2">
+                {languages.map((l) => (
+                  <button
+                    key={l.code}
+                    onClick={() => changeLang(l.code)}
+                    className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                      lang === l.code
+                        ? "bg-primary text-white font-semibold"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    {l.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        </>
       )}
     </nav>
   );

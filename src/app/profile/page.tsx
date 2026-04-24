@@ -209,8 +209,30 @@ export default function ProfilePage() {
     return (
       <div className="flex flex-col min-h-screen">
         <Navbar />
-        <main className="flex-1 flex items-center justify-center">
-          <div className="animate-pulse text-gray-400">Загрузка...</div>
+        <main className="flex-1 bg-gray-50">
+          <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10 space-y-6">
+            <div className="skeleton h-8 w-40" />
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+              <div className="flex items-center gap-5">
+                <div className="skeleton w-20 h-20 rounded-full" />
+                <div className="space-y-2">
+                  <div className="skeleton h-8 w-32 rounded-lg" />
+                  <div className="skeleton h-3 w-24" />
+                </div>
+              </div>
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="space-y-2">
+                  <div className="skeleton h-4 w-20" />
+                  <div className="skeleton h-10 w-full" />
+                </div>
+              ))}
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
+              <div className="skeleton h-5 w-32" />
+              <div className="skeleton h-24 w-full" />
+              <div className="skeleton h-10 w-full" />
+            </div>
+          </div>
         </main>
       </div>
     );

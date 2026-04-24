@@ -125,8 +125,22 @@ export default function BookingsPage() {
     return (
       <div className="flex flex-col min-h-screen">
         <Navbar />
-        <main className="flex-1 flex items-center justify-center">
-          <div className="animate-pulse text-gray-400">Загрузка...</div>
+        <main className="flex-1 bg-gray-50">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-4">
+            <div className="skeleton h-8 w-48" />
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-white rounded-2xl border border-gray-200 p-6 space-y-3">
+                <div className="flex gap-4">
+                  <div className="skeleton w-20 h-20 rounded-xl" />
+                  <div className="flex-1 space-y-2">
+                    <div className="skeleton h-5 w-3/4" />
+                    <div className="skeleton h-4 w-1/2" />
+                    <div className="skeleton h-4 w-1/3" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </main>
       </div>
     );

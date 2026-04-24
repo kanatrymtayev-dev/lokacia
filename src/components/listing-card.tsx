@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { Listing } from "@/lib/types";
@@ -23,11 +26,26 @@ export default function ListingCard({
   inCompare?: boolean;
   onToggleCompare?: () => void;
 }) {
+  const images = (listing.images ?? []).filter(
+    (img): img is string => typeof img === "string" && img.trim() !== ""
+  );
+  const hasMultiple = images.length > 1;
+  const [activeIdx, setActiveIdx] = useState(0);
+
   function handleAction(e: React.MouseEvent, fn?: () => void) {
     e.preventDefault();
     e.stopPropagation();
     fn?.();
   }
+
+  const goTo = useCallback(
+    (e: React.MouseEvent, idx: number) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setActiveIdx(idx);
+    },
+    []
+  );
 
   return (
     <Link
@@ -38,16 +56,64 @@ export default function ListingCard({
         highlighted ? "border-primary shadow-lg shadow-primary/10" : "border-gray-200 hover:border-primary/20"
       }`}
     >
-      {/* Image */}
+      {/* Image gallery */}
       <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
-        {listing.images && listing.images.length > 0 && typeof listing.images[0] === 'string' && listing.images[0].trim() !== '' ? (
-          <Image
-            src={listing.images[0]}
-            alt={listing.title}
-            fill
-            className="object-cover group-hover:scale-105 transition-transform duration-500"
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          />
+        {images.length > 0 ? (
+          <>
+            <Image
+              src={images[activeIdx]}
+              alt={listing.title}
+              fill
+              className="object-cover transition-opacity duration-300"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            />
+
+            {/* Prev / Next arrows — visible on hover */}
+            {hasMultiple && (
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => goTo(e, (activeIdx - 1 + images.length) % images.length)}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white shadow-sm"
+                  aria-label="Назад"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => goTo(e, (activeIdx + 1) % images.length)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white shadow-sm"
+                  aria-label="Вперёд"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                  </svg>
+                </button>
+
+                {/* Dots */}
+                <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {images.slice(0, 5).map((_, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={(e) => goTo(e, i)}
+                      className={`w-1.5 h-1.5 rounded-full transition-all ${
+                        i === activeIdx ? "bg-white w-3" : "bg-white/60"
+                      }`}
+                      aria-label={`Фото ${i + 1}`}
+                    />
+                  ))}
+                  {images.length > 5 && (
+                    <span className="text-[9px] text-white/80 font-medium ml-0.5">
+                      +{images.length - 5}
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
+          </>
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
             Нет фото
