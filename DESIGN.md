@@ -301,14 +301,21 @@ Success variant: `bg-green-50 text-green-700`
 
 ## Iconography
 
-Inline SVG из Heroicons (outline, 24x24). Стандартные размеры:
+**Библиотека:** [Lucide React](https://lucide.dev) (`lucide-react`), strokeWidth 1.5–2.
 
-| Context        | Class          |
-|----------------|----------------|
-| В тексте       | `w-4 h-4`     |
-| В кнопке       | `w-5 h-5`     |
-| Декоративная   | `w-7 h-7`     |
-| Большая        | `w-14 h-14`   |
+Новые компоненты и правки — **только Lucide**. Существующие inline SVG (Heroicons) мигрируются постепенно.
+
+```tsx
+import { Search, X, Check, Loader2 } from "lucide-react";
+<Search className="w-5 h-5" strokeWidth={1.5} />
+```
+
+| Context        | Class          | strokeWidth |
+|----------------|----------------|-------------|
+| В тексте       | `w-4 h-4`     | 2           |
+| В кнопке       | `w-5 h-5`     | 2           |
+| Декоративная   | `w-7 h-7`     | 1.5         |
+| Большая        | `w-12 h-12`   | 1.5         |
 
 ---
 

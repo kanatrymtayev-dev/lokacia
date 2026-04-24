@@ -181,9 +181,15 @@ export default async function Home() {
           priority
           quality={85}
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-violet-950/90 via-violet-900/80 to-purple-800/70" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(139,92,246,0.3),transparent_60%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(245,158,11,0.15),transparent_60%)]" />
+        {/* Primary gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/95 via-primary to-primary-light/90" />
+        {/* Subtle radial accents */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(139,92,246,0.35),transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(245,158,11,0.12),transparent_50%)]" />
+        {/* Decorative circles */}
+        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-white/[0.04]" />
+        <div className="absolute -bottom-32 -left-16 w-80 h-80 rounded-full bg-white/[0.03]" />
+        <div className="absolute top-1/3 right-1/4 w-48 h-48 rounded-full bg-accent/[0.06]" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 lg:py-36">
           <div className="text-center max-w-3xl mx-auto">
             <HeroText />

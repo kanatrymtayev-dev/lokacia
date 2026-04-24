@@ -12,6 +12,7 @@ import { getRenterBookings, cancelBooking } from "@/lib/api";
 import { ACTIVITY_TYPE_LABELS } from "@/lib/types";
 import type { BookingRequest } from "@/lib/types";
 import { formatPrice } from "@/lib/utils";
+import EmptyState from "@/components/ui/empty-state";
 
 type StatusFilter = "all" | BookingRequest["status"];
 
@@ -209,17 +210,12 @@ export default function BookingsPage() {
           </div>
 
           {filtered.length === 0 ? (
-            <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-              <p className="text-gray-500 mb-4">
-                {tab === "all" ? t("bookings.noBookings") : t("bookings.noInCategory")}
-              </p>
-              <Link
-                href="/catalog"
-                className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-primary/90 transition-colors"
-              >
-                {t("bookings.findLocation")}
-              </Link>
-            </div>
+            <EmptyState
+              icon="bookings"
+              title={tab === "all" ? t("bookings.noBookings") : t("bookings.noInCategory")}
+              description="Найдите идеальное пространство для вашего мероприятия"
+              action={{ label: t("bookings.findLocation"), href: "/catalog" }}
+            />
           ) : (
             <div className="space-y-4">
               {filtered.map((booking) => {

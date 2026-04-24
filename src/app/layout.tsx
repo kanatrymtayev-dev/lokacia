@@ -20,6 +20,15 @@ export const metadata: Metadata = {
     "ивент площадка Астана",
     "sound stage Казахстан",
   ],
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "32x32" },
+    ],
+    apple: [
+      { url: "/apple-icon.svg", type: "image/svg+xml", sizes: "192x192" },
+    ],
+  },
   openGraph: {
     title: "LOKACIA.KZ — Маркетплейс аренды локаций",
     description:

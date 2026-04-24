@@ -13,6 +13,7 @@ import {
 import ListingCard from "@/components/listing-card";
 import { useAuth } from "@/lib/auth-context";
 import { addFavorite, removeFavorite, getFavoriteIds } from "@/lib/api";
+import EmptyState from "@/components/ui/empty-state";
 
 // Карта — только на клиенте, без SSR (внутри идёт обращение к window)
 const Map2GIS = dynamic(() => import("@/components/map"), {
@@ -372,16 +373,12 @@ function CatalogInner({ listings }: { listings: Listing[] }) {
               ))}
             </div>
           ) : (
-            <div className="text-center py-20">
-              <svg className="w-16 h-16 text-gray-300 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-              </svg>
-              <h3 className="mt-4 text-lg font-semibold text-gray-600">Локации не найдены</h3>
-              <p className="mt-2 text-gray-500">Попробуйте изменить фильтры или поисковый запрос</p>
-              <button onClick={clearFilters} className="mt-4 text-primary font-medium hover:underline">
-                Сбросить все фильтры
-              </button>
-            </div>
+            <EmptyState
+              icon="search"
+              title="Локации не найдены"
+              description="Попробуйте изменить фильтры или поисковый запрос"
+              action={{ label: "Сбросить фильтры", onClick: clearFilters }}
+            />
           )}
         </div>
       </section>
