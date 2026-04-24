@@ -2629,55 +2629,10 @@ export async function moderateListing(
   status: "approved" | "rejected",
   note?: string
 ) {
-  const { error } = await supabase
-    .from("listings")
-    .update({
-      moderation_status: status,
-      moderation_note: note ?? null,
-      moderated_at: new Date().toISOString(),
-    })
-    .eq("id", listingId);
-
-  // Email хосту (fire-and-forget)
-  if (!error) {
-    void (async () => {
-      try {
-        const { data: listing } = await supabase
-          .from("listings")
-          .select("title, slug, host_id")
-          .eq("id", listingId)
-          .single();
-        if (!listing) return;
-        const row = listing as Record<string, unknown>;
-        const hostId = row.host_id as string;
-        const title = row.title as string;
-        const slug = row.slug as string;
-
-        const host = await getUserEmailName(hostId);
-        if (!host?.email) return;
-
-        if (status === "approved") {
-          await sendListingApprovedEmail({
-            to: host.email,
-            hostName: host.name,
-            listingTitle: title,
-            listingUrl: `${SITE_URL}/listing/${slug}`,
-          });
-        } else {
-          await sendListingRejectedEmail({
-            to: host.email,
-            hostName: host.name,
-            listingTitle: title,
-            reason: note,
-          });
-        }
-      } catch (e) {
-        console.error("[email] moderation notification failed:", e);
-      }
-    })();
-  }
-
-  return { error };
+  return adminUpdateListing(listingId, {
+    moderationStatus: status,
+    moderationNote: note ?? null,
+  });
 }
 
 // ---- Profile ----
