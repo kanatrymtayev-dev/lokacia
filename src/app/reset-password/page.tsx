@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/navbar";
 import { supabase } from "@/lib/supabase";
+import { validatePassword } from "@/lib/validate-password";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -13,12 +14,8 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
-  const [debugInfo, setDebugInfo] = useState("");
 
   useEffect(() => {
-    // Log hash for debugging
-    setDebugInfo(window.location.hash ? "Hash found" : "No hash in URL");
-
     let resolved = false;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -27,7 +24,6 @@ export default function ResetPasswordPage() {
         if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
           resolved = true;
           setSessionReady(true);
-          setDebugInfo(`Event: ${event}, session: ${!!session}`);
         }
       }
     );
@@ -39,7 +35,6 @@ export default function ResetPasswordPage() {
       if (session) {
         resolved = true;
         setSessionReady(true);
-        setDebugInfo(`Fallback session found`);
       } else {
         // Try extracting from hash
         const hash = window.location.hash.substring(1);
@@ -51,13 +46,10 @@ export default function ResetPasswordPage() {
             await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
             resolved = true;
             setSessionReady(true);
-            setDebugInfo("Session set from hash");
           } catch {
-            setDebugInfo("Failed to set session from hash");
             setSessionReady(true); // show form anyway
           }
         } else {
-          setDebugInfo(`No session, no hash tokens. Hash: "${window.location.hash}"`);
           setSessionReady(true); // show form anyway with error
         }
       }
@@ -69,12 +61,14 @@ export default function ResetPasswordPage() {
     };
   }, []);
 
+  const passwordErrors = validatePassword(password);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
 
-    if (password.length < 6) {
-      setError("Пароль должен быть не менее 6 символов");
+    if (passwordErrors.length > 0) {
+      setError(passwordErrors.join(". "));
       return;
     }
     if (password !== confirm) {
@@ -142,9 +136,6 @@ export default function ResetPasswordPage() {
                 </div>
               )}
 
-              {/* Debug info - remove after fixing */}
-              <div className="text-xs text-gray-400">{debugInfo}</div>
-
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                   Новый пароль
@@ -153,12 +144,35 @@ export default function ResetPasswordPage() {
                   type="password"
                   id="password"
                   required
-                  minLength={6}
+                  minLength={8}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Минимум 6 символов"
+                  placeholder="Минимум 8 символов"
                   className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-gray-900"
                 />
+                {password.length > 0 && (
+                  <ul className="mt-2 space-y-1 text-xs">
+                    {([
+                      { test: password.length >= 8, label: "Минимум 8 символов" },
+                      { test: /[A-ZА-ЯЁ]/.test(password), label: "Заглавная буква" },
+                      { test: /\d/.test(password), label: "Цифра" },
+                      { test: /[!@#$%^&*()_+\-=]/.test(password), label: "Спецсимвол (!@#$%^&*)" },
+                    ] as const).map(({ test, label }) => (
+                      <li key={label} className={`flex items-center gap-1.5 ${test ? "text-green-600" : "text-gray-400"}`}>
+                        {test ? (
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                          </svg>
+                        ) : (
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <circle cx="12" cy="12" r="9" />
+                          </svg>
+                        )}
+                        {label}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               <div>
@@ -169,7 +183,7 @@ export default function ResetPasswordPage() {
                   type="password"
                   id="confirm"
                   required
-                  minLength={6}
+                  minLength={8}
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
                   placeholder="Повторите пароль"

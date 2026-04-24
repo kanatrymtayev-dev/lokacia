@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
+import { validatePassword } from "@/lib/validate-password";
 import Navbar from "@/components/navbar";
 
 export default function RegisterPage() {
@@ -17,9 +18,17 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [emailSent, setEmailSent] = useState(false);
 
+  const passwordErrors = validatePassword(password);
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
+
+    if (passwordErrors.length > 0) {
+      setError(passwordErrors.join(". "));
+      return;
+    }
+
     setLoading(true);
     const result = await register({ name, email, phone, password, role });
     setLoading(false);
@@ -155,12 +164,35 @@ export default function RegisterPage() {
                 type="password"
                 id="reg-password"
                 required
-                minLength={6}
+                minLength={8}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Минимум 6 символов"
+                placeholder="Минимум 8 символов"
                 className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-gray-900"
               />
+              {password.length > 0 && (
+                <ul className="mt-2 space-y-1 text-xs">
+                  {([
+                    { test: password.length >= 8, label: "Минимум 8 символов" },
+                    { test: /[A-ZА-ЯЁ]/.test(password), label: "Заглавная буква" },
+                    { test: /\d/.test(password), label: "Цифра" },
+                    { test: /[!@#$%^&*()_+\-=]/.test(password), label: "Спецсимвол (!@#$%^&*)" },
+                  ] as const).map(({ test, label }) => (
+                    <li key={label} className={`flex items-center gap-1.5 ${test ? "text-green-600" : "text-gray-400"}`}>
+                      {test ? (
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
+                      ) : (
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <circle cx="12" cy="12" r="9" />
+                        </svg>
+                      )}
+                      {label}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <label className="flex items-start gap-3 cursor-pointer">
