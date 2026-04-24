@@ -1661,6 +1661,7 @@ export interface AdminUser {
   idVerified: boolean;
   suspended: boolean;
   suspendReason: string | null;
+  deactivatedAt: string | null;
   createdAt: string;
   listingCount: number;
   bookingCount: number;
@@ -1669,7 +1670,7 @@ export interface AdminUser {
 export async function getAllUsers(): Promise<AdminUser[]> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, name, email, phone, phone_verified, role, avatar_url, id_verified, suspended, suspend_reason, created_at")
+    .select("id, name, email, phone, phone_verified, role, avatar_url, id_verified, suspended, suspend_reason, deactivated_at, created_at")
     .order("created_at", { ascending: false });
 
   if (error || !data) return [];
@@ -1712,6 +1713,7 @@ export async function getAllUsers(): Promise<AdminUser[]> {
     idVerified: (u.id_verified as boolean) ?? false,
     suspended: (u.suspended as boolean) ?? false,
     suspendReason: (u.suspend_reason as string | null) ?? null,
+    deactivatedAt: (u.deactivated_at as string | null) ?? null,
     createdAt: u.created_at as string,
     listingCount: listingCounts.get(u.id as string) ?? 0,
     bookingCount: bookingCounts.get(u.id as string) ?? 0,
@@ -1739,6 +1741,13 @@ export async function unsuspendUser(userId: string) {
       suspend_reason: null,
     })
     .eq("id", userId);
+  return { error };
+}
+
+export async function reactivateUser(userId: string) {
+  const { error } = await supabase.rpc("reactivate_account", {
+    target_user_id: userId,
+  });
   return { error };
 }
 

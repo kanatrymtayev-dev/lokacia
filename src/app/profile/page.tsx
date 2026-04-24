@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 import { getProfile, updateProfile } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
+import { deactivateAccount } from "@/lib/deactivate-account";
 import VerificationTab from "@/app/dashboard/verification-tab";
 
 export default function ProfilePage() {
@@ -46,6 +47,10 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false);
+  const [deactivateReason, setDeactivateReason] = useState("");
+  const [deactivateConfirmed, setDeactivateConfirmed] = useState(false);
+  const [deactivating, setDeactivating] = useState(false);
   const { t } = useT();
 
   useEffect(() => {
@@ -530,8 +535,95 @@ export default function ProfilePage() {
           >
             {saving ? t("profile.saving") : t("profile.save")}
           </button>
+
+          {/* Deactivate account */}
+          <div className="bg-white rounded-2xl border border-red-200 p-6 mt-10">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                </svg>
+              </div>
+              <h2 className="text-lg font-semibold text-gray-900">Удаление аккаунта</h2>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              При деактивации ваш профиль и листинги будут скрыты. Активные бронирования будут отменены.
+              Для полного удаления данных напишите на{" "}
+              <a href="mailto:hello@lokacia.kz" className="text-primary hover:underline">hello@lokacia.kz</a>
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowDeactivateModal(true)}
+              className="px-5 py-2.5 rounded-lg border-2 border-red-300 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors"
+            >
+              Деактивировать аккаунт
+            </button>
+          </div>
         </div>
       </main>
+
+      {/* Deactivate modal */}
+      {showDeactivateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-5">
+            <h3 className="text-lg font-bold text-gray-900">Вы уверены?</h3>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Укажите причину (необязательно)
+              </label>
+              <textarea
+                value={deactivateReason}
+                onChange={(e) => setDeactivateReason(e.target.value)}
+                rows={3}
+                placeholder="Почему вы хотите деактивировать аккаунт?"
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-400 resize-none"
+              />
+            </div>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={deactivateConfirmed}
+                onChange={(e) => setDeactivateConfirmed(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-200"
+              />
+              <span className="text-sm text-gray-600">
+                Я понимаю что мои листинги будут скрыты и активные бронирования отменены
+              </span>
+            </label>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeactivateModal(false);
+                  setDeactivateReason("");
+                  setDeactivateConfirmed(false);
+                }}
+                className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                disabled={!deactivateConfirmed || deactivating}
+                onClick={async () => {
+                  setDeactivating(true);
+                  const result = await deactivateAccount(deactivateReason.trim());
+                  setDeactivating(false);
+                  if (result.ok) {
+                    router.push("/?deactivated=1");
+                  } else {
+                    setShowDeactivateModal(false);
+                    showToast("error", result.error || "Ошибка деактивации");
+                  }
+                }}
+                className="flex-1 py-2.5 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {deactivating ? "Деактивируем..." : "Деактивировать"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast */}
       {toast && (

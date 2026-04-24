@@ -22,6 +22,7 @@ import {
   getAllUsers,
   suspendUser,
   unsuspendUser,
+  reactivateUser,
   getAdminListings,
   adminUpdateListing,
   getAdminPromoCodes,
@@ -1888,7 +1889,7 @@ function UsersTab() {
                 </tr>
               ) : (
                 filtered.map((u) => (
-                  <tr key={u.id} className={u.suspended ? "bg-red-50/50" : "hover:bg-gray-50"}>
+                  <tr key={u.id} className={u.suspended || u.deactivatedAt ? "bg-red-50/50" : "hover:bg-gray-50"}>
                     {/* User */}
                     <td className="px-4 py-3">
                       <Link
@@ -1907,6 +1908,11 @@ function UsersTab() {
                           <div className="font-medium">{u.name}</div>
                           {u.suspended && (
                             <span className="text-[10px] text-red-600 font-medium">Заблокирован</span>
+                          )}
+                          {u.deactivatedAt && (
+                            <span className="text-[10px] text-orange-600 font-medium">
+                              Деактивирован {new Date(u.deactivatedAt).toLocaleDateString("ru-RU")}
+                            </span>
                           )}
                         </div>
                       </Link>
@@ -1952,18 +1958,32 @@ function UsersTab() {
                       {new Date(u.createdAt).toLocaleDateString("ru-RU")}
                     </td>
                     {/* Actions */}
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-3 text-center space-y-1">
+                      {u.deactivatedAt && (
+                        <button
+                          onClick={async () => {
+                            setBusy(true);
+                            await reactivateUser(u.id);
+                            setBusy(false);
+                            await load();
+                          }}
+                          disabled={busy}
+                          className="block w-full text-xs text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50"
+                        >
+                          Реактивировать
+                        </button>
+                      )}
                       {u.suspended ? (
                         <button
                           onClick={() => setSuspendModal({ userId: u.id, name: u.name, action: "unsuspend" })}
-                          className="text-xs text-green-600 hover:text-green-800 font-medium"
+                          className="block w-full text-xs text-green-600 hover:text-green-800 font-medium"
                         >
                           Разблокировать
                         </button>
                       ) : (
                         <button
                           onClick={() => setSuspendModal({ userId: u.id, name: u.name, action: "suspend" })}
-                          className="text-xs text-red-500 hover:text-red-700 font-medium"
+                          className="block w-full text-xs text-red-500 hover:text-red-700 font-medium"
                         >
                           Заблокировать
                         </button>

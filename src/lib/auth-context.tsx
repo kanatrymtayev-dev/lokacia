@@ -74,6 +74,12 @@ async function fetchProfile(supabaseUser: SupabaseUser): Promise<User | null> {
     return null;
   }
 
+  // Check if user is deactivated
+  if ((data as Record<string, unknown>).deactivated_at != null) {
+    await supabase.auth.signOut();
+    return null;
+  }
+
   const profile = data as {
     id: string;
     name: string;
@@ -139,8 +145,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string,
     password: string
   ): Promise<{ ok: boolean; error?: string }> {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error, data: signInData } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { ok: false, error: error.message };
+
+    // Check if account is deactivated
+    if (signInData.user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("deactivated_at")
+        .eq("id", signInData.user.id)
+        .single();
+
+      if (profile && (profile as Record<string, unknown>).deactivated_at != null) {
+        await supabase.auth.signOut();
+        return {
+          ok: false,
+          error: "Ваш аккаунт деактивирован. Для восстановления напишите на hello@lokacia.kz",
+        };
+      }
+    }
+
     return { ok: true };
   }
 
