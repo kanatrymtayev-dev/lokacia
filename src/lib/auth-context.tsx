@@ -148,21 +148,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error, data: signInData } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { ok: false, error: error.message };
 
-    // Check if account is deactivated
+    // Fetch profile immediately so user state is ready before redirect
     if (signInData.user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("deactivated_at")
-        .eq("id", signInData.user.id)
-        .single();
+      const profile = await fetchProfile(signInData.user);
 
-      if (profile && (profile as Record<string, unknown>).deactivated_at != null) {
-        await supabase.auth.signOut();
+      if (!profile) {
+        // fetchProfile returns null for suspended/deactivated users (and signs out)
         return {
           ok: false,
           error: "Ваш аккаунт деактивирован. Для восстановления напишите на hello@lokacia.kz",
         };
       }
+
+      setUser(profile);
     }
 
     return { ok: true };
