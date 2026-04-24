@@ -1120,7 +1120,7 @@ export async function sendMessage(
   conversationId: string,
   senderId: string,
   content: string,
-  opts?: { type?: "text" | "system"; bookingId?: string | null }
+  opts?: { type?: "text" | "system"; bookingId?: string | null; metadata?: Record<string, unknown> }
 ) {
   const type = opts?.type ?? "text";
 
@@ -1164,6 +1164,7 @@ export async function sendMessage(
       content: finalContent,
       type,
       booking_id: opts?.bookingId ?? null,
+      metadata: opts?.metadata ?? {},
     })
     .select()
     .single();
@@ -1215,6 +1216,62 @@ export async function sendMessage(
   }
 
   return { data, error };
+}
+
+// ---- Scout Flow ----
+
+export async function sendScoutInvite(
+  conversationId: string,
+  hostId: string,
+  date: string,
+  time: string
+) {
+  // Update conversation scout status
+  const { error: updateError } = await supabase
+    .from("conversations")
+    .update({ scout_status: "invited", scout_date: date, scout_time: time })
+    .eq("id", conversationId)
+    .eq("host_id", hostId);
+
+  if (updateError) return { error: updateError };
+
+  // Send system message with scout metadata
+  const content = `Приглашение на скаут · ${date} в ${time}`;
+  const { error: msgError } = await sendMessage(conversationId, hostId, content, {
+    type: "system",
+    metadata: { type: "scout_invite", date, time },
+  });
+
+  return { error: msgError ?? null };
+}
+
+export async function respondToScout(
+  conversationId: string,
+  renterId: string,
+  result: "book" | "declined",
+  reason?: string
+) {
+  const newStatus = result === "book" ? "visited" : "declined";
+
+  const { error: updateError } = await supabase
+    .from("conversations")
+    .update({ scout_status: newStatus })
+    .eq("id", conversationId)
+    .eq("guest_id", renterId);
+
+  if (updateError) return { error: updateError };
+
+  const content =
+    result === "book"
+      ? "Арендатор хочет забронировать после скаута"
+      : `Локация не подошла${reason ? `: ${reason}` : ""}`;
+
+  const { error: msgError } = await sendMessage(conversationId, renterId, content, {
+    type: "system",
+    metadata: { type: "scout_response", result, reason: reason ?? null },
+  });
+
+  return { error: msgError ?? null };
 }
 
 // Создать запрос на бронирование + системное сообщение в чат
@@ -1470,7 +1527,8 @@ export async function getConversations(userId: string) {
       guest_id,
       host_id,
       updated_at,
-      listings!conversations_listing_id_fkey(title, slug, images),
+      scout_status,
+      listings!conversations_listing_id_fkey(title, slug, images, address),
       guest:profiles!conversations_guest_id_fkey(name, avatar_url),
       host:profiles!conversations_host_id_fkey(name, avatar_url)
     `)
