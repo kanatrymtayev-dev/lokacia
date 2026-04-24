@@ -31,14 +31,14 @@ BEGIN
   SET status = 'cancelled'
   WHERE renter_id = uid
     AND status IN ('pending', 'confirmed')
-    AND start_date > CURRENT_DATE;
+    AND date > CURRENT_DATE;
 
   -- Cancel future pending/confirmed bookings (as host)
   UPDATE bookings
   SET status = 'cancelled'
   WHERE listing_id IN (SELECT id FROM listings WHERE host_id = uid)
     AND status IN ('pending', 'confirmed')
-    AND start_date > CURRENT_DATE;
+    AND date > CURRENT_DATE;
 END;
 $$;
 
