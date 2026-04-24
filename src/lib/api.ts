@@ -2593,19 +2593,23 @@ export async function adminUpdateListing(
     moderationNote?: string | null;
   }
 ) {
-  const update: Record<string, unknown> = {};
-  if (fields.status !== undefined) update.status = fields.status;
-  if (fields.moderationStatus !== undefined) {
-    update.moderation_status = fields.moderationStatus;
-    update.moderated_at = new Date().toISOString();
+  try {
+    const res = await fetch("/api/admin/listing", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        listingId,
+        status: fields.status,
+        moderationStatus: fields.moderationStatus,
+        moderationNote: fields.moderationNote,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: { message: data.error || "Admin update failed" } };
+    return { error: null };
+  } catch (e) {
+    return { error: { message: (e as Error).message } };
   }
-  if (fields.moderationNote !== undefined) update.moderation_note = fields.moderationNote;
-
-  const { error } = await supabase
-    .from("listings")
-    .update(update)
-    .eq("id", listingId);
-  return { error };
 }
 
 // ---- Listing Moderation ----
