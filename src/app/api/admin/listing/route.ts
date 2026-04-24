@@ -7,6 +7,7 @@ import { sendListingApprovedEmail, sendListingRejectedEmail } from "@/lib/email"
 const SITE_URL = "https://lokacia.kz";
 
 export async function PATCH(request: Request) {
+  try {
   // 1. Auth check
   const cookieStore = await cookies();
   const isProduction = process.env.NODE_ENV === "production";
@@ -123,4 +124,11 @@ export async function PATCH(request: Request) {
   }
 
   return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("[admin/listing] unexpected error:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Internal server error" },
+      { status: 500 }
+    );
+  }
 }

@@ -2605,8 +2605,10 @@ export async function adminUpdateListing(
         moderationNote: fields.moderationNote,
       }),
     });
-    const data = await res.json();
-    if (!res.ok) return { error: { message: data.error || "Admin update failed" } };
+    const text = await res.text();
+    let data: Record<string, unknown> = {};
+    try { data = JSON.parse(text); } catch { /* empty response */ }
+    if (!res.ok) return { error: { message: (data.error as string) || `Admin update failed (${res.status})` } };
     return { error: null };
   } catch (e) {
     return { error: { message: (e as Error).message } };
