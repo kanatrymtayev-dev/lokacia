@@ -20,6 +20,8 @@ export const metadata: Metadata = {
     "ивент площадка Астана",
     "sound stage Казахстан",
   ],
+  manifest: "/manifest.json",
+  themeColor: "#6d28d9",
   icons: {
     icon: [
       { url: "/favicon.svg", type: "image/svg+xml" },
@@ -47,6 +49,11 @@ export default function RootLayout({
     <html lang="ru" className={`${geistSans.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <Providers>{children}</Providers>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `if("serviceWorker"in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("/sw.js")})}`,
+          }}
+        />
       </body>
     </html>
   );
