@@ -1160,6 +1160,7 @@ export async function sendMessage(
         .eq("listing_id", c.listing_id as string)
         .eq("renter_id", c.guest_id as string)
         .in("status", ["confirmed", "completed"])
+        .eq("payment_status", "paid")
         .limit(1);
       hasConfirmedBooking = !!confirmed && confirmed.length > 0;
     }
