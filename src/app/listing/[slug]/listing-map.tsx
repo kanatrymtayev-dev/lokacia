@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { Listing } from "@/lib/types";
 import { CITY_LABELS } from "@/lib/types";
 import { useAuth } from "@/lib/auth-context";
-import { hasUserConfirmedBookingForListing } from "@/lib/api";
+import { hasUserConfirmedBookingForListing, hasScoutInviteForListing } from "@/lib/api";
 import Map2GIS from "@/components/map-wrapper";
 
 export default function ListingMap({ listing }: { listing: Listing }) {
@@ -19,9 +19,18 @@ export default function ListingMap({ listing }: { listing: Listing }) {
       setChecked(true);
       return;
     }
-    hasUserConfirmedBookingForListing(user.id, listing.id).then((ok) => {
+    // Check if user is the host (always show), has confirmed booking, or has scout invite
+    if (user.id === listing.hostId) {
+      setUnlocked(true);
+      setChecked(true);
+      return;
+    }
+    Promise.all([
+      hasUserConfirmedBookingForListing(user.id, listing.id),
+      hasScoutInviteForListing(user.id, listing.id),
+    ]).then(([hasBooking, hasScout]) => {
       if (!cancelled) {
-        setUnlocked(ok);
+        setUnlocked(hasBooking || hasScout);
         setChecked(true);
       }
     });
@@ -41,7 +50,7 @@ export default function ListingMap({ listing }: { listing: Listing }) {
           <div>
             <div className="text-sm font-medium text-green-800">{listing.address}</div>
             <div className="text-xs text-green-700 mt-0.5">
-              {CITY_LABELS[listing.city]}, {listing.district} · точный адрес открыт после подтверждения брони
+              {CITY_LABELS[listing.city]}, {listing.district}
             </div>
           </div>
         </div>
@@ -56,7 +65,7 @@ export default function ListingMap({ listing }: { listing: Listing }) {
               {CITY_LABELS[listing.city]}, {listing.district}
             </div>
             <div className="text-xs text-amber-600 mt-0.5">
-              Точный адрес будет доступен после подтверждения бронирования. Напишите хосту, чтобы договориться о просмотре.
+              Точный адрес будет доступен после приглашения на скаут. Напишите хосту, чтобы договориться о просмотре.
             </div>
           </div>
         </div>

@@ -856,6 +856,21 @@ export async function hasUserConfirmedBookingForListing(
   return data.length > 0;
 }
 
+export async function hasScoutInviteForListing(
+  userId: string,
+  listingId: string
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("conversations")
+    .select("id")
+    .eq("guest_id", userId)
+    .eq("listing_id", listingId)
+    .in("scout_status", ["invited", "visited"])
+    .limit(1);
+  if (error || !data) return false;
+  return data.length > 0;
+}
+
 // ──────────── Blackouts (заблокированные хостом даты) ────────────
 
 import type { ListingBlackout, HostBlackout, QuoteMetadata } from "./types";
