@@ -24,7 +24,7 @@ export default function LoginPage() {
     const result = await login(email, password);
     setLoading(false);
     if (result.ok) {
-      router.push("/dashboard");
+      router.replace("/dashboard");
     } else {
       setError(result.error || "Неверный email или пароль");
     }

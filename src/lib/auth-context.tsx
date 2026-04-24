@@ -107,6 +107,8 @@ async function fetchProfile(supabaseUser: SupabaseUser): Promise<User | null> {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  // Skip onAuthStateChange when login() already handled the profile
+  const loginHandledRef = { current: false };
 
   useEffect(() => {
     // Get initial session
@@ -122,11 +124,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === "PASSWORD_RECOVERY") {
-          // Set session but don't redirect — let reset-password page handle it
           if (session?.user) {
             const profile = await fetchProfile(session.user);
             setUser(profile);
           }
+          return;
+        }
+        // Skip if login() already set the user
+        if (event === "SIGNED_IN" && loginHandledRef.current) {
+          loginHandledRef.current = false;
           return;
         }
         if (session?.user) {
@@ -160,6 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
 
+      loginHandledRef.current = true;
       setUser(profile);
     }
 
