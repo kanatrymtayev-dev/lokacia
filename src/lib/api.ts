@@ -2596,6 +2596,7 @@ export async function adminUpdateListing(
   try {
     const res = await fetch("/api/admin/listing", {
       method: "PATCH",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         listingId,

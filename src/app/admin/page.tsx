@@ -871,7 +871,10 @@ function ModerationTab() {
 
   async function decide(id: string, status: "approved" | "rejected") {
     setBusy(id);
-    await moderateListing(id, status, notes[id]);
+    const result = await moderateListing(id, status, notes[id]);
+    if (result.error) {
+      alert(`Ошибка модерации: ${result.error.message}`);
+    }
     setBusy(null);
     await load();
   }
