@@ -1,0 +1,4 @@
+-- Payment system columns
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_provider TEXT DEFAULT NULL;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_id TEXT DEFAULT NULL;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_charged_at TIMESTAMPTZ DEFAULT NULL;

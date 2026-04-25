@@ -209,7 +209,8 @@ export default function BookingSidebar({ listing }: { listing: Listing }) {
   const subtotal = baseTotal + addOnsTotal;
   const hostDiscountAmount = hostDiscount > 0 ? Math.round(subtotal * hostDiscount / 100) : 0;
   const discountedSubtotal = subtotal - hostDiscountAmount;
-  const serviceFee = Math.round(discountedSubtotal * 0.075);
+  const commissionRate = parseFloat(process.env.NEXT_PUBLIC_COMMISSION_RATE || "0");
+  const serviceFee = commissionRate > 0 ? Math.round(discountedSubtotal * commissionRate) : 0;
   const grandTotal = discountedSubtotal + serviceFee;
 
   function toggleAddOn(id: string) {
@@ -572,14 +573,17 @@ export default function BookingSidebar({ listing }: { listing: Listing }) {
             </div>
           )}
 
-          <div className="flex justify-between">
-            <span className="text-gray-600">Сервисный сбор</span>
-            <span>{formatPrice(serviceFee)}</span>
-          </div>
+          {serviceFee > 0 && (
+            <div className="flex justify-between">
+              <span className="text-gray-600">Сервисный сбор</span>
+              <span>{formatPrice(serviceFee)}</span>
+            </div>
+          )}
           <div className="flex justify-between font-bold text-base pt-2 border-t border-gray-100">
             <span>Итого</span>
             <span>{formatPrice(grandTotal)}</span>
           </div>
+          <p className="text-xs text-gray-400 mt-1">0% комиссии · Оплата после подтверждения хоста</p>
           {(listing.securityDeposit ?? 0) > 0 && (
             <div className="flex justify-between text-sm pt-2 border-t border-gray-100 mt-2">
               <div>

@@ -315,7 +315,7 @@ export default function NewListingPage() {
                 <input type="number" min={0} step={5000} value={securityDeposit} onChange={(e) => setSecurityDeposit(Number(e.target.value))} placeholder="0" className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-gray-900" />
                 <p className="text-xs text-gray-400 mt-1">Необязательно. Рекомендуем для мероприятий и вечеринок. 0 = без залога. Возвращается арендатору через 48ч после завершения.</p>
               </div>
-              <p className="text-xs text-gray-400">Комиссия платформы: 15% с каждого бронирования. Первые 100 хостов — 0% на 6 месяцев.</p>
+              <p className="text-xs text-gray-400">0% комиссии — вы получаете полную сумму бронирования.</p>
             </section>
 
             {/* Amenities */}

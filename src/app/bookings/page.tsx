@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
+import PaymentSelector from "@/components/payment-selector";
 import { useAuth } from "@/lib/auth-context";
 import { useT } from "@/lib/i18n";
 import { getRenterBookings, cancelBooking } from "@/lib/api";
@@ -35,14 +36,15 @@ export default function BookingsPage() {
   const [sortNewest, setSortNewest] = useState(true);
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
-  const [paying, setPaying] = useState<string | null>(null);
+  const [paymentOpen, setPaymentOpen] = useState<string | null>(null);
   const [paymentToast, setPaymentToast] = useState<"success" | "failed" | null>(null);
 
-  // Payment result toast from PayBox redirect (check URL on mount)
+  // Payment result toast from redirect (check URL on mount)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const payment = params.get("payment");
-    if (payment === "success") {
+    const paid = params.get("paid");
+    if (payment === "success" || paid) {
       setPaymentToast("success");
       setTimeout(() => setPaymentToast(null), 5000);
       window.history.replaceState({}, "", "/bookings");
@@ -95,32 +97,7 @@ export default function BookingsPage() {
     await loadBookings();
   }
 
-  async function handlePay(bookingId: string) {
-    setPaying(bookingId);
-    try {
-      const res = await fetch("/api/paybox/init", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bookingId }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.error ?? "Ошибка создания платежа");
-        setPaying(null);
-        return;
-      }
-
-      if (data.redirectUrl) {
-        // Redirect to PayBox payment page (or mock success)
-        window.location.href = data.redirectUrl;
-        return;
-      }
-    } catch {
-      alert("Ошибка оплаты");
-    }
-    setPaying(null);
-  }
+  // (payment handled by PaymentSelector component)
 
   if (authLoading || !user) {
     return (
@@ -283,14 +260,13 @@ export default function BookingsPage() {
                             )}
                             {status === "confirmed" && booking.payment_status !== "paid" && (
                               <button
-                                onClick={() => handlePay(bookingId)}
-                                disabled={paying === bookingId}
-                                className="inline-flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                                onClick={() => setPaymentOpen(paymentOpen === bookingId ? null : bookingId)}
+                                className="inline-flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
                               >
                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
                                 </svg>
-                                {paying === bookingId ? t("bookings.paying") : t("bookings.pay")}
+                                {t("bookings.pay")}
                               </button>
                             )}
                             {status === "confirmed" && booking.payment_status === "paid" && (
@@ -333,6 +309,16 @@ export default function BookingsPage() {
                         )}
                       </div>
                     </div>
+
+                    {/* Payment selector panel */}
+                    {paymentOpen === bookingId && status === "confirmed" && booking.payment_status !== "paid" && (
+                      <div className="mt-4 pt-4 border-t border-gray-100">
+                        <PaymentSelector
+                          bookingId={bookingId}
+                          totalPrice={booking.total_price as number}
+                        />
+                      </div>
+                    )}
                   </div>
                 );
               })}

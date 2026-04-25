@@ -79,6 +79,7 @@ interface BookingMeta {
   activity_type: string;
   total_price: number;
   status: "pending" | "confirmed" | "rejected" | "completed" | "cancelled";
+  payment_status: string;
   host_id: string;
   metadata?: {
     base_price?: number;
@@ -198,6 +199,7 @@ function InboxContent() {
         activity_type: r.activity_type as string,
         total_price: r.total_price as number,
         status: r.status as BookingMeta["status"],
+        payment_status: (r.payment_status as string) ?? "unpaid",
         metadata: (r.metadata as BookingMeta["metadata"]) ?? undefined,
         host_id: (listing?.host_id as string) ?? "",
       };
@@ -1214,6 +1216,23 @@ function BookingCard({
           <dt className="text-gray-500">Сумма</dt>
           <dd className="font-bold">{priceStr}</dd>
         </div>
+        {booking.status === "confirmed" && (
+          <div className="flex justify-between gap-2 pt-1">
+            <dt className="text-gray-500">Оплата</dt>
+            <dd>
+              {booking.payment_status === "paid" ? (
+                <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clipRule="evenodd" />
+                  </svg>
+                  Оплачено
+                </span>
+              ) : (
+                <span className="text-xs text-amber-600 font-medium">Ожидает оплаты</span>
+              )}
+            </dd>
+          </div>
+        )}
       </dl>
 
       {isHost && booking.status === "pending" && (

@@ -77,7 +77,7 @@ export default function AnalyticsTab({ hostId }: { hostId: string }) {
         <Kpi label="Просмотры (8 нед.)" value={fmtNum(totalViews)} />
         <Kpi label="Бронирования" value={fmtNum(totalBookings)} />
         <Kpi label="Конверсия" value={`${stats.conversionRate}%`} accent />
-        <Kpi label="Доход (за вычетом 15%)" value={fmtMoney(totalRevenueNet)} accent />
+        <Kpi label="Доход (0% комиссии)" value={fmtMoney(totalRevenueNet)} accent />
       </div>
 
       {/* Views + Bookings line chart */}

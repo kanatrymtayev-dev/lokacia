@@ -1028,7 +1028,7 @@ export async function getBookingsByIds(bookingIds: string[]) {
   if (bookingIds.length === 0) return [];
   const { data, error } = await supabase
     .from("bookings")
-    .select("id, listing_id, renter_id, date, start_time, end_time, guest_count, activity_type, total_price, status, conversation_id, metadata, listings!bookings_listing_id_fkey(host_id, title)")
+    .select("id, listing_id, renter_id, date, start_time, end_time, guest_count, activity_type, total_price, status, payment_status, conversation_id, metadata, listings!bookings_listing_id_fkey(host_id, title)")
     .in("id", bookingIds);
   if (error || !data) return [];
   return data as Array<Record<string, unknown>>;
@@ -1322,20 +1322,8 @@ export async function createBookingRequest(input: {
   const convo = await getOrCreateConversation(input.listingId, input.renterId, input.hostId);
   if (!convo) return { data: null, error: { message: "Не удалось создать диалог" } };
 
-  // 2. Determine commission rate: 0% for hosts registered < 30 days, otherwise 15%
-  let commissionRate = 0.15;
-  const { data: hostProfile } = await supabase
-    .from("profiles")
-    .select("created_at")
-    .eq("id", input.hostId)
-    .single();
-  if (hostProfile) {
-    const hostCreated = new Date((hostProfile as Record<string, unknown>).created_at as string);
-    const daysSinceRegistration = (Date.now() - hostCreated.getTime()) / (1000 * 60 * 60 * 24);
-    if (daysSinceRegistration < 30) {
-      commissionRate = 0;
-    }
-  }
+  // 2. Commission rate — controlled by env var (0 = free period)
+  const commissionRate = parseFloat(process.env.NEXT_PUBLIC_COMMISSION_RATE || "0");
 
   // 3. Создаём бронирование со статусом pending
   const { data: booking, error: bookingError } = await supabase
