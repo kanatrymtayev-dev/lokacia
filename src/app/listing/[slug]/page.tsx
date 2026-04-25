@@ -9,7 +9,7 @@ import FavoriteButton from "./favorite-button";
 import ViewTracker from "./view-tracker";
 import Gallery from "./gallery";
 import ListingMap from "./listing-map";
-import BookingSidebarWrapper from "./booking-sidebar-wrapper";
+import BookingSidebar from "./booking-sidebar";
 import AvailabilityCalendar from "@/components/availability-calendar";
 import { getListings, getListingBySlug, getReviewsByListingId } from "@/lib/api";
 import { CITY_LABELS, SPACE_TYPE_LABELS, ACTIVITY_TYPE_LABELS } from "@/lib/types";
@@ -340,7 +340,7 @@ export default async function ListingPage({
 
             {/* Right — Booking sidebar */}
             <div className="lg:col-span-1">
-              <BookingSidebarWrapper listing={listing} />
+              <BookingSidebar listing={listing} />
             </div>
           </div>
         </div>

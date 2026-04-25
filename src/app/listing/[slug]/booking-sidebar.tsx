@@ -148,21 +148,21 @@ function HostOwnerPanel({ listing }: { listing: Listing }) {
 }
 
 export default function BookingSidebar({ listing }: { listing: Listing }) {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  // Prevent hydration mismatch — render neutral state until client is ready
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   // Check for confirmed but unpaid booking on this listing
   const [pendingPayment, setPendingPayment] = useState<{
     id: string; date: string; startTime: string; endTime: string; totalPrice: number;
   } | null>(null);
-  const [paymentChecked, setPaymentChecked] = useState(false);
 
   useEffect(() => {
-    if (!user || user.id === listing.hostId) {
-      setPaymentChecked(true);
-      return;
-    }
+    if (!mounted || authLoading || !user || user.id === listing.hostId) return;
     supabase
       .from("bookings")
       .select("id, date, start_time, end_time, total_price, status, payment_status")
@@ -183,17 +183,17 @@ export default function BookingSidebar({ listing }: { listing: Listing }) {
             totalPrice: b.total_price as number,
           });
         }
-        setPaymentChecked(true);
       });
-  }, [user, listing.id, listing.hostId]);
+  }, [mounted, authLoading, user, listing.id, listing.hostId]);
 
-  // If the current user is the host of this listing, show owner panel
-  if (user?.id === listing.hostId) {
+  // Before mount — render the default booking form (matches server HTML)
+  // After mount — show appropriate panel based on user state
+  if (mounted && user?.id === listing.hostId) {
     return <HostOwnerPanel listing={listing} />;
   }
 
-  // Show payment panel if there's a confirmed unpaid booking (only after client check)
-  if (paymentChecked && pendingPayment) {
+  // Show payment panel if there's a confirmed unpaid booking
+  if (mounted && pendingPayment) {
     return (
       <div className="bg-white rounded-2xl border border-gray-200 p-6 sticky top-24">
         <h3 className="font-bold text-lg mb-1">Оплата бронирования</h3>
