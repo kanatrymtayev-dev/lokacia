@@ -1,4 +1,4 @@
-const CACHE_NAME = "lokacia-offline-v1";
+const CACHE_NAME = "lokacia-offline-v2";
 const OFFLINE_URL = "/offline";
 
 self.addEventListener("install", (event) => {
@@ -22,11 +22,19 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  // Only handle navigation requests that fail (offline fallback)
   if (event.request.mode !== "navigate") return;
 
+  // Don't intercept — let the browser handle it normally
+  // Only provide fallback if network completely fails
   event.respondWith(
-    fetch(event.request).catch(() =>
-      caches.match(OFFLINE_URL).then((cached) => cached || Response.error())
-    )
+    fetch(event.request)
+      .then((response) => {
+        // Return the network response as-is
+        return response;
+      })
+      .catch(() => {
+        return caches.match(OFFLINE_URL).then((cached) => cached || Response.error());
+      })
   );
 });

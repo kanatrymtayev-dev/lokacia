@@ -1,11 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Component, type ReactNode } from "react";
 import type { Listing } from "@/lib/types";
 import { CITY_LABELS } from "@/lib/types";
 import { useAuth } from "@/lib/auth-context";
 import { hasUserConfirmedBookingForListing, hasScoutInviteForListing } from "@/lib/api";
 import Map2GIS from "@/components/map-wrapper";
+
+class MapErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="h-[300px] w-full rounded-2xl border border-gray-200 flex items-center justify-center bg-gray-50 text-sm text-gray-400">
+          Карта временно недоступна
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function ListingMap({ listing }: { listing: Listing }) {
   const { user } = useAuth();
@@ -71,12 +86,14 @@ export default function ListingMap({ listing }: { listing: Listing }) {
         </div>
       )}
 
-      <div className="h-[300px] w-full rounded-2xl overflow-hidden border border-gray-200">
-        <Map2GIS
-          listings={[listing]}
-          approximateRadius={showExact ? undefined : 500}
-        />
-      </div>
+      <MapErrorBoundary>
+        <div className="h-[300px] w-full rounded-2xl overflow-hidden border border-gray-200">
+          <Map2GIS
+            listings={[listing]}
+            approximateRadius={showExact ? undefined : 500}
+          />
+        </div>
+      </MapErrorBoundary>
     </div>
   );
 }
