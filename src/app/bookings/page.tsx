@@ -44,6 +44,7 @@ export default function BookingsPage() {
     const params = new URLSearchParams(window.location.search);
     const payment = params.get("payment");
     const paid = params.get("paid");
+    const openBooking = params.get("open");
     if (payment === "success" || paid) {
       setPaymentToast("success");
       setTimeout(() => setPaymentToast(null), 5000);
@@ -52,6 +53,9 @@ export default function BookingsPage() {
       setPaymentToast("failed");
       setTimeout(() => setPaymentToast(null), 5000);
       window.history.replaceState({}, "", "/bookings");
+    }
+    if (openBooking) {
+      setPaymentOpen(openBooking);
     }
   }, []);
 

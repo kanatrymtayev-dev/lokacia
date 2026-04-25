@@ -1252,6 +1252,20 @@ function BookingCard({
         </div>
       )}
 
+      {!isHost && booking.status === "confirmed" && booking.payment_status !== "paid" && (
+        <div className="mt-4">
+          <Link
+            href={`/bookings?open=${booking.id}`}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-600 text-white text-sm font-bold hover:bg-green-700 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
+            </svg>
+            Оплатить бронирование
+          </Link>
+        </div>
+      )}
+
       {!isHost && booking.status === "pending" && (
         <div className="mt-3 text-xs text-amber-700/80 text-center">
           Хост получил ваш запрос. Обычно отвечают в течение нескольких часов.
