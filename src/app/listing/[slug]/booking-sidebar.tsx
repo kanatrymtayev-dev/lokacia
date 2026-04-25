@@ -149,12 +149,6 @@ function HostOwnerPanel({ listing }: { listing: Listing }) {
 
 export default function BookingSidebar({ listing }: { listing: Listing }) {
   const { user } = useAuth();
-
-  // If the current user is the host of this listing, show owner panel
-  if (user?.id === listing.hostId) {
-    return <HostOwnerPanel listing={listing} />;
-  }
-
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -164,7 +158,7 @@ export default function BookingSidebar({ listing }: { listing: Listing }) {
   } | null>(null);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || user.id === listing.hostId) return;
     supabase
       .from("bookings")
       .select("id, date, start_time, end_time, total_price, status, payment_status")
@@ -186,7 +180,12 @@ export default function BookingSidebar({ listing }: { listing: Listing }) {
           });
         }
       });
-  }, [user, listing.id]);
+  }, [user, listing.id, listing.hostId]);
+
+  // If the current user is the host of this listing, show owner panel
+  if (user?.id === listing.hostId) {
+    return <HostOwnerPanel listing={listing} />;
+  }
 
   // Show payment panel if there's a confirmed unpaid booking
   if (pendingPayment) {
