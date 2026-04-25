@@ -17,6 +17,8 @@ import {
   getDiscountForDate,
 } from "@/lib/api";
 import type { ListingBlackout } from "@/lib/types";
+import PaymentSelector from "@/components/payment-selector";
+import { supabase } from "@/lib/supabase";
 
 interface ListingBooking {
   id: string;
@@ -155,6 +157,62 @@ export default function BookingSidebar({ listing }: { listing: Listing }) {
 
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  // Check for confirmed but unpaid booking on this listing
+  const [pendingPayment, setPendingPayment] = useState<{
+    id: string; date: string; startTime: string; endTime: string; totalPrice: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("bookings")
+      .select("id, date, start_time, end_time, total_price, status, payment_status")
+      .eq("listing_id", listing.id)
+      .eq("renter_id", user.id)
+      .eq("status", "confirmed")
+      .eq("payment_status", "unpaid")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          const b = data[0] as Record<string, unknown>;
+          setPendingPayment({
+            id: b.id as string,
+            date: b.date as string,
+            startTime: b.start_time as string,
+            endTime: b.end_time as string,
+            totalPrice: b.total_price as number,
+          });
+        }
+      });
+  }, [user, listing.id]);
+
+  // Show payment panel if there's a confirmed unpaid booking
+  if (pendingPayment) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 sticky top-24">
+        <h3 className="font-bold text-lg mb-1">Оплата бронирования</h3>
+        <p className="text-xs text-gray-500 mb-4">Хост подтвердил вашу заявку</p>
+
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-5 space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-gray-600">Дата</span>
+            <span className="font-medium">{new Date(pendingPayment.date).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Время</span>
+            <span className="font-medium">{pendingPayment.startTime} – {pendingPayment.endTime}</span>
+          </div>
+        </div>
+
+        <PaymentSelector
+          bookingId={pendingPayment.id}
+          totalPrice={pendingPayment.totalPrice}
+        />
+      </div>
+    );
+  }
 
   // Кастомная смета от хоста (через query params после accept в чате)
   const quotePrice = Number(searchParams.get("quotePrice")) || 0;
