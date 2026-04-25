@@ -156,9 +156,13 @@ export default function BookingSidebar({ listing }: { listing: Listing }) {
   const [pendingPayment, setPendingPayment] = useState<{
     id: string; date: string; startTime: string; endTime: string; totalPrice: number;
   } | null>(null);
+  const [paymentChecked, setPaymentChecked] = useState(false);
 
   useEffect(() => {
-    if (!user || user.id === listing.hostId) return;
+    if (!user || user.id === listing.hostId) {
+      setPaymentChecked(true);
+      return;
+    }
     supabase
       .from("bookings")
       .select("id, date, start_time, end_time, total_price, status, payment_status")
@@ -179,6 +183,7 @@ export default function BookingSidebar({ listing }: { listing: Listing }) {
             totalPrice: b.total_price as number,
           });
         }
+        setPaymentChecked(true);
       });
   }, [user, listing.id, listing.hostId]);
 
@@ -187,8 +192,8 @@ export default function BookingSidebar({ listing }: { listing: Listing }) {
     return <HostOwnerPanel listing={listing} />;
   }
 
-  // Show payment panel if there's a confirmed unpaid booking
-  if (pendingPayment) {
+  // Show payment panel if there's a confirmed unpaid booking (only after client check)
+  if (paymentChecked && pendingPayment) {
     return (
       <div className="bg-white rounded-2xl border border-gray-200 p-6 sticky top-24">
         <h3 className="font-bold text-lg mb-1">Оплата бронирования</h3>
