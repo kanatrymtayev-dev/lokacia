@@ -20,11 +20,14 @@ jobs:
             # Pull latest code
             git pull origin main
 
-            # Create .env if not exists
-            cat > .env << 'ENVEOF'
+            # Create .env only if not exists (preserve manual edits)
+            if [ ! -f .env ]; then
+              cat > .env << 'ENVEOF'
             NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
             NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
             ENVEOF
+              echo ".env created (add remaining secrets manually)"
+            fi
 
             # Build and restart
             docker compose up -d --build
