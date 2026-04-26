@@ -45,6 +45,7 @@ import {
 import type { AdminUser, AdminListing, PromoCode, Dispute, Claim, BlogPost } from "@/lib/api";
 import type { SiteSettings } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 import { downloadCSV } from "@/lib/csv";
 import type { Listing, HostVerification } from "@/lib/types";
 
@@ -2060,6 +2061,7 @@ function BlogTab() {
   const [showForm, setShowForm] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   // Form state
   const [title, setTitle] = useState("");
@@ -2237,18 +2239,61 @@ function BlogTab() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Обложка (URL изображения)</label>
-              <input
-                type="text"
-                value={coverImage}
-                onChange={(e) => setCoverImage(e.target.value)}
-                placeholder="https://..."
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              />
-              {coverImage && (
-                <div className="mt-2 relative w-full h-40 rounded-lg overflow-hidden bg-gray-100">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Обложка</label>
+              {coverImage ? (
+                <div className="relative w-full h-40 rounded-lg overflow-hidden bg-gray-100 mb-2">
                   <Image src={coverImage} alt="Preview" fill sizes="600px" className="object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setCoverImage("")}
+                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center w-full h-32 rounded-lg border-2 border-dashed border-gray-300 hover:border-primary/40 cursor-pointer transition-colors bg-gray-50">
+                  {uploading ? (
+                    <span className="text-sm text-gray-400">Загрузка...</span>
+                  ) : (
+                    <>
+                      <svg className="w-8 h-8 text-gray-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25a2.25 2.25 0 0 0-2.25-2.25H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z" />
+                      </svg>
+                      <span className="text-sm text-gray-400">Нажмите чтобы загрузить фото</span>
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploading}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 5 * 1024 * 1024) { alert("Максимум 5 МБ"); return; }
+                      setUploading(true);
+                      const ext = file.name.split(".").pop();
+                      const path = `blog/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+                      const { error: uploadError } = await supabase.storage.from("blog").upload(path, file);
+                      if (uploadError) {
+                        // Try creating bucket if it doesn't exist
+                        if (uploadError.message.includes("not found")) {
+                          alert("Создайте bucket 'blog' в Supabase Storage (public)");
+                        } else {
+                          alert("Ошибка загрузки: " + uploadError.message);
+                        }
+                        setUploading(false);
+                        return;
+                      }
+                      const { data: urlData } = supabase.storage.from("blog").getPublicUrl(path);
+                      setCoverImage(urlData.publicUrl);
+                      setUploading(false);
+                    }}
+                  />
+                </label>
               )}
             </div>
 
