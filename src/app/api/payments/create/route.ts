@@ -3,11 +3,20 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getPaymentProvider } from "@/lib/payment-providers";
+import { rateLimit, getClientIP } from "@/lib/rate-limit";
+import { createPaymentSchema, validate } from "@/lib/validation";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://lokacia.kz";
 
 export async function POST(request: Request) {
   try {
+    // Rate limit: 10 payment requests per minute per IP
+    const ip = getClientIP(request);
+    const rl = rateLimit(ip, "payments-create", { limit: 10, windowMs: 60_000 });
+    if (!rl.allowed) {
+      return NextResponse.json({ error: "Слишком много запросов" }, { status: 429 });
+    }
+
     // 1. Auth check
     const cookieStore = await cookies();
     const isProduction = process.env.NODE_ENV === "production";
@@ -38,12 +47,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    // 2. Parse body
+    // 2. Parse & validate body
     const body = await request.json();
-    const { bookingId, provider } = body as {
-      bookingId: string;
-      provider: string;
-    };
+    const parsed = validate(createPaymentSchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+    const { bookingId, provider } = parsed.data;
 
     if (!bookingId || !provider) {
       return NextResponse.json(

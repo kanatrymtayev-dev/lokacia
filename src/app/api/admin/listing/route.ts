@@ -3,6 +3,8 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { sendListingApprovedEmail, sendListingRejectedEmail } from "@/lib/email";
+import { rateLimit, getClientIP } from "@/lib/rate-limit";
+import { adminUpdateListingSchema, validate } from "@/lib/validation";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://lokacia.kz";
 
@@ -50,18 +52,17 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
-  // 3. Parse body
-  const body = await request.json();
-  const { listingId, status, moderationStatus, moderationNote } = body as {
-    listingId: string;
-    status?: string;
-    moderationStatus?: string;
-    moderationNote?: string | null;
-  };
+  // Rate limit
+  const rl = rateLimit(getClientIP(request), "admin-listing", { limit: 30, windowMs: 60_000 });
+  if (!rl.allowed) return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
 
-  if (!listingId) {
-    return NextResponse.json({ error: "listingId required" }, { status: 400 });
+  // 3. Parse & validate body
+  const body = await request.json();
+  const parsed = validate(adminUpdateListingSchema, body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
+  const { listingId, status, moderationStatus, moderationNote } = parsed.data;
 
   // 4. Update via service_role (bypasses RLS)
   const update: Record<string, unknown> = {};

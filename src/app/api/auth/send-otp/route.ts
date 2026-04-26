@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { sendOtpCall } from "@/lib/sms";
+import { rateLimit, getClientIP } from "@/lib/rate-limit";
+import { sendOtpSchema, validate } from "@/lib/validation";
 
 export const runtime = "nodejs";
 
@@ -18,10 +20,22 @@ async function hashCode(code: string): Promise<string> {
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId, phone } = (await req.json()) as {
-      userId: string;
-      phone: string;
-    };
+    // Rate limit: 5 OTP requests per minute per IP
+    const ip = getClientIP(req);
+    const rl = rateLimit(ip, "send-otp", { limit: 5, windowMs: 60_000 });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Слишком много запросов. Подождите минуту." },
+        { status: 429 }
+      );
+    }
+
+    const body = await req.json();
+    const parsed = validate(sendOtpSchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+    const { userId, phone } = parsed.data;
 
     if (!userId || !phone) {
       return NextResponse.json(

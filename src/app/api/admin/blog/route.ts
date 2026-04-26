@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { rateLimit, getClientIP } from "@/lib/rate-limit";
 
 // Cyrillic → Latin transliteration for slug
 const TRANSLIT: Record<string, string> = {
@@ -58,6 +59,9 @@ async function verifyAdmin(request: Request) {
 // POST — create blog post
 export async function POST(request: Request) {
   try {
+    const rl = rateLimit(getClientIP(request), "admin-blog", { limit: 30, windowMs: 60_000 });
+    if (!rl.allowed) return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+
     const user = await verifyAdmin(request);
     if (!user) return NextResponse.json({ error: "Admin access required" }, { status: 403 });
 
