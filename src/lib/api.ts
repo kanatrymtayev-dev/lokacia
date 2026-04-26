@@ -2751,3 +2751,140 @@ export async function updateProfile(
   return { error };
 }
 
+// ──────────── Blog ────────────
+
+export interface BlogPost {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string | null;
+  content: string;
+  coverImage: string | null;
+  status: "draft" | "published";
+  authorId: string | null;
+  authorName?: string;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  seoTitle: string | null;
+  seoDescription: string | null;
+}
+
+function rowToBlogPost(r: Record<string, unknown>): BlogPost {
+  const author = r.profiles as Record<string, unknown> | null;
+  return {
+    id: r.id as string,
+    title: r.title as string,
+    slug: r.slug as string,
+    excerpt: (r.excerpt as string | null) ?? null,
+    content: (r.content as string) ?? "",
+    coverImage: (r.cover_image as string | null) ?? null,
+    status: (r.status as "draft" | "published") ?? "draft",
+    authorId: (r.author_id as string | null) ?? null,
+    authorName: (author?.name as string) ?? undefined,
+    publishedAt: (r.published_at as string | null) ?? null,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+    seoTitle: (r.seo_title as string | null) ?? null,
+    seoDescription: (r.seo_description as string | null) ?? null,
+  };
+}
+
+export async function getBlogPosts(status?: "draft" | "published"): Promise<BlogPost[]> {
+  let query = supabase
+    .from("blog_posts")
+    .select("*, profiles!blog_posts_author_id_fkey(name)")
+    .order("published_at", { ascending: false, nullsFirst: false });
+
+  if (status) {
+    query = query.eq("status", status);
+  }
+
+  const { data, error } = await query;
+  if (error || !data) return [];
+  return (data as Array<Record<string, unknown>>).map(rowToBlogPost);
+}
+
+export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
+  const { data, error } = await supabase
+    .from("blog_posts")
+    .select("*, profiles!blog_posts_author_id_fkey(name)")
+    .eq("slug", slug)
+    .single();
+
+  if (error || !data) return null;
+  return rowToBlogPost(data as Record<string, unknown>);
+}
+
+export async function adminCreateBlogPost(post: {
+  title: string;
+  slug?: string;
+  excerpt?: string;
+  content: string;
+  coverImage?: string;
+  status: "draft" | "published";
+  seoTitle?: string;
+  seoDescription?: string;
+}) {
+  try {
+    const res = await fetch("/api/admin/blog", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(post),
+    });
+    const text = await res.text();
+    let data: Record<string, unknown> = {};
+    try { data = JSON.parse(text); } catch { /* empty */ }
+    if (!res.ok) return { error: { message: (data.error as string) || "Failed to create post" } };
+    return { data, error: null };
+  } catch (e) {
+    return { error: { message: (e as Error).message } };
+  }
+}
+
+export async function adminUpdateBlogPost(id: string, fields: {
+  title?: string;
+  slug?: string;
+  excerpt?: string;
+  content?: string;
+  coverImage?: string;
+  status?: "draft" | "published";
+  seoTitle?: string;
+  seoDescription?: string;
+}) {
+  try {
+    const res = await fetch("/api/admin/blog", {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...fields }),
+    });
+    const text = await res.text();
+    let data: Record<string, unknown> = {};
+    try { data = JSON.parse(text); } catch { /* empty */ }
+    if (!res.ok) return { error: { message: (data.error as string) || "Failed to update post" } };
+    return { error: null };
+  } catch (e) {
+    return { error: { message: (e as Error).message } };
+  }
+}
+
+export async function adminDeleteBlogPost(id: string) {
+  try {
+    const res = await fetch("/api/admin/blog", {
+      method: "DELETE",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    const text = await res.text();
+    let data: Record<string, unknown> = {};
+    try { data = JSON.parse(text); } catch { /* empty */ }
+    if (!res.ok) return { error: { message: (data.error as string) || "Failed to delete post" } };
+    return { error: null };
+  } catch (e) {
+    return { error: { message: (e as Error).message } };
+  }
+}
+

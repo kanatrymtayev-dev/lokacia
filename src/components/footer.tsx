@@ -37,6 +37,7 @@ export default function Footer() {
     { label: t("footer.about"), href: "/about" },
     { label: t("footer.faq"), href: "/faq" },
     { label: "Программа защиты", href: "/protection" },
+    { label: t("footer.blog"), href: "/blog" },
   ];
   const legal = [
     { label: t("footer.privacy"), href: "/privacy" },

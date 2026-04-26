@@ -37,14 +37,18 @@ import {
   getAdminOverviewStats,
   getSiteSettings,
   updateSiteSetting,
+  getBlogPosts,
+  adminCreateBlogPost,
+  adminUpdateBlogPost,
+  adminDeleteBlogPost,
 } from "@/lib/api";
-import type { AdminUser, AdminListing, PromoCode, Dispute, Claim } from "@/lib/api";
+import type { AdminUser, AdminListing, PromoCode, Dispute, Claim, BlogPost } from "@/lib/api";
 import type { SiteSettings } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
 import { downloadCSV } from "@/lib/csv";
 import type { Listing, HostVerification } from "@/lib/types";
 
-type Tab = "overview" | "bookings" | "payouts" | "featured" | "listings" | "moderation" | "verifications" | "users" | "promos" | "disputes" | "claims" | "settings";
+type Tab = "overview" | "bookings" | "payouts" | "featured" | "listings" | "moderation" | "verifications" | "users" | "promos" | "disputes" | "claims" | "blog" | "settings";
 
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
   unpaid: "Не оплачено",
@@ -235,6 +239,7 @@ export default function AdminPage() {
                 ["promos", "Промокоды"],
                 ["disputes", "Жалобы"],
                 ["claims", "Претензии"],
+              ["blog", "Блог"],
               ["settings", "Настройки"],
               ] as const
             ).map(([key, label]) => (
@@ -603,6 +608,7 @@ export default function AdminPage() {
           {tab === "promos" && <PromosTab />}
           {tab === "disputes" && <DisputesTab />}
           {tab === "claims" && <ClaimsTab />}
+          {tab === "blog" && <BlogTab />}
           {tab === "settings" && <SettingsTab />}
         </div>
       </main>
@@ -2038,6 +2044,301 @@ function UsersTab() {
                 }`}
               >
                 {busy ? "..." : suspendModal.action === "suspend" ? "Заблокировать" : "Разблокировать"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BlogTab() {
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editPost, setEditPost] = useState<BlogPost | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  // Form state
+  const [title, setTitle] = useState("");
+  const [excerpt, setExcerpt] = useState("");
+  const [content, setContent] = useState("");
+  const [coverImage, setCoverImage] = useState("");
+  const [seoTitle, setSeoTitle] = useState("");
+  const [seoDescription, setSeoDescription] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setPosts(await getBlogPosts());
+    setLoading(false);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  function openNew() {
+    setEditPost(null);
+    setTitle(""); setExcerpt(""); setContent(""); setCoverImage("");
+    setSeoTitle(""); setSeoDescription("");
+    setShowForm(true);
+  }
+
+  function openEdit(post: BlogPost) {
+    setEditPost(post);
+    setTitle(post.title);
+    setExcerpt(post.excerpt ?? "");
+    setContent(post.content);
+    setCoverImage(post.coverImage ?? "");
+    setSeoTitle(post.seoTitle ?? "");
+    setSeoDescription(post.seoDescription ?? "");
+    setShowForm(true);
+  }
+
+  function closeForm() {
+    setShowForm(false);
+    setEditPost(null);
+  }
+
+  async function handleSave(status: "draft" | "published") {
+    if (!title.trim()) { alert("Введите заголовок"); return; }
+    setBusy(true);
+
+    if (editPost) {
+      const result = await adminUpdateBlogPost(editPost.id, {
+        title, excerpt, content, coverImage, status, seoTitle, seoDescription,
+      });
+      if (result.error) { alert(result.error.message); setBusy(false); return; }
+    } else {
+      const result = await adminCreateBlogPost({
+        title, excerpt, content, coverImage, status, seoTitle, seoDescription,
+      });
+      if (result.error) { alert(result.error.message); setBusy(false); return; }
+    }
+
+    setBusy(false);
+    closeForm();
+    await load();
+  }
+
+  async function handleDelete() {
+    if (!deleteId) return;
+    setBusy(true);
+    await adminDeleteBlogPost(deleteId);
+    setBusy(false);
+    setDeleteId(null);
+    await load();
+  }
+
+  if (loading) return <div className="text-gray-400 text-sm py-8 text-center">Загрузка...</div>;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-5">
+        <span className="text-sm text-gray-500">{posts.length} статей</span>
+        <button
+          onClick={openNew}
+          className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary-dark transition-colors"
+        >
+          + Новая статья
+        </button>
+      </div>
+
+      {posts.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500 text-sm">
+          Нет статей. Создайте первую!
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Заголовок</th>
+                <th className="text-center px-4 py-3 font-medium text-gray-600">Статус</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Дата</th>
+                <th className="text-center px-4 py-3 font-medium text-gray-600">Действия</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {posts.map((post) => (
+                <tr key={post.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      {post.coverImage && (
+                        <div className="relative w-12 h-8 rounded overflow-hidden bg-gray-100 flex-shrink-0">
+                          <Image src={post.coverImage} alt="" fill sizes="48px" className="object-cover" />
+                        </div>
+                      )}
+                      <div>
+                        <div className="font-medium">{post.title}</div>
+                        {post.excerpt && <div className="text-xs text-gray-400 line-clamp-1">{post.excerpt}</div>}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                      post.status === "published"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-gray-100 text-gray-600"
+                    }`}>
+                      {post.status === "published" ? "Опубликован" : "Черновик"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-gray-400">
+                    {post.publishedAt
+                      ? new Date(post.publishedAt).toLocaleDateString("ru-RU")
+                      : new Date(post.createdAt).toLocaleDateString("ru-RU")}
+                  </td>
+                  <td className="px-4 py-3 text-center space-x-3">
+                    {post.status === "published" && (
+                      <Link href={`/blog/${post.slug}`} target="_blank" className="text-xs text-primary hover:underline">
+                        Открыть
+                      </Link>
+                    )}
+                    <button onClick={() => openEdit(post)} className="text-xs text-blue-600 hover:underline">
+                      Редактировать
+                    </button>
+                    <button onClick={() => setDeleteId(post.id)} className="text-xs text-red-500 hover:underline">
+                      Удалить
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Blog post form modal */}
+      {showForm && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 overflow-y-auto py-10 px-4" onClick={closeForm}>
+          <div className="bg-white rounded-2xl w-full max-w-2xl p-6 space-y-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold">{editPost ? "Редактировать статью" : "Новая статья"}</h3>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Заголовок *</label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Топ-10 фотостудий Алматы"
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Краткое описание</label>
+              <input
+                type="text"
+                value={excerpt}
+                onChange={(e) => setExcerpt(e.target.value)}
+                placeholder="Описание для карточки в списке"
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Обложка (URL изображения)</label>
+              <input
+                type="text"
+                value={coverImage}
+                onChange={(e) => setCoverImage(e.target.value)}
+                placeholder="https://..."
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              />
+              {coverImage && (
+                <div className="mt-2 relative w-full h-40 rounded-lg overflow-hidden bg-gray-100">
+                  <Image src={coverImage} alt="Preview" fill sizes="600px" className="object-cover" />
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Контент <span className="text-gray-400 font-normal">(Markdown)</span>
+              </label>
+              <textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                rows={12}
+                placeholder={"# Заголовок\n\nТекст статьи...\n\n## Подзаголовок\n\n- Пункт 1\n- Пункт 2\n\n![фото](https://url)"}
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-mono resize-y"
+              />
+            </div>
+
+            {/* SEO fields — collapsible */}
+            <details className="group">
+              <summary className="text-sm font-medium text-gray-500 cursor-pointer hover:text-gray-700">
+                SEO настройки ▸
+              </summary>
+              <div className="mt-3 space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">SEO Title</label>
+                  <input
+                    type="text"
+                    value={seoTitle}
+                    onChange={(e) => setSeoTitle(e.target.value)}
+                    placeholder="Заголовок для поисковиков (по умолчанию = заголовок)"
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">SEO Description</label>
+                  <textarea
+                    value={seoDescription}
+                    onChange={(e) => setSeoDescription(e.target.value)}
+                    rows={2}
+                    placeholder="Описание для поисковиков (до 160 символов)"
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+                  />
+                </div>
+              </div>
+            </details>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={closeForm}
+                className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={() => handleSave("draft")}
+                disabled={busy}
+                className="flex-1 py-2.5 rounded-lg bg-gray-100 text-gray-700 text-sm font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50"
+              >
+                {busy ? "..." : "Сохранить черновик"}
+              </button>
+              <button
+                onClick={() => handleSave("published")}
+                disabled={busy}
+                className="flex-1 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary-dark transition-colors disabled:opacity-50"
+              >
+                {busy ? "..." : "Опубликовать"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation */}
+      {deleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setDeleteId(null)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-bold text-lg mb-2">Удалить статью?</h3>
+            <p className="text-sm text-gray-500 mb-4">Это действие нельзя отменить.</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDeleteId(null)}
+                className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={busy}
+                className="flex-1 py-2.5 rounded-lg bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:opacity-50"
+              >
+                {busy ? "..." : "Удалить"}
               </button>
             </div>
           </div>
