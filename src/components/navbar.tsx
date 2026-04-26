@@ -21,6 +21,7 @@ const languages: { code: Lang; label: string }[] = [
 export default function Navbar() {
   const { user, logout } = useAuth();
   const { lang, setLang, t } = useT();
+  const [mounted, setMounted] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [browseOpen, setBrowseOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
@@ -28,6 +29,8 @@ export default function Navbar() {
   const [admin, setAdmin] = useState(false);
   const [unread, setUnread] = useState(0);
   const [favoritesCount, setFavoritesCount] = useState(0);
+
+  useEffect(() => { setMounted(true); }, []);
 
   const browseRef = useRef<HTMLDivElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
@@ -167,7 +170,7 @@ export default function Navbar() {
             )}
           </div>
 
-          {user ? (
+          {mounted && user ? (
             <>
               {/* Favorites icon */}
               <Link
