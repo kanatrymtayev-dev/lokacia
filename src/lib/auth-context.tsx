@@ -151,22 +151,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string,
     password: string
   ): Promise<{ ok: boolean; error?: string }> {
+    // Set flag BEFORE signIn to prevent onAuthStateChange from running fetchProfile
+    loginHandledRef.current = true;
+
     const { error, data: signInData } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { ok: false, error: error.message };
+    if (error) {
+      loginHandledRef.current = false;
+      return { ok: false, error: error.message };
+    }
 
     // Fetch profile immediately so user state is ready before redirect
     if (signInData.user) {
       const profile = await fetchProfile(signInData.user);
 
       if (!profile) {
-        // fetchProfile returns null for suspended/deactivated users (and signs out)
+        loginHandledRef.current = false;
         return {
           ok: false,
           error: "Ваш аккаунт деактивирован. Для восстановления напишите на hello@lokacia.kz",
         };
       }
 
-      loginHandledRef.current = true;
       setUser(profile);
     }
 
