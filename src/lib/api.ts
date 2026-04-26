@@ -1743,28 +1743,21 @@ export async function getAllUsers(): Promise<AdminUser[]> {
   if (error || !data) return [];
 
   const users = data as Array<Record<string, unknown>>;
-  const userIds = users.map((u) => u.id as string);
 
-  // Count listings per host
-  const { data: listingsData } = await supabase
-    .from("listings")
-    .select("host_id")
-    .in("host_id", userIds);
+  // Count listings and bookings per user in parallel (select only id + foreign key)
+  const [listingsRes, bookingsRes] = await Promise.all([
+    supabase.from("listings").select("host_id"),
+    supabase.from("bookings").select("renter_id"),
+  ]);
 
   const listingCounts = new Map<string, number>();
-  for (const l of (listingsData ?? []) as Array<Record<string, unknown>>) {
+  for (const l of (listingsRes.data ?? []) as Array<Record<string, unknown>>) {
     const hid = l.host_id as string;
     listingCounts.set(hid, (listingCounts.get(hid) ?? 0) + 1);
   }
 
-  // Count bookings per renter
-  const { data: bookingsData } = await supabase
-    .from("bookings")
-    .select("renter_id")
-    .in("renter_id", userIds);
-
   const bookingCounts = new Map<string, number>();
-  for (const b of (bookingsData ?? []) as Array<Record<string, unknown>>) {
+  for (const b of (bookingsRes.data ?? []) as Array<Record<string, unknown>>) {
     const rid = b.renter_id as string;
     bookingCounts.set(rid, (bookingCounts.get(rid) ?? 0) + 1);
   }
