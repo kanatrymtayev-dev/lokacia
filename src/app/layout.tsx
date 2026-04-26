@@ -31,6 +31,9 @@ export const metadata: Metadata = {
       { url: "/apple-icon.svg", type: "image/svg+xml", sizes: "192x192" },
     ],
   },
+  verification: {
+    google: "A1DAMxzoxWmkWRPIf1Vef3SmiZsnbNyFJgRpJluFSXI",
+  },
   openGraph: {
     title: "LOKACIA.KZ — Маркетплейс аренды локаций",
     description:
