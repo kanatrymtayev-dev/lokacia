@@ -33,6 +33,7 @@ export const metadata: Metadata = {
   },
   verification: {
     google: "A1DAMxzoxWmkWRPIf1Vef3SmiZsnbNyFJgRpJluFSXI",
+    yandex: "b9925b9843e89b0c",
   },
   openGraph: {
     title: "LOKACIA.KZ — Маркетплейс аренды локаций",
