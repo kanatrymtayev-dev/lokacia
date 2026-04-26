@@ -1,5 +1,4 @@
 import { supabase } from "./supabase";
-import { listings as mockListings, reviews as mockReviews } from "./mock-data";
 import type { Listing, Review } from "./types";
 import { geocodeAddress } from "./geocoder";
 import {
@@ -12,7 +11,7 @@ import {
 } from "./email";
 import { sanitizeMessage } from "./sanitize-message";
 
-const SITE_URL = "https://lokacia.kz";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://lokacia.kz";
 
 // Хелпер: получить email + name пользователя через auth.users + profiles
 async function getUserEmailName(userId: string): Promise<{ email: string; name: string } | null> {
@@ -102,10 +101,8 @@ export async function getListings(): Promise<Listing[]> {
     .eq("moderation_status", "approved")
     .order("created_at", { ascending: false });
 
-  if (error || !data || data.length === 0) {
-    // Fallback to mock data
-    return mockListings;
-  }
+  if (error || !data) return [];
+  if (data.length === 0) return [];
 
   const all = data.map((row: Record<string, unknown>) => {
     const profile = row.profiles as Record<string, unknown> | null;
@@ -135,11 +132,7 @@ export async function getListingBySlug(slug: string): Promise<Listing | null> {
     .eq("slug", slug)
     .single();
 
-  if (error || !data) {
-    // Fallback to mock data
-    const mock = mockListings.find((l) => l.slug === slug);
-    return mock ?? null;
-  }
+  if (error || !data) return null;
 
   const profile = (data as Record<string, unknown>).profiles as Record<string, unknown> | null;
   return rowToListing({
@@ -248,9 +241,8 @@ export async function getReviewsByListingId(listingId: string): Promise<Review[]
     .eq("listing_id", listingId)
     .order("created_at", { ascending: false });
 
-  if (error || !data || data.length === 0) {
-    return mockReviews.filter((r) => r.listingId === listingId);
-  }
+  if (error || !data) return [];
+  if (data.length === 0) return [];
 
   return data.map((row: Record<string, unknown>) => {
     const profile = row.profiles as Record<string, unknown> | null;
@@ -599,9 +591,8 @@ export async function getHostListings(hostId: string): Promise<Listing[]> {
     .eq("host_id", hostId)
     .order("created_at", { ascending: false });
 
-  if (error || !data || data.length === 0) {
-    return mockListings.filter((l) => l.hostId === hostId);
-  }
+  if (error || !data) return [];
+  if (data.length === 0) return [];
 
   return data.map((row: Record<string, unknown>) => {
     const profile = row.profiles as Record<string, unknown> | null;

@@ -2,6 +2,7 @@
 
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { I18nProvider } from "@/lib/i18n";
+import ErrorBoundary from "@/components/ui/error-boundary";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
@@ -25,10 +26,12 @@ function OnboardingGuard({ children }: { children: ReactNode }) {
 
 export default function Providers({ children }: { children: ReactNode }) {
   return (
-    <I18nProvider>
-      <AuthProvider>
-        <OnboardingGuard>{children}</OnboardingGuard>
-      </AuthProvider>
-    </I18nProvider>
+    <ErrorBoundary>
+      <I18nProvider>
+        <AuthProvider>
+          <OnboardingGuard>{children}</OnboardingGuard>
+        </AuthProvider>
+      </I18nProvider>
+    </ErrorBoundary>
   );
 }

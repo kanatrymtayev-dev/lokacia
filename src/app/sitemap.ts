@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { createBrowserClient } from "@supabase/ssr";
 
-const SITE_URL = "https://lokacia.kz";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://lokacia.kz";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabase = createBrowserClient(

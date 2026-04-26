@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { sendListingApprovedEmail, sendListingRejectedEmail } from "@/lib/email";
 
-const SITE_URL = "https://lokacia.kz";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://lokacia.kz";
 
 export async function PATCH(request: Request) {
   try {

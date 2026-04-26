@@ -6,7 +6,7 @@ import { Resend } from "resend";
 
 const API_KEY = process.env.RESEND_API_KEY;
 const FROM = process.env.RESEND_FROM ?? "Lokacia <hello@lokacia.kz>";
-const SITE = "https://lokacia.kz";
+const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://lokacia.kz";
 
 const client = API_KEY ? new Resend(API_KEY) : null;
 
