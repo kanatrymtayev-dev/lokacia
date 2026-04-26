@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from "react";
 import { supabase } from "./supabase";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
@@ -108,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   // Skip onAuthStateChange when login() already handled the profile
-  const loginHandledRef = { current: false };
+  const loginHandledRef = useRef(false);
 
   useEffect(() => {
     // Get initial session
