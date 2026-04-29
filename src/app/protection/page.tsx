@@ -1,5 +1,6 @@
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
+import { WaveDivider } from "@/components/illustrations";
 
 export const metadata = {
   title: "Программа защиты — LOKACIA.KZ",
@@ -11,22 +12,28 @@ export default function ProtectionPage() {
     <div className="flex flex-col min-h-screen">
       <Navbar />
       <main className="flex-1">
-        {/* Hero */}
-        <section className="bg-gradient-to-b from-green-50 to-white py-16 sm:py-24">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-green-100 flex items-center justify-center mx-auto mb-6">
-              <svg className="w-8 h-8 text-green-600" viewBox="0 0 20 20" fill="currentColor">
+        {/* Hero — dark */}
+        <section className="bg-dark text-white py-16 sm:py-24 relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(34,197,94,0.1),transparent_60%)]" />
+          <div className="relative max-w-3xl mx-auto px-4 sm:px-6 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-green-500/20 flex items-center justify-center mx-auto mb-6">
+              <svg className="w-8 h-8 text-green-400" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M9.661 2.237a1 1 0 0 1 .678 0l6 2.18a1 1 0 0 1 .661.94v4.157c0 3.579-2.297 6.74-5.72 7.986a1 1 0 0 1-.56 0C7.297 16.254 5 13.093 5 9.514V5.357a1 1 0 0 1 .661-.94l4-1.18Zm.839 7.263a.75.75 0 1 0-1-1.118L7.88 9.86l-.38-.38a.75.75 0 0 0-1.06 1.06l.91.91a.75.75 0 0 0 1.08.03l2.07-1.98Z" clipRule="evenodd" />
               </svg>
             </div>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-gray-900">
-              Программа защиты LOKACIA
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight">
+              Программа защиты <span className="text-green-400">LOKACIA</span>
             </h1>
-            <p className="mt-4 text-lg text-gray-500 max-w-xl mx-auto">
+            <p className="mt-4 text-lg text-dark-muted max-w-xl mx-auto">
               Мы заботимся о безопасности хостов и арендаторов. Залоговый депозит, гарантийный фонд и прозрачная система претензий.
             </p>
+            <p className="font-handwritten text-xl text-teal/70 mt-2 -rotate-1">ваша безопасность — наш приоритет</p>
           </div>
         </section>
+
+        <div className="bg-dark -mt-1">
+          <WaveDivider fill="var(--background)" />
+        </div>
 
         {/* How it works */}
         <section className="py-16">
@@ -76,7 +83,7 @@ export default function ProtectionPage() {
         </section>
 
         {/* Coverage */}
-        <section className="py-16 bg-gray-50">
+        <section className="py-16 bg-cream">
           <div className="max-w-4xl mx-auto px-4 sm:px-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Covered */}
@@ -162,7 +169,7 @@ export default function ProtectionPage() {
         </section>
 
         {/* FAQ */}
-        <section className="py-16 bg-gray-50">
+        <section className="py-16 bg-cream">
           <div className="max-w-3xl mx-auto px-4 sm:px-6">
             <h2 className="text-2xl font-bold text-center mb-10">Частые вопросы</h2>
             <div className="space-y-4">

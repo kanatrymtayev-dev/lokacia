@@ -52,7 +52,7 @@ export default function ListingCard({
       href={`/listing/${listing.slug}`}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className={`group block bg-white rounded-2xl border overflow-hidden hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 ${
+      className={`group block bg-white rounded-2xl border overflow-hidden hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1 transition-all duration-300 ${
         highlighted ? "border-primary shadow-lg shadow-primary/10" : "border-gray-200 hover:border-primary/20"
       }`}
     >

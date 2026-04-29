@@ -1,9 +1,15 @@
 import type { ReactNode } from "react";
-import { Search, CalendarDays, Heart, MessageCircle, LayoutGrid } from "lucide-react";
+import {
+  IllustrationEmptySearch,
+  IllustrationEmptyBookings,
+  IllustrationEmptyFavorites,
+  IllustrationEmptyInbox,
+} from "@/components/illustrations";
+import { LayoutGrid } from "lucide-react";
 
 function IllustrationWrapper({ children }: { children: ReactNode }) {
   return (
-    <div className="relative w-[120px] h-[120px] flex items-center justify-center">
+    <div className="relative w-[120px] h-[120px] flex items-center justify-center animate-float">
       {/* Background circle */}
       <div className="absolute inset-0 rounded-full bg-primary/[0.06]" />
       <div className="absolute inset-3 rounded-full bg-primary/[0.04]" />
@@ -14,24 +20,16 @@ function IllustrationWrapper({ children }: { children: ReactNode }) {
 
 const illustrations: Record<string, ReactNode> = {
   search: (
-    <IllustrationWrapper>
-      <Search className="w-12 h-12 text-primary/30" strokeWidth={1.5} />
-    </IllustrationWrapper>
+    <IllustrationEmptySearch className="w-[120px] h-[120px] animate-float" />
   ),
   bookings: (
-    <IllustrationWrapper>
-      <CalendarDays className="w-12 h-12 text-primary/30" strokeWidth={1.5} />
-    </IllustrationWrapper>
+    <IllustrationEmptyBookings className="w-[120px] h-[120px] animate-float" />
   ),
   favorites: (
-    <IllustrationWrapper>
-      <Heart className="w-12 h-12 text-primary/30" strokeWidth={1.5} />
-    </IllustrationWrapper>
+    <IllustrationEmptyFavorites className="w-[120px] h-[120px] animate-float" />
   ),
   inbox: (
-    <IllustrationWrapper>
-      <MessageCircle className="w-12 h-12 text-primary/30" strokeWidth={1.5} />
-    </IllustrationWrapper>
+    <IllustrationEmptyInbox className="w-[120px] h-[120px] animate-float" />
   ),
   listings: (
     <IllustrationWrapper>

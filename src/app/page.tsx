@@ -8,6 +8,10 @@ import FaqAccordion from "@/components/faq-accordion";
 import { getListings } from "@/lib/api";
 import HostForm from "./host-form";
 import { HeroText, SectionTitle, T } from "./home-sections";
+import AnimatedSection from "@/components/animated-section";
+import CountUp from "@/components/count-up";
+import StickySteps from "@/components/sticky-steps";
+import { HeroDecor, WaveDivider, IllustrationCamera, IllustrationParty, IllustrationHouse, IllustrationFilm, IllustrationYurt, IllustrationCutlery, IllustrationDesk, IllustrationMountain } from "@/components/illustrations";
 
 const testimonials = [
   {
@@ -39,89 +43,26 @@ const homeFaqs = [
   { q: "Как связаться с поддержкой?", a: "Напишите на hello@lokacia.kz — мы отвечаем в течение 24 часов." },
 ];
 
+const categoryIllustrations = [
+  <IllustrationCamera key="cam" className="w-10 h-10" />,
+  <IllustrationParty key="party" className="w-10 h-10" />,
+  <IllustrationHouse key="house" className="w-10 h-10" />,
+  <IllustrationFilm key="film" className="w-10 h-10" />,
+  <IllustrationYurt key="yurt" className="w-10 h-10" />,
+  <IllustrationCutlery key="cutlery" className="w-10 h-10" />,
+  <IllustrationDesk key="desk" className="w-10 h-10" />,
+  <IllustrationMountain key="mountain" className="w-10 h-10" />,
+];
+
 const categories = [
-  {
-    title: "Фотостудии",
-    desc: "Циклорамы, daylight-студии, оборудование",
-    image: "/images/categories/photo-studio.webp",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-8 h-8">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z" />
-      </svg>
-    ),
-  },
-  {
-    title: "Ивент-площадки",
-    desc: "Банкетные залы, лофты, open-air",
-    image: "/images/categories/event-space.webp",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-8 h-8">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 0 0 .495-7.468 5.99 5.99 0 0 0-1.925 3.547 5.975 5.975 0 0 1-2.133-1.001A3.75 3.75 0 0 0 12 18Z" />
-      </svg>
-    ),
-  },
-  {
-    title: "Жильё для съёмок",
-    desc: "Квартиры, дома, виллы, коттеджи",
-    image: "/images/categories/apartment.webp",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-8 h-8">
-        <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
-      </svg>
-    ),
-  },
-  {
-    title: "Sound Stages",
-    desc: "Павильоны для кино и видеопродакшн",
-    image: "/images/categories/sound-stage.webp",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-8 h-8">
-        <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
-      </svg>
-    ),
-  },
-  {
-    title: "Этно-пространства",
-    desc: "Юрты, казахские гостевые дома",
-    image: "/images/categories/ethno-space.webp",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-8 h-8">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0 0 12 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75Z" />
-      </svg>
-    ),
-  },
-  {
-    title: "Рестораны и кафе",
-    desc: "Для корпоративов, тоев и вечеринок",
-    image: "/images/categories/restaurant.webp",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-8 h-8">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349M3.75 21V9.349m0 0a3.001 3.001 0 0 0 3.75-.615A2.993 2.993 0 0 0 9.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 0 0 2.25 1.016c.896 0 1.7-.393 2.25-1.015a3.001 3.001 0 0 0 3.75.614m-16.5 0a3.004 3.004 0 0 1-.621-4.72l1.189-1.19A1.5 1.5 0 0 1 5.378 3h13.243a1.5 1.5 0 0 1 1.06.44l1.19 1.189a3 3 0 0 1-.621 4.72M6.75 18h3.75a.75.75 0 0 0 .75-.75V13.5a.75.75 0 0 0-.75-.75H6.75a.75.75 0 0 0-.75.75v3.75c0 .414.336.75.75.75Z" />
-      </svg>
-    ),
-  },
-  {
-    title: "Переговорные",
-    desc: "Офисы, коворкинги, конференц-залы",
-    image: "/images/categories/meeting-room.webp",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-8 h-8">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 0 0 .75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 0 0-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0 1 12 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 0 1-.673-.38m0 0A2.18 2.18 0 0 1 3 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 0 1 3.413-.387m7.5 0V5.25A2.25 2.25 0 0 0 13.5 3h-3a2.25 2.25 0 0 0-2.25 2.25v.894m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-      </svg>
-    ),
-  },
-  {
-    title: "Горные шале",
-    desc: "Уникальные площадки в горах Алматы",
-    image: "/images/categories/mountain-chalet.webp",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-8 h-8">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15a4.5 4.5 0 0 0 4.5 4.5H18a3.75 3.75 0 0 0 1.332-7.257 3 3 0 0 0-3.758-3.848 5.25 5.25 0 0 0-10.233 2.33A4.502 4.502 0 0 0 2.25 15Z" />
-      </svg>
-    ),
-  },
+  { title: "Фотостудии", desc: "Циклорамы, daylight-студии, оборудование", image: "/images/categories/photo-studio.webp" },
+  { title: "Ивент-площадки", desc: "Банкетные залы, лофты, open-air", image: "/images/categories/event-space.webp" },
+  { title: "Жильё для съёмок", desc: "Квартиры, дома, виллы, коттеджи", image: "/images/categories/apartment.webp" },
+  { title: "Sound Stages", desc: "Павильоны для кино и видеопродакшн", image: "/images/categories/sound-stage.webp" },
+  { title: "Этно-пространства", desc: "Юрты, казахские гостевые дома", image: "/images/categories/ethno-space.webp" },
+  { title: "Рестораны и кафе", desc: "Для корпоративов, тоев и вечеринок", image: "/images/categories/restaurant.webp" },
+  { title: "Переговорные", desc: "Офисы, коворкинги, конференц-залы", image: "/images/categories/meeting-room.webp" },
+  { title: "Горные шале", desc: "Уникальные площадки в горах Алматы", image: "/images/categories/mountain-chalet.webp" },
 ];
 
 const benefits = [
@@ -156,12 +97,6 @@ const stats = [
   { value: "93%", label: "Казахстанцев онлайн" },
 ];
 
-const steps = [
-  { num: "01", title: "Разместите", desc: "Добавьте фото, описание, цену и правила вашего помещения" },
-  { num: "02", title: "Получите запрос", desc: "Арендаторы находят вас через поиск и отправляют запрос" },
-  { num: "03", title: "Подтвердите", desc: "Примите бронирование — деньги замораживаются на escrow" },
-  { num: "04", title: "Зарабатывайте", desc: "После мероприятия деньги поступают вам на Kaspi за 3-5 дней" },
-];
 
 export const revalidate = 60;
 
@@ -171,28 +106,57 @@ export default async function Home() {
     <div className="flex flex-col min-h-screen">
       <Navbar />
 
-      {/* Hero */}
-      <section className="relative overflow-hidden text-white">
+      {/* Hero — Dark cinematic */}
+      <section className="relative overflow-hidden text-white bg-dark min-h-[90vh] flex items-center">
+        {/* Background image with dark overlay */}
         <Image
           src="/images/hero.webp"
           alt="LOKACIA — площадки для съёмок и мероприятий в Казахстане"
           fill
-          className="object-cover"
+          className="object-cover opacity-30"
           priority
           quality={85}
         />
-        {/* Primary gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/95 via-primary to-primary-light/90" />
-        {/* Subtle radial accents */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(139,92,246,0.35),transparent_60%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(245,158,11,0.12),transparent_50%)]" />
-        {/* Decorative circles */}
-        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-white/[0.04]" />
-        <div className="absolute -bottom-32 -left-16 w-80 h-80 rounded-full bg-white/[0.03]" />
-        <div className="absolute top-1/3 right-1/4 w-48 h-48 rounded-full bg-accent/[0.06]" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 lg:py-36">
+        {/* Gradient overlays */}
+        <div className="absolute inset-0 bg-gradient-to-b from-dark/80 via-dark/40 to-dark" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(124,58,237,0.2),transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(245,158,11,0.08),transparent_50%)]" />
+
+        {/* Hand-drawn decorative doodles — larger */}
+        <HeroDecor />
+
+        <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 lg:py-36">
           <div className="text-center max-w-3xl mx-auto">
-            <HeroText />
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-1.5 text-sm font-medium mb-6 border border-white/10">
+              <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+              Маркетплейс аренды локаций в Казахстане
+            </div>
+
+            {/* Main headline */}
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05]">
+              Найди свою
+              <br />
+              <span className="bg-gradient-to-r from-accent via-amber-300 to-accent bg-clip-text text-transparent">сцену</span>
+            </h1>
+
+            {/* Handwritten annotation */}
+            <p className="font-handwritten text-2xl text-accent/80 mt-3 -rotate-2">
+              ← для съёмок, мероприятий и спорта
+            </p>
+
+            <p className="mt-6 text-lg sm:text-xl text-dark-text/80 max-w-2xl mx-auto leading-relaxed">
+              Площадки для кино, фотосъёмок, корпоративов, тренировок —
+              всё в одном месте. Бронируй за 5 минут.
+            </p>
+
+            {/* Free badge */}
+            <div className="mt-4 inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-1.5 text-sm font-medium text-white/90 border border-white/5">
+              <svg className="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clipRule="evenodd" />
+              </svg>
+              0% комиссии — бесплатно для хостов и арендаторов
+            </div>
 
             {/* Search bar */}
             <div className="mt-10">
@@ -200,47 +164,51 @@ export default async function Home() {
             </div>
           </div>
 
-          {/* Stats bar */}
-          <div className="mt-16 grid grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Stats bar with CountUp */}
+          <div className="mt-16 grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {stats.map((s) => (
               <div
                 key={s.label}
-                className="bg-white/10 backdrop-blur-sm rounded-2xl p-5 border border-white/10"
+                className="bg-dark-surface/80 backdrop-blur-sm rounded-2xl p-5 border border-dark-border hover:border-primary/30 transition-colors"
               >
-                <div className="text-3xl sm:text-4xl font-bold text-accent">{s.value}</div>
-                <div className="mt-1 text-sm text-violet-300">{s.label}</div>
+                <CountUp end={s.value} className="text-3xl sm:text-4xl font-bold text-accent" />
+                <div className="mt-1 text-sm text-dark-muted">{s.label}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
+      {/* Wave: Hero → Categories */}
+      <div className="bg-dark -mt-1">
+        <WaveDivider fill="var(--cream)" />
+      </div>
+
       {/* Categories */}
-      <section id="categories" className="py-20 sm:py-28 bg-gray-50">
+      <section id="categories" className="py-20 sm:py-28 bg-cream">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionTitle titleKey="home.categories.title" subtitleKey="home.categories.subtitle" />
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {categories.map((cat) => (
-              <div
-                key={cat.title}
-                className="group relative rounded-2xl overflow-hidden h-56 sm:h-64 cursor-pointer"
-              >
-                <Image
-                  src={cat.image}
-                  alt={cat.title}
-                  fill
-                  className="object-cover transition-transform duration-500 group-hover:scale-110"
-                  sizes="(max-width: 640px) 50vw, 25vw"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent group-hover:from-primary/80 group-hover:via-primary/30 transition-all duration-300" />
-                <div className="absolute inset-0 flex flex-col justify-end p-5">
-                  <div className="w-10 h-10 rounded-lg bg-white/20 backdrop-blur-sm text-white flex items-center justify-center mb-3">
-                    {cat.icon}
+            {categories.map((cat, i) => (
+              <AnimatedSection key={cat.title} animation="fade-in-scale" delay={`${i * 80}ms`}>
+                <div className="group relative rounded-2xl overflow-hidden h-56 sm:h-64 cursor-pointer">
+                  <Image
+                    src={cat.image}
+                    alt={cat.title}
+                    fill
+                    className="object-cover transition-transform duration-500 group-hover:scale-110"
+                    sizes="(max-width: 640px) 50vw, 25vw"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent group-hover:from-primary/80 group-hover:via-primary/30 transition-all duration-300" />
+                  <div className="absolute inset-0 flex flex-col justify-end p-5">
+                    <div className="w-12 h-12 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                      {categoryIllustrations[i]}
+                    </div>
+                    <h3 className="font-bold text-lg text-white">{cat.title}</h3>
+                    <p className="mt-1 text-sm text-white/80">{cat.desc}</p>
                   </div>
-                  <h3 className="font-bold text-lg text-white">{cat.title}</h3>
-                  <p className="mt-1 text-sm text-white/80">{cat.desc}</p>
                 </div>
-              </div>
+              </AnimatedSection>
             ))}
           </div>
         </div>
@@ -289,35 +257,25 @@ export default async function Home() {
         </section>
       )}
 
-      {/* How it works */}
+      {/* How it works — with illustrations */}
       <section id="how" className="py-20 sm:py-28 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <SectionTitle titleKey="home.howItWorks.title" subtitleKey="home.howItWorks.subtitle" />
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {steps.map((step, i) => (
-              <div key={step.num} className="relative">
-                {i < steps.length - 1 && (
-                  <div className="hidden lg:block absolute top-8 left-full w-full h-0.5 bg-gradient-to-r from-primary/30 to-transparent -translate-x-4" />
-                )}
-                <div className="text-5xl font-black text-primary/10">{step.num}</div>
-                <h3 className="mt-2 text-xl font-bold">{step.title}</h3>
-                <p className="mt-2 text-gray-600 leading-relaxed">{step.desc}</p>
-              </div>
-            ))}
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <SectionTitle titleKey="home.howItWorks.title" subtitleKey="home.howItWorks.subtitle" />
+            <p className="font-handwritten text-xl text-accent -rotate-1 -mt-8">проще, чем кажется!</p>
           </div>
+          <StickySteps />
         </div>
       </section>
 
       {/* Benefits */}
-      <section id="benefits" className="py-20 sm:py-28 bg-gray-50">
+      <section id="benefits" className="py-20 sm:py-28 bg-warm/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionTitle titleKey="home.benefits.title" />
           <div className="grid md:grid-cols-2 gap-8">
-            {benefits.map((b) => (
-              <div
-                key={b.title}
-                className="bg-white rounded-2xl p-8 border border-gray-200"
-              >
+            {benefits.map((b, i) => (
+              <AnimatedSection key={b.title} delay={`${i * 150}ms`}>
+              <div className="bg-white rounded-2xl p-8 border border-gray-200">
                 <h3 className="text-2xl font-bold mb-6">{b.title}</h3>
                 <ul className="space-y-4">
                   {b.items.map((item) => (
@@ -330,64 +288,27 @@ export default async function Home() {
                   ))}
                 </ul>
               </div>
+              </AnimatedSection>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Earning calculator */}
-      <section className="py-20 sm:py-28 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-gradient-to-br from-violet-950 to-purple-900 rounded-3xl p-8 sm:p-12 lg:p-16 text-white">
-            <div className="max-w-3xl mx-auto text-center">
-              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
-                Сколько можно заработать?
-              </h2>
-              <p className="mt-4 text-violet-300 text-lg">
-                Примерный доход для Алматы при средней загрузке
-              </p>
-              <div className="mt-10 grid sm:grid-cols-3 gap-6">
-                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-                  <div className="text-sm text-violet-300 mb-2">Фотостудия</div>
-                  <div className="text-3xl font-bold text-accent">~800K ₸</div>
-                  <div className="text-sm text-violet-400 mt-1">в месяц / 4 бронирования в день</div>
-                </div>
-                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-                  <div className="text-sm text-violet-300 mb-2">Ивент-площадка</div>
-                  <div className="text-3xl font-bold text-accent">~1.2M ₸</div>
-                  <div className="text-sm text-violet-400 mt-1">в месяц / 8 мероприятий</div>
-                </div>
-                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-                  <div className="text-sm text-violet-300 mb-2">Квартира для съёмок</div>
-                  <div className="text-3xl font-bold text-accent">~300K ₸</div>
-                  <div className="text-sm text-violet-400 mt-1">в месяц / 10 съёмок</div>
-                </div>
-              </div>
-              <p className="mt-6 text-sm text-violet-400">
-                * После вычета комиссии платформы 15%. Реальный доход зависит от локации, цен и загрузки.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Testimonials */}
-      <section className="py-20 sm:py-28 bg-gradient-to-br from-violet-950 to-purple-900 text-white">
+      <section className="py-20 sm:py-28 bg-cream">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-14">
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
               Что говорят наши пользователи
             </h2>
-            <p className="mt-4 text-lg text-violet-300">
+            <p className="mt-4 text-lg text-gray-600">
               Отзывы хостов и арендаторов о платформе
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map((t) => (
-              <div
-                key={t.name}
-                className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/10"
-              >
+            {testimonials.map((t, i) => (
+              <AnimatedSection key={t.name} delay={`${i * 150}ms`}>
+              <div className="bg-white rounded-2xl p-6 border border-gray-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
                 <div className="flex items-center gap-0.5 mb-4">
                   {Array.from({ length: t.rating }).map((_, i) => (
                     <svg key={i} className="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
@@ -395,14 +316,15 @@ export default async function Home() {
                     </svg>
                   ))}
                 </div>
-                <p className="text-violet-100 leading-relaxed mb-5">
+                <p className="text-gray-700 leading-relaxed mb-5">
                   &ldquo;{t.text}&rdquo;
                 </p>
                 <div>
-                  <div className="font-semibold text-sm">{t.name}</div>
-                  <div className="text-xs text-violet-400">{t.role}</div>
+                  <div className="font-semibold text-sm text-gray-900">{t.name}</div>
+                  <div className="text-xs text-gray-500">{t.role}</div>
                 </div>
               </div>
+              </AnimatedSection>
             ))}
           </div>
         </div>
@@ -434,22 +356,29 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* CTA / Form */}
-      <section id="form" className="py-20 sm:py-28 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* CTA / Form — dark */}
+      <section id="form" className="py-20 sm:py-28 bg-dark text-white relative overflow-hidden">
+        {/* Subtle gradient accent */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(124,58,237,0.12),transparent_70%)]" />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-2xl mx-auto">
             <div className="text-center mb-10">
-              <div className="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-1.5 text-sm font-semibold mb-4">
+              <div className="inline-flex items-center gap-2 bg-accent/20 text-accent rounded-full px-4 py-1.5 text-sm font-semibold mb-4 border border-accent/20">
                 Набираем первых 100 хостов
               </div>
-              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
-                Оставьте заявку — запустим вместе
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight">
+                Оставьте заявку —
+                <br />
+                <span className="text-accent">запустим вместе</span>
               </h2>
-              <p className="mt-4 text-lg text-gray-600">
-                Первые 100 хостов получают <span className="font-bold text-primary">0% комиссии на 6 месяцев</span> + бесплатную профессиональную фотосъёмку помещения
+              <p className="mt-4 text-lg text-dark-muted">
+                Первые 100 хостов получают <span className="font-bold text-accent">0% комиссии на 6 месяцев</span> + бесплатную профессиональную фотосъёмку помещения
               </p>
+              <p className="font-handwritten text-xl text-rose mt-2 -rotate-1">да, совсем бесплатно!</p>
             </div>
-            <HostForm />
+            <div className="bg-dark-surface rounded-2xl border border-dark-border p-6 sm:p-8">
+              <HostForm />
+            </div>
           </div>
         </div>
       </section>

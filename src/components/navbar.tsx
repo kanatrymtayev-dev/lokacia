@@ -29,8 +29,17 @@ export default function Navbar() {
   const [admin, setAdmin] = useState(false);
   const [unread, setUnread] = useState(0);
   const [favoritesCount, setFavoritesCount] = useState(0);
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    function onScroll() {
+      setScrolled(window.scrollY > 50);
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const browseRef = useRef<HTMLDivElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
@@ -67,12 +76,16 @@ export default function Navbar() {
   const listSpaceHref = user ? "/dashboard" : "/register";
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
+    <nav className={`sticky top-0 z-50 transition-all duration-300 ${
+      scrolled
+        ? "bg-white/90 backdrop-blur-md border-b border-gray-100 shadow-sm"
+        : "bg-transparent border-b border-transparent"
+    }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Left: Logo + Nav links */}
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center hover:rotate-6 transition-transform">
               <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-white">
                 <path d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" fill="currentColor" />
                 <path

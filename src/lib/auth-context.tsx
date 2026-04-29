@@ -28,6 +28,7 @@ interface AuthContextType {
     role: "host" | "renter";
   }) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -210,13 +211,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { ok: true };
   }
 
+  async function refreshProfile() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      const profile = await fetchProfile(session.user);
+      setUser(profile);
+    }
+  }
+
   async function logout() {
     await supabase.auth.signOut();
     setUser(null);
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

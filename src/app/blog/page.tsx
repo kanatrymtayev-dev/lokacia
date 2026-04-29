@@ -18,7 +18,7 @@ export default async function BlogPage() {
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
-      <main className="flex-1 bg-gray-50">
+      <main className="flex-1 bg-cream">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Блог</h1>
           <p className="text-gray-500 mb-8">Статьи о локациях, съёмках и мероприятиях</p>
@@ -39,7 +39,7 @@ export default async function BlogPage() {
                 <Link
                   key={post.id}
                   href={`/blog/${post.slug}`}
-                  className="group bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20 transition-all duration-300"
+                  className="group bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20 hover:-translate-y-1 transition-all duration-300"
                 >
                   {post.coverImage ? (
                     <div className="relative aspect-[16/9] overflow-hidden bg-gray-100">

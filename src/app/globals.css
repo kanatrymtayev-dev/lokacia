@@ -3,10 +3,21 @@
 :root {
   --background: #ffffff;
   --foreground: #0f172a;
-  --primary: #6d28d9;
-  --primary-light: #8b5cf6;
+  --primary: #7c3aed;
+  --primary-light: #a78bfa;
   --primary-dark: #5b21b6;
   --accent: #f59e0b;
+  --warm: #fef3c7;
+  --cream: #faf7f2;
+  --rose: #fda4af;
+  --teal: #5eead4;
+  --surface: #faf5ff;
+  /* Dark palette */
+  --dark: #0c0a14;
+  --dark-surface: #1a1625;
+  --dark-border: #2d2640;
+  --dark-text: #e2dff0;
+  --dark-muted: #9590a8;
 }
 
 @theme inline {
@@ -16,14 +27,31 @@
   --color-primary-light: var(--primary-light);
   --color-primary-dark: var(--primary-dark);
   --color-accent: var(--accent);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-warm: var(--warm);
+  --color-cream: var(--cream);
+  --color-rose: var(--rose);
+  --color-teal: var(--teal);
+  --color-surface: var(--surface);
+  --color-dark: var(--dark);
+  --color-dark-surface: var(--dark-surface);
+  --color-dark-border: var(--dark-border);
+  --color-dark-text: var(--dark-text);
+  --color-dark-muted: var(--dark-muted);
+  --font-sans: var(--font-heading), Arial, Helvetica, sans-serif;
+  --font-mono: monospace;
+  --font-heading: var(--font-heading);
+  --font-handwritten: var(--font-handwritten);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-heading), Arial, Helvetica, sans-serif;
+}
+
+/* Handwritten font utility */
+.font-handwritten {
+  font-family: var(--font-handwritten), cursive;
 }
 
 html {
@@ -69,6 +97,106 @@ html {
 @keyframes pageIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Illustration & scroll animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-5deg); }
+  75% { transform: rotate(5deg); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes bounceSoft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes sparkle {
+  0%, 100% { opacity: 0.4; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+@keyframes draw {
+  from { stroke-dashoffset: 1000; }
+  to { stroke-dashoffset: 0; }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-float-slow {
+  animation: float 5s ease-in-out infinite;
+}
+
+.animate-float-delay {
+  animation: float 3s ease-in-out 1s infinite;
+}
+
+.animate-wiggle {
+  animation: wiggle 0.4s ease-in-out;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out both;
+}
+
+.animate-fade-in-scale {
+  animation: fadeInScale 0.5s ease-out both;
+}
+
+.animate-bounce-soft {
+  animation: bounceSoft 2s ease-in-out infinite;
+}
+
+.animate-sparkle {
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+.animate-sparkle-delay {
+  animation: sparkle 2s ease-in-out 0.5s infinite;
+}
+
+.animate-sparkle-delay-2 {
+  animation: sparkle 2s ease-in-out 1s infinite;
+}
+
+.illustration-draw {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: draw 1.5s ease-out forwards;
+}
+
+/* Stagger delays for scroll animations */
+.stagger-1 { animation-delay: 0ms; }
+.stagger-2 { animation-delay: 100ms; }
+.stagger-3 { animation-delay: 200ms; }
+.stagger-4 { animation-delay: 300ms; }
+.stagger-5 { animation-delay: 400ms; }
+.stagger-6 { animation-delay: 500ms; }
+
+/* Accessibility: disable animations for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Skeleton shimmer */

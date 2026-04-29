@@ -107,7 +107,7 @@ export default function BookingsPage() {
     return (
       <div className="flex flex-col min-h-screen">
         <Navbar />
-        <main className="flex-1 bg-gray-50">
+        <main className="flex-1 bg-cream">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-4">
             <div className="skeleton h-8 w-48" />
             {[1, 2, 3].map((i) => (
@@ -131,7 +131,7 @@ export default function BookingsPage() {
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
-      <main className="flex-1 bg-gray-50">
+      <main className="flex-1 bg-cream">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Payment toast */}
           {paymentToast === "success" && (

@@ -67,7 +67,7 @@ export default async function ListingPage({
     <div className="flex flex-col min-h-screen">
       <Navbar />
       <ViewTracker listingId={listing.id} hostId={listing.hostId} />
-      <main className="flex-1 bg-gray-50">
+      <main className="flex-1 bg-cream">
         {/* Gallery */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
           <Gallery images={listing.images} title={listing.title} />

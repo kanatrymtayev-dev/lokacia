@@ -209,7 +209,7 @@ export default function ProfilePage() {
     return (
       <div className="flex flex-col min-h-screen">
         <Navbar />
-        <main className="flex-1 bg-gray-50">
+        <main className="flex-1 bg-cream">
           <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10 space-y-6">
             <div className="skeleton h-8 w-40" />
             <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
@@ -241,7 +241,7 @@ export default function ProfilePage() {
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
-      <main className="flex-1 bg-gray-50">
+      <main className="flex-1 bg-cream">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10">
           <h1 className="text-2xl font-bold text-gray-900 mb-8">{t("profile.title")}</h1>
 

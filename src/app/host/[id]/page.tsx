@@ -64,7 +64,7 @@ export default async function HostProfilePage({
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
-      <main className="flex-1 bg-gray-50">
+      <main className="flex-1 bg-cream">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           {/* Profile Card */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 mb-10">

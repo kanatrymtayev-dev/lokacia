@@ -18,7 +18,7 @@ export default async function CatalogPage() {
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
-      <main className="flex-1 bg-gray-50">
+      <main className="flex-1 bg-cream">
         <CatalogClient listings={listings} />
       </main>
       <Footer />

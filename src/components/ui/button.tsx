@@ -39,7 +39,7 @@ export default function Button({
   return (
     <button
       disabled={disabled || loading}
-      className={`font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${variants[variant]} ${sizes[size]} ${fullWidth ? "w-full" : ""} ${className}`}
+      className={`font-semibold transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed ${variants[variant]} ${sizes[size]} ${fullWidth ? "w-full" : ""} ${className}`}
       {...props}
     >
       {loading ? (

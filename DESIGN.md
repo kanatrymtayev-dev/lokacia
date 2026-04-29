@@ -1,389 +1,304 @@
-# LOKACIA.KZ — Design System
+# LOKACIA.KZ — Design System v2
 
-Маркетплейс аренды локаций в Казахстане. UI на русском языке.
+Маркетплейс аренды локаций и спортивных площадок в Казахстане. UI на русском языке.
+
+## Концепт: "Найди свою сцену"
+
+Кинематографичный контраст + Hand-drawn тепло + Apple-like движение.
+Тёмный hero (как кинотеатр перед началом фильма) → светлый контент (как свет на площадке).
+
+---
 
 ## Brand
 
 - **Название:** LOKACIA.KZ
-- **Позиционирование:** Казахстанский Giggster — профессиональная, доверительная, доступная платформа
-- **Тон:** Чистый, минималистичный, дружелюбный. Без кричащих градиентов. Белый фон, фиолетовый акцент
-- **Шрифт:** Geist Sans (Google Fonts, subsets: latin + cyrillic)
+- **Позиционирование:** Казахстанский Peerspace/Giggster — кинематографичный, тёплый, надёжный
+- **Тон:** Доверие, жизнь, ясность, дружелюбный, креативный, тёплый, надёжный
+- **Целевая аудитория:** Киношники, контент-мейкеры, ивент-агентства, спортивные команды
 
 ---
 
-## Colors
+## Типографика
 
-### Brand
+### Основной шрифт: **Space Grotesk** (Google Fonts)
+Геометрический гротеск с характером. Субсеты: latin, latin-ext.
+CSS variable: `--font-heading`
 
-| Token            | Hex       | Tailwind          | Использование                  |
-|------------------|-----------|-------------------|--------------------------------|
-| `primary`        | `#6d28d9` | `text-primary`    | CTA, ссылки, активные элементы |
-| `primary-light`  | `#8b5cf6` | `text-primary-light` | Hover, фоны с opacity       |
-| `primary-dark`   | `#5b21b6` | `text-primary-dark`  | Pressed state, тёмные тексты |
-| `accent`         | `#f59e0b` | `text-accent`     | Бейджи "Новое", звёзды, featured |
+### Рукописный акцент: **Caveat** (Google Fonts)
+Для аннотаций, пометок, стрелок — "hand-drawn" ощущение.
+CSS variable: `--font-handwritten`
+Utility class: `.font-handwritten`
+
+| Элемент | Шрифт | Размер | Вес | Tailwind |
+|---------|-------|--------|-----|----------|
+| Hero заголовок | Space Grotesk | 56-72px | 700 | `text-5xl sm:text-6xl lg:text-7xl font-bold` |
+| Секции h2 | Space Grotesk | 30-48px | 700 | `text-3xl sm:text-4xl font-bold` |
+| h3 | Space Grotesk | 20-28px | 600-700 | `text-xl font-bold` |
+| Body | Space Grotesk | 16-18px | 400 | `text-base` |
+| Рукописные пометки | Caveat | 20-28px | 700 | `font-handwritten text-xl` |
+| Навигация | Space Grotesk | 14-15px | 500 | `text-sm font-medium` |
+
+---
+
+## Цвета
+
+### Brand (функциональные)
+
+| Token | Hex | CSS var | Tailwind | Использование |
+|-------|-----|---------|----------|---------------|
+| `primary` | `#7c3aed` | `--primary` | `text-primary`, `bg-primary` | CTA, ссылки, активные элементы |
+| `primary-light` | `#a78bfa` | `--primary-light` | `text-primary-light` | Hover, secondary |
+| `primary-dark` | `#5b21b6` | `--primary-dark` | `text-primary-dark` | Pressed state |
+| `accent` | `#f59e0b` | `--accent` | `text-accent`, `bg-accent` | Звёзды, бейджи, highlight, золотой текст |
+
+### Тёмная палитра (Hero, секции, footer)
+
+| Token | Hex | CSS var | Tailwind | Использование |
+|-------|-----|---------|----------|---------------|
+| `dark` | `#0c0a14` | `--dark` | `bg-dark` | Hero фон, тёмные секции, footer |
+| `dark-surface` | `#1a1625` | `--dark-surface` | `bg-dark-surface` | Карточки на тёмном фоне |
+| `dark-border` | `#2d2640` | `--dark-border` | `border-dark-border` | Границы на тёмном |
+| `dark-text` | `#e2dff0` | `--dark-text` | `text-dark-text` | Основной текст на тёмном |
+| `dark-muted` | `#9590a8` | `--dark-muted` | `text-dark-muted` | Вторичный текст на тёмном |
+
+### Тёплые декоративные
+
+| Token | Hex | CSS var | Tailwind | Использование |
+|-------|-----|---------|----------|---------------|
+| `warm` | `#fef3c7` | `--warm` | `bg-warm` | Тёплый фон секций (benefits) |
+| `cream` | `#faf7f2` | `--cream` | `bg-cream` | Основной светлый фон страниц (вместо gray-50) |
+| `rose` | `#fda4af` | `--rose` | `text-rose` | Декоративные акценты, иллюстрации |
+| `teal` | `#5eead4` | `--teal` | `text-teal` | Вторичный декоративный цвет |
+| `surface` | `#faf5ff` | `--surface` | `bg-surface` | Фиолетовый тёплый фон |
 
 ### Semantic
 
-| Token     | Hex       | Tailwind класс      | Использование              |
-|-----------|-----------|----------------------|----------------------------|
-| `success` | `#16a34a` | `text-green-600`     | Подтверждения, верификация  |
-| `error`   | `#dc2626` | `text-red-600`       | Ошибки, удаление, danger    |
-| `warning` | `#d97706` | `text-amber-600`     | Предупреждения, ожидание    |
-| `info`    | `#2563eb` | `text-blue-600`      | Информация, подсказки       |
+| Token | Hex | Tailwind | Использование |
+|-------|-----|----------|---------------|
+| `success` | `#16a34a` | `text-green-600` | Подтверждения, верификация |
+| `error` | `#dc2626` | `text-red-600` | Ошибки, удаление |
+| `warning` | `#d97706` | `text-amber-600` | Предупреждения |
+| `info` | `#2563eb` | `text-blue-600` | Информация |
 
-### Neutral
+---
 
-| Token        | Hex       | Tailwind          | Использование             |
-|--------------|-----------|-------------------|---------------------------|
-| `foreground` | `#0f172a` | `text-foreground`  | Основной текст            |
-| `muted`      | `#6b7280` | `text-gray-500`    | Вторичный текст           |
-| `subtle`     | `#9ca3af` | `text-gray-400`    | Плейсхолдеры, подписи     |
-| `border`     | `#e5e7eb` | `border-gray-200`  | Границы карточек, инпутов |
-| `surface`    | `#f9fafb` | `bg-gray-50`       | Фон страниц               |
-| `background` | `#ffffff` | `bg-white`         | Карточки, модалки          |
+## Анимации
 
-### CSS Variables (globals.css)
+### Библиотеки
+- **GSAP** v3.15 + **ScrollTrigger** — scroll-triggered анимации, sticky sections
+- **Lenis** v1.3 — smooth scroll
 
+### CSS Keyframes (globals.css)
+
+| Анимация | Длительность | Описание | Utility class |
+|----------|-------------|----------|---------------|
+| `float` | 3s infinite | Плавание вверх-вниз | `.animate-float` |
+| `float` (slow) | 5s infinite | Медленное плавание | `.animate-float-slow` |
+| `wiggle` | 0.4s | Покачивание ±5° | `.animate-wiggle` |
+| `fadeInUp` | 0.6s | Появление снизу | `.animate-fade-in-up` |
+| `fadeInScale` | 0.5s | Появление с масштабом | `.animate-fade-in-scale` |
+| `bounceSoft` | 2s infinite | Мягкий bounce | `.animate-bounce-soft` |
+| `sparkle` | 2s infinite | Мерцание | `.animate-sparkle` |
+| `draw` | 1.5s | SVG stroke drawing | `.illustration-draw` |
+
+### Stagger delays
+`.stagger-1` через `.stagger-6` — задержки 0-500ms с шагом 100ms
+
+### Accessibility
 ```css
-:root {
-  --background: #ffffff;
-  --foreground: #0f172a;
-  --primary: #6d28d9;
-  --primary-light: #8b5cf6;
-  --primary-dark: #5b21b6;
-  --accent: #f59e0b;
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 ```
 
 ---
 
-## Typography
+## Иллюстрации
 
-Шрифт: **Geist Sans** (`--font-geist-sans`). Fallback: Arial, Helvetica, sans-serif.
+### Стиль: "Режиссёрские заметки"
+Неидеальные линии, тёплые цвета, как набросок на полях сценария. НЕ детские — артистичные.
 
-| Token         | Size   | Weight   | Line-height | Tailwind                        | Использование          |
-|---------------|--------|----------|-------------|---------------------------------|------------------------|
-| `heading-1`   | 30px   | 700 bold | 1.2         | `text-3xl font-bold`            | Заголовки страниц      |
-| `heading-2`   | 24px   | 700 bold | 1.25        | `text-2xl font-bold`            | Заголовки секций       |
-| `heading-3`   | 20px   | 600 semi | 1.3         | `text-xl font-semibold`         | Подзаголовки           |
-| `heading-4`   | 18px   | 600 semi | 1.35        | `text-lg font-semibold`         | Названия карточек      |
-| `body`        | 16px   | 400      | 1.5         | `text-base`                     | Основной текст         |
-| `body-medium` | 14px   | 500      | 1.5         | `text-sm font-medium`           | Labels, навигация      |
-| `body-small`  | 12px   | 400      | 1.5         | `text-xs`                       | Подписи, метаданные    |
-| `caption`     | 10px   | 500      | 1.4         | `text-[10px] font-medium`       | Бейджи, статусы        |
+### Компоненты: `src/components/illustrations/`
+
+| Компонент | Файл | Использование |
+|-----------|------|---------------|
+| `HeroDecor` | `hero-decor.tsx` | Плавающие дудлы в Hero (камера, звезда, пин, спарклы) |
+| `IllustrationCamera` | `camera.tsx` | Категория: Фотостудии |
+| `IllustrationParty` | `party.tsx` | Категория: Ивент-площадки |
+| `IllustrationHouse` | `house.tsx` | Категория: Жильё |
+| `IllustrationFilm` | `film.tsx` | Категория: Sound Stages |
+| `IllustrationYurt` | `yurt.tsx` | Категория: Этно-пространства |
+| `IllustrationCutlery` | `cutlery.tsx` | Категория: Рестораны |
+| `IllustrationDesk` | `desk.tsx` | Категория: Переговорные |
+| `IllustrationMountain` | `mountain.tsx` | Категория: Горные шале |
+| `IllustrationEmptySearch` | `empty-search.tsx` | EmptyState: поиск |
+| `IllustrationEmptyBookings` | `empty-bookings.tsx` | EmptyState: бронирования |
+| `IllustrationEmptyFavorites` | `empty-favorites.tsx` | EmptyState: избранное |
+| `IllustrationEmptyInbox` | `empty-inbox.tsx` | EmptyState: почта |
+| `IllustrationErrorPin` | `error-pin.tsx` | 404/ошибки |
+| `WaveDivider` | `wave-divider.tsx` | Волнистый разделитель секций |
+
+Все иллюстрации используют CSS-переменные (`var(--primary)`, `var(--accent)`, `var(--rose)`, `var(--teal)`).
+
+---
+
+## Компоненты
+
+### AnimatedSection
+`src/components/animated-section.tsx` — client component, обёртка с `useInView` для scroll-анимаций.
+```tsx
+<AnimatedSection animation="fade-in-up" delay="100ms">
+  <div>...</div>
+</AnimatedSection>
+```
+
+### CountUp
+`src/components/count-up.tsx` — анимация числа от 0 до target при входе в viewport.
+
+### StickySteps
+`src/components/sticky-steps.tsx` — секция "Как это работает" с большими иллюстрациями.
+
+### useInView
+`src/hooks/use-in-view.ts` — IntersectionObserver хук, `{ ref, isInView }`.
+
+### Button
+`src/components/ui/button.tsx`
+- `active:scale-[0.97]` — micro-interaction при нажатии
+- `transition-all` вместо `transition-colors`
+
+### ListingCard
+`src/components/listing-card.tsx`
+- `hover:-translate-y-1` — поднятие при hover
+
+### Navbar
+`src/components/navbar.tsx`
+- Прозрачный на hero, при скролле >50px → белый blur фон
+- Логотип: `hover:rotate-6 transition-transform`
+
+### Footer
+`src/components/footer.tsx`
+- Фон: `bg-dark` (#0c0a14)
+- Текст: `text-dark-muted`, ссылки `hover:text-white`
+
+---
+
+## Структура главной страницы
+
+```
+NAVBAR (прозрачный → blur)
+HERO — bg-dark, фото с overlay, "Найди свою сцену", дудлы, CountUp stats
+WAVE DIVIDER (dark → cream)
+КАТЕГОРИИ — bg-cream, карточки с фото + hand-drawn иконки, staggered reveal
+ПОПУЛЯРНЫЕ ЛОКАЦИИ — bg-white, ListingCard с hover lift
+КАК ЭТО РАБОТАЕТ — bg-white, StickySteps (текст + большая иллюстрация), Caveat пометки
+BENEFITS — bg-warm/50, 2 колонки, AnimatedSection
+TESTIMONIALS — bg-cream, карточки с hover lift
+FAQ — bg-white, аккордеон
+CTA — bg-dark, градиентный акцент, Caveat пометка, форма в тёмной карточке
+FOOTER — bg-dark
+```
+
+---
+
+## Паттерны страниц
+
+### Публичные с hero
+`for-hosts`, `about`, `protection` — тёмный hero + WaveDivider + cream/white контент
+
+### Формы (login, register, reset-password)
+Фон: `bg-cream`, белая карточка с border
+
+### Каталог, список, детали
+Фон: `bg-cream`, карточки белые
+
+### Dashboard, admin, inbox
+Фон: `bg-gray-50` (НЕ менять — внутренние страницы)
 
 ---
 
 ## Spacing
 
-Базовый юнит: **4px**. Используй кратные значения.
+Базовый юнит: **4px**. Кратные значения.
 
-| Token  | Value | Tailwind | Использование                     |
-|--------|-------|----------|-----------------------------------|
-| `xs`   | 4px   | `1`      | Зазоры между иконкой и текстом    |
-| `sm`   | 8px   | `2`      | Паддинги бейджей, gap в строке    |
-| `md`   | 16px  | `4`      | Паддинги инпутов, gap в форме     |
-| `lg`   | 24px  | `6`      | Паддинги карточек, секций         |
-| `xl`   | 32px  | `8`      | Отступы между секциями            |
-| `2xl`  | 48px  | `12`     | Большие отступы (hero, page top)  |
-
-### Consistency rules
-
-- Внутри карточек: `p-6` (24px)
-- Между карточками/секциями: `mb-6` (24px)
-- Форма fields gap: `space-y-4` или `space-y-5`
-- Страница: `py-10 px-4 sm:px-6`, max-width: `max-w-2xl` (формы) или `max-w-7xl` (каталог)
+| Token | Value | Tailwind | Использование |
+|-------|-------|----------|---------------|
+| `xs` | 4px | `1` | Зазоры иконка-текст |
+| `sm` | 8px | `2` | Паддинги бейджей |
+| `md` | 16px | `4` | Паддинги инпутов |
+| `lg` | 24px | `6` | Паддинги карточек |
+| `xl` | 32px | `8` | Между секциями |
+| `2xl` | 48px | `12` | Hero, page top |
 
 ---
 
 ## Border Radius
 
-| Token  | Value | Tailwind       | Использование                        |
-|--------|-------|----------------|--------------------------------------|
-| `sm`   | 8px   | `rounded-lg`   | Инпуты, бейджи, маленькие кнопки     |
-| `md`   | 12px  | `rounded-xl`   | Кнопки, toast, dropdown              |
-| `lg`   | 16px  | `rounded-2xl`  | Карточки, модалки, секции             |
-| `full` | 9999  | `rounded-full` | Аватары, бейджи-pill, FAB            |
-
----
-
-## Shadows
-
-| Token  | Value                                    | Tailwind         | Использование              |
-|--------|------------------------------------------|------------------|-----------------------------|
-| `sm`   | `0 1px 2px rgba(0,0,0,0.05)`            | `shadow-sm`      | Кнопки, бейджи              |
-| `md`   | `0 4px 6px -1px rgba(0,0,0,0.1)`        | `shadow-md`      | Dropdown, hover-карточки     |
-| `lg`   | `0 10px 15px -3px rgba(0,0,0,0.1)`      | `shadow-lg`      | Модалки, floating elements   |
-| `xl`   | `0 20px 25px -5px rgba(0,0,0,0.1)`      | `shadow-xl`      | Hero search bar              |
-| `primary` | `0 10px 15px -3px rgba(109,40,217,0.1)` | `shadow-lg shadow-primary/10` | Highlighted cards |
-
----
-
-## Components
-
-### Button
-
-4 варианта, 3 размера. Всегда `font-semibold`, `transition-colors`, `disabled:opacity-50`.
-
-| Variant     | Classes                                                                                     |
-|-------------|---------------------------------------------------------------------------------------------|
-| `primary`   | `bg-primary text-white hover:bg-primary-dark`                                               |
-| `secondary` | `bg-gray-100 text-gray-700 hover:bg-gray-200`                                               |
-| `danger`    | `bg-red-600 text-white hover:bg-red-700`                                                    |
-| `ghost`     | `bg-transparent text-gray-700 hover:bg-gray-100`                                            |
-| `outline`   | `border-2 border-primary text-primary hover:bg-primary/5`                                    |
-
-| Size    | Classes                            |
-|---------|------------------------------------|
-| `sm`    | `px-3 py-1.5 text-xs rounded-lg`  |
-| `md`    | `px-5 py-2.5 text-sm rounded-xl`  |
-| `lg`    | `px-6 py-3.5 text-sm rounded-xl`  |
-
-**Full-width:** добавь `w-full`. **Loading:** заменить текст на `...` или спиннер + `disabled`.
-
-```tsx
-// Primary CTA
-<button className="w-full bg-primary text-white py-3.5 rounded-xl text-sm font-bold hover:bg-primary-dark transition-colors disabled:opacity-50">
-  Зарегистрироваться
-</button>
-
-// Secondary
-<button className="px-5 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold hover:bg-gray-200 transition-colors">
-  Отмена
-</button>
-
-// Danger outline
-<button className="px-5 py-2.5 rounded-lg border-2 border-red-300 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors">
-  Деактивировать
-</button>
-```
-
-### Input
-
-Стандартный стиль для всех текстовых полей:
-
-```
-w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm
-focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary
-```
-
-- **Disabled:** `disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed`
-- **Error:** `border-red-300 focus:ring-red-200 focus:border-red-400`
-- **Label:** `block text-sm font-medium text-gray-700 mb-1.5` (над инпутом)
-- **Helper text:** `text-xs text-gray-400 mt-1.5` (под инпутом)
-- **Error text:** `text-xs text-red-600 mt-1.5`
-
-### Card
-
-Базовая карточка-контейнер:
-
-```
-bg-white rounded-2xl border border-gray-200 p-6
-```
-
-- **Hover (listing card):** `hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20 transition-all duration-300`
-- **Highlighted:** `border-primary shadow-lg shadow-primary/10`
-- **Danger card:** `border-red-200` (деактивация аккаунта)
-
-### Modal
-
-Оверлей + центрированный контейнер:
-
-```tsx
-// Overlay
-<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-  {/* Container */}
-  <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-5">
-    {/* Title */}
-    <h3 className="text-lg font-bold text-gray-900">Заголовок</h3>
-    {/* Content */}
-    ...
-    {/* Actions — всегда внизу */}
-    <div className="flex gap-3">
-      <button className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50">
-        Отмена
-      </button>
-      <button className="flex-1 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary-dark disabled:opacity-50">
-        Подтвердить
-      </button>
-    </div>
-  </div>
-</div>
-```
-
-### Badge
-
-Pill-shaped статусные бейджи:
-
-| Variant      | Classes                                                  | Использование       |
-|--------------|----------------------------------------------------------|---------------------|
-| `verified`   | `bg-green-50 text-green-700 text-[10px] font-medium`    | Верифицирован       |
-| `pending`    | `bg-amber-50 text-amber-700 text-[10px] font-medium`    | На модерации        |
-| `featured`   | `bg-amber-400 text-amber-950 text-xs font-bold`         | Топ-листинг         |
-| `new`        | `bg-accent text-gray-900 text-xs font-bold`              | Новое               |
-| `host`       | `bg-purple-100 text-purple-700 text-[10px] font-medium` | Роль хост           |
-| `renter`     | `bg-blue-100 text-blue-700 text-[10px] font-medium`     | Роль арендатор      |
-| `danger`     | `bg-red-50 text-red-600 text-[10px] font-medium`        | Заблокирован        |
-| `deactivated`| `bg-orange-50 text-orange-600 text-[10px] font-medium`  | Деактивирован       |
-
-Общий паттерн: `px-2 py-0.5 rounded-full` (или `px-2.5 py-1 rounded-full` для крупных).
-
-### Toast
-
-Фиксированный в правом нижнем углу:
-
-```tsx
-<div className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-medium ${
-  type === "success" ? "bg-green-600 text-white"
-  : type === "error" ? "bg-red-600 text-white"
-  : type === "warning" ? "bg-amber-500 text-white"
-  : "bg-blue-600 text-white"
-}`}>
-  {message}
-</div>
-```
-
-- Auto-dismiss: 4 секунды
-- Позиция: `fixed bottom-6 right-6 z-50`
-
-### Alert / Error Block
-
-Инлайн-сообщение об ошибке в формах:
-
-```
-bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl
-```
-
-Success variant: `bg-green-50 text-green-700`
-
----
-
-## Layout
-
-### Page structure
-
-```
-<div className="flex flex-col min-h-screen">
-  <Navbar />
-  <main className="flex-1 bg-gray-50">
-    <div className="max-w-{size} mx-auto px-4 sm:px-6 py-10">
-      ...
-    </div>
-  </main>
-  <Footer />
-</div>
-```
-
-- Формы / профиль: `max-w-2xl`
-- Каталог: `max-w-7xl`
-- Одна колонка + sidebar (листинг): `max-w-6xl`, grid `lg:grid-cols-3`
-
-### Navbar
-
-- Высота: `h-16`
-- Фон: `bg-white border-b border-gray-100`
-- Лого: фиолетовый квадрат `rounded-lg bg-primary` + белый текст `LOKACIA`
-- Desktop: ссылки + dropdown browse + user menu
-- Mobile: бургер → slide-in panel
-
-### Section card
-
-Каждая логическая секция на странице (профиль, дашборд):
-
-```
-<div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
-  <h2 className="text-lg font-semibold text-gray-900 mb-5">Заголовок секции</h2>
-  ...
-</div>
-```
+| Token | Value | Tailwind | Использование |
+|-------|-------|----------|---------------|
+| `sm` | 8px | `rounded-lg` | Инпуты, бейджи |
+| `md` | 12px | `rounded-xl` | Кнопки, toast |
+| `lg` | 16px | `rounded-2xl` | Карточки, модалки |
+| `full` | 9999 | `rounded-full` | Аватары, pill-кнопки, бейджи |
 
 ---
 
 ## Iconography
 
 **Библиотека:** [Lucide React](https://lucide.dev) (`lucide-react`), strokeWidth 1.5–2.
-
-Новые компоненты и правки — **только Lucide**. Существующие inline SVG (Heroicons) мигрируются постепенно.
-
-```tsx
-import { Search, X, Check, Loader2 } from "lucide-react";
-<Search className="w-5 h-5" strokeWidth={1.5} />
-```
-
-| Context        | Class          | strokeWidth |
-|----------------|----------------|-------------|
-| В тексте       | `w-4 h-4`     | 2           |
-| В кнопке       | `w-5 h-5`     | 2           |
-| Декоративная   | `w-7 h-7`     | 1.5         |
-| Большая        | `w-12 h-12`   | 1.5         |
+Для декоративных иллюстраций — кастомные SVG из `src/components/illustrations/`.
 
 ---
 
-## States
-
-| State      | Pattern                                           |
-|------------|---------------------------------------------------|
-| Hover      | `hover:bg-{color}`, `hover:shadow-md`             |
-| Focus      | `focus:ring-2 focus:ring-primary/20 focus:border-primary` |
-| Active     | `active:scale-[0.98]` (опционально)               |
-| Disabled   | `disabled:opacity-50 disabled:cursor-not-allowed`  |
-| Loading    | Текст заменяется на `...` или `animate-pulse`      |
-| Empty      | Серый текст по центру, опционально SVG-иллюстрация |
-
----
-
-## Transitions
-
-| Element          | Duration | Easing  | Properties              |
-|------------------|----------|---------|-------------------------|
-| Buttons, links   | 150ms    | default | `transition-colors`     |
-| Cards            | 300ms    | default | `transition-all`        |
-| Images (hover)   | 500ms    | default | `transition-transform`  |
-| Modals           | 200ms    | ease-out| opacity + scale (TODO)  |
-| Toasts           | 300ms    | ease-out| slide-in (TODO)         |
-
----
-
-## Responsive Breakpoints
-
-Tailwind defaults. Ключевые адаптации:
-
-| Breakpoint | Width  | Что меняется                          |
-|------------|--------|---------------------------------------|
-| `sm`       | 640px  | Hero search: стек → row               |
-| `md`       | 768px  | Каталог: 1 col → 2 col               |
-| `lg`       | 1024px | Каталог: 2 col → 3 col + sidebar map |
-| `xl`       | 1280px | Max-width контейнеры                  |
-
----
-
-## File Structure
+## Файловая структура
 
 ```
 src/
-├── app/globals.css          # CSS variables, @theme
+├── app/
+│   ├── globals.css           # CSS variables, @theme, анимации
+│   ├── layout.tsx            # Шрифты (Space Grotesk + Caveat)
+│   ├── page.tsx              # Главная
+│   └── home-sections.tsx     # Client-компоненты героя
 ├── components/
-│   ├── ui/                  # Переиспользуемые UI-компоненты (TODO)
+│   ├── illustrations/        # 15 SVG-иллюстраций
+│   │   ├── index.ts          # Barrel export
+│   │   ├── hero-decor.tsx
+│   │   ├── camera.tsx
+│   │   ├── ...
+│   │   └── wave-divider.tsx
+│   ├── ui/                   # Переиспользуемые UI-компоненты
 │   │   ├── button.tsx
 │   │   ├── input.tsx
 │   │   ├── modal.tsx
 │   │   ├── toast.tsx
 │   │   ├── badge.tsx
-│   │   └── card.tsx
+│   │   ├── card.tsx
+│   │   ├── skeleton.tsx
+│   │   ├── empty-state.tsx
+│   │   └── error-boundary.tsx
+│   ├── animated-section.tsx
+│   ├── count-up.tsx
+│   ├── sticky-steps.tsx
 │   ├── navbar.tsx
 │   ├── footer.tsx
 │   ├── listing-card.tsx
 │   ├── hero-search.tsx
 │   └── ...
+├── hooks/
+│   └── use-in-view.ts       # IntersectionObserver hook
+├── lib/
+│   └── gsap.tsx              # GSAP + ScrollTrigger utilities
 ```
 
 ---
 
 ## Anti-patterns (не делать)
 
-- Не использовать абсолютные пиксели для spacing — только Tailwind классы
-- Не смешивать `rounded-xl` и `rounded-2xl` в одном контексте (карточки = `2xl`, инпуты = `lg`)
-- Не дублировать inline стили кнопок — использовать паттерны из этого файла
-- Не добавлять градиенты на основные элементы (бренд = flat, чистый)
-- Не использовать `shadow-2xl` для карточек (только для hero search bar)
+- Не использовать `bg-gray-50` для публичных страниц — использовать `bg-cream` или `bg-warm`
+- Не добавлять градиенты на кнопки — кнопки flat
+- Не использовать Geist Sans — шрифт теперь Space Grotesk
+- Не создавать hero секции с фиолетовым gradient — использовать тёмный `bg-dark`
 - Map-файлы (map.tsx, map-wrapper.tsx, listing-map.tsx) — НЕ трогать без прямой команды
+- Dashboard/admin/inbox — НЕ менять фоны на cream (оставить gray-50)

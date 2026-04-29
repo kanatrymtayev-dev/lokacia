@@ -78,7 +78,7 @@ export default function HostForm() {
           id="name"
           name="name"
           required
-          placeholder="Канат"
+          placeholder="Ваше имя"
           className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-gray-900"
         />
       </div>

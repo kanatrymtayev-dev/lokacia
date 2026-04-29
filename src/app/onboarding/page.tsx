@@ -16,7 +16,7 @@ const CITIES = [
 ];
 
 export default function OnboardingPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, refreshProfile } = useAuth();
   const { t } = useT();
   const router = useRouter();
   const [step, setStep] = useState(1);
@@ -141,6 +141,9 @@ export default function OnboardingPage() {
       .update({ onboarding_completed: true })
       .eq("id", user.id);
 
+    // Refresh local user state so OnboardingGuard sees the update
+    await refreshProfile();
+
     setSaving(false);
 
     if (user.role === "host") {
@@ -156,14 +159,14 @@ export default function OnboardingPage() {
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-cream">
         <div className="animate-pulse text-gray-400">Загрузка...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
+    <div className="min-h-screen bg-cream flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-lg">
         {/* Logo */}
         <div className="text-center mb-8">

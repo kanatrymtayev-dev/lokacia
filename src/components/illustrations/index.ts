@@ -1,0 +1,15 @@
+export { default as HeroDecor } from "./hero-decor";
+export { default as IllustrationCamera } from "./camera";
+export { default as IllustrationParty } from "./party";
+export { default as IllustrationHouse } from "./house";
+export { default as IllustrationFilm } from "./film";
+export { default as IllustrationYurt } from "./yurt";
+export { default as IllustrationCutlery } from "./cutlery";
+export { default as IllustrationDesk } from "./desk";
+export { default as IllustrationMountain } from "./mountain";
+export { default as IllustrationEmptySearch } from "./empty-search";
+export { default as IllustrationEmptyBookings } from "./empty-bookings";
+export { default as IllustrationEmptyFavorites } from "./empty-favorites";
+export { default as IllustrationEmptyInbox } from "./empty-inbox";
+export { default as IllustrationErrorPin } from "./error-pin";
+export { default as WaveDivider } from "./wave-divider";

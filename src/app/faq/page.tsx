@@ -69,7 +69,7 @@ export default function FaqPage() {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 pb-20">
           <FaqAccordion items={faqs} />
 
-          <div className="mt-12 text-center bg-gray-50 rounded-2xl p-8">
+          <div className="mt-12 text-center bg-warm/50 rounded-2xl p-8">
             <h2 className="text-lg font-bold text-gray-900 mb-2">Не нашли ответ?</h2>
             <p className="text-gray-600 mb-4">Напишите нам — мы ответим в течение 24 часов</p>
             <a

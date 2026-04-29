@@ -106,7 +106,7 @@ export default async function BlogPostPage({
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
-      <main className="flex-1 bg-gray-50">
+      <main className="flex-1 bg-cream">
         {/* Cover */}
         {post.coverImage && (
           <div className="relative w-full h-64 sm:h-80 lg:h-96 bg-gray-100">

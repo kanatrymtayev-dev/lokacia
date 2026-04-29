@@ -3,6 +3,7 @@
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { I18nProvider } from "@/lib/i18n";
 import ErrorBoundary from "@/components/ui/error-boundary";
+import SmoothScroll from "@/components/smooth-scroll";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
@@ -29,6 +30,7 @@ export default function Providers({ children }: { children: ReactNode }) {
     <ErrorBoundary>
       <I18nProvider>
         <AuthProvider>
+          <SmoothScroll />
           <OnboardingGuard>{children}</OnboardingGuard>
         </AuthProvider>
       </I18nProvider>

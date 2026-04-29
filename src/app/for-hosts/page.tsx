@@ -1,6 +1,8 @@
 import Link from "next/link";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
+import AnimatedSection from "@/components/animated-section";
+import { WaveDivider } from "@/components/illustrations";
 
 export const metadata = {
   title: "Для хостов — Зарабатывайте на LOKACIA.KZ",
@@ -8,25 +10,19 @@ export const metadata = {
 };
 
 const steps = [
-  { num: "01", title: "Зарегистрируйтесь", desc: "Создайте аккаунт хоста за 1 минуту. Никаких документов на старте." },
-  { num: "02", title: "Добавьте локацию", desc: "Загрузите фото, опишите площадку, укажите цену и правила." },
-  { num: "03", title: "Получайте запросы", desc: "Арендаторы находят вас через каталог и отправляют запрос на бронирование." },
-  { num: "04", title: "Зарабатывайте", desc: "Подтвердите бронирование — деньги поступают на ваш счёт после мероприятия." },
+  { num: "01", title: "Зарегистрируйтесь", desc: "Создайте аккаунт хоста за 1 минуту. Никаких документов на старте.", note: "← 1 минута!" },
+  { num: "02", title: "Добавьте локацию", desc: "Загрузите фото, опишите площадку, укажите цену и правила.", note: "бесплатно ✓" },
+  { num: "03", title: "Получайте запросы", desc: "Арендаторы находят вас через каталог и отправляют запрос на бронирование.", note: "без звонков!" },
+  { num: "04", title: "Зарабатывайте", desc: "Подтвердите бронирование — деньги поступают на ваш счёт после мероприятия.", note: "быстрая выплата →" },
 ];
 
 const benefits = [
   { title: "0% комиссии", desc: "Вы получаете полную сумму бронирования. Без скрытых платежей и абонентских плат." },
-  { title: "Безопасная оплата", desc: "Оплата через Kaspi Pay и Halyk Bank. Когда арендатор оплачивает — деньги гарантированы." },
+  { title: "Безопасная оплата", desc: "Онлайн-оплата через платформу. Когда арендатор оплачивает — деньги гарантированы." },
   { title: "Верификация и доверие", desc: "Пройдите ID-верификацию — и получите зелёный бейдж, повышающий конверсию." },
   { title: "Аналитика", desc: "Отслеживайте просмотры, бронирования, выручку и конверсию в дашборде." },
   { title: "PDF-инвойсы", desc: "Автоматическая генерация счетов для B2B-клиентов." },
   { title: "Чат и уведомления", desc: "Общайтесь с арендаторами прямо на платформе. Email-уведомления о каждом запросе." },
-];
-
-const earnings = [
-  { type: "Фотостудия", amount: "~800K", period: "в месяц / 4 бронирования в день" },
-  { type: "Ивент-площадка", amount: "~1.2M", period: "в месяц / 8 мероприятий" },
-  { type: "Квартира для съёмок", amount: "~300K", period: "в месяц / 10 съёмок" },
 ];
 
 export default function ForHostsPage() {
@@ -34,23 +30,25 @@ export default function ForHostsPage() {
     <div className="flex flex-col min-h-screen">
       <Navbar />
       <main className="flex-1">
-        {/* Hero */}
-        <section className="bg-gradient-to-br from-violet-950 to-purple-900 text-white py-20 sm:py-28">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Hero — dark */}
+        <section className="bg-dark text-white py-20 sm:py-28 relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(124,58,237,0.15),transparent_60%)]" />
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="max-w-3xl">
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-tight">
                 Зарабатывайте
                 <br />
-                <span className="text-amber-400">на вашем пространстве</span>
+                <span className="bg-gradient-to-r from-accent via-amber-300 to-accent bg-clip-text text-transparent">на вашем пространстве</span>
               </h1>
-              <p className="mt-6 text-lg sm:text-xl text-violet-200 leading-relaxed max-w-2xl">
+              <p className="font-handwritten text-xl text-accent/70 mt-2 -rotate-1">и это проще, чем кажется!</p>
+              <p className="mt-6 text-lg sm:text-xl text-dark-text/80 leading-relaxed max-w-2xl">
                 Сдавайте студию, лофт, ресторан, загородный дом или любое другое помещение —
                 и получайте доход без лишних хлопот.
               </p>
               <div className="mt-10 flex flex-col sm:flex-row gap-4">
                 <Link
                   href="/register?role=host"
-                  className="inline-flex items-center justify-center bg-amber-400 text-gray-900 px-8 py-4 rounded-full text-base font-bold hover:bg-amber-300 transition-colors shadow-lg"
+                  className="inline-flex items-center justify-center bg-accent text-gray-900 px-8 py-4 rounded-full text-base font-bold hover:bg-amber-300 transition-all active:scale-[0.97] shadow-lg"
                 >
                   Стать хостом
                   <svg className="ml-2 w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -68,6 +66,10 @@ export default function ForHostsPage() {
           </div>
         </section>
 
+        <div className="bg-dark -mt-1">
+          <WaveDivider fill="var(--background)" />
+        </div>
+
         {/* How it works */}
         <section className="py-20 sm:py-28 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -78,21 +80,24 @@ export default function ForHostsPage() {
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
               {steps.map((step, i) => (
-                <div key={step.num} className="relative">
-                  {i < steps.length - 1 && (
-                    <div className="hidden lg:block absolute top-8 left-full w-full h-0.5 bg-gradient-to-r from-primary/30 to-transparent -translate-x-4" />
-                  )}
-                  <div className="text-5xl font-black text-primary/10">{step.num}</div>
-                  <h3 className="mt-2 text-xl font-bold">{step.title}</h3>
-                  <p className="mt-2 text-gray-600 leading-relaxed">{step.desc}</p>
-                </div>
+                <AnimatedSection key={step.num} delay={`${i * 120}ms`}>
+                  <div className="relative">
+                    {i < steps.length - 1 && (
+                      <div className="hidden lg:block absolute top-8 left-full w-full h-0.5 bg-gradient-to-r from-primary/30 to-transparent -translate-x-4" />
+                    )}
+                    <div className="text-6xl font-black text-primary/10">{step.num}</div>
+                    <h3 className="mt-2 text-xl font-bold">{step.title}</h3>
+                    <p className="mt-2 text-gray-600 leading-relaxed">{step.desc}</p>
+                    <p className="font-handwritten text-lg text-primary mt-2 -rotate-1">{step.note}</p>
+                  </div>
+                </AnimatedSection>
               ))}
             </div>
           </div>
         </section>
 
         {/* Benefits */}
-        <section className="py-20 sm:py-28 bg-gray-50">
+        <section className="py-20 sm:py-28 bg-cream">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-2xl mx-auto mb-14">
               <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
@@ -100,60 +105,36 @@ export default function ForHostsPage() {
               </h2>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {benefits.map((b) => (
-                <div key={b.title} className="bg-white rounded-2xl border border-gray-200 p-6">
-                  <h3 className="font-bold text-gray-900 mb-2">{b.title}</h3>
-                  <p className="text-sm text-gray-600 leading-relaxed">{b.desc}</p>
-                </div>
+              {benefits.map((b, i) => (
+                <AnimatedSection key={b.title} delay={`${i * 100}ms`}>
+                  <div className="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+                    <h3 className="font-bold text-gray-900 mb-2">{b.title}</h3>
+                    <p className="text-sm text-gray-600 leading-relaxed">{b.desc}</p>
+                  </div>
+                </AnimatedSection>
               ))}
             </div>
           </div>
         </section>
 
-        {/* Earnings calculator */}
-        <section className="py-20 sm:py-28 bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="bg-gradient-to-br from-violet-950 to-purple-900 rounded-3xl p-8 sm:p-12 lg:p-16 text-white">
-              <div className="max-w-3xl mx-auto text-center">
-                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
-                  Сколько можно заработать?
-                </h2>
-                <p className="mt-4 text-violet-300 text-lg">
-                  Примерный доход для Алматы при средней загрузке
-                </p>
-                <div className="mt-10 grid sm:grid-cols-3 gap-6">
-                  {earnings.map((e) => (
-                    <div key={e.type} className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-                      <div className="text-sm text-violet-300 mb-2">{e.type}</div>
-                      <div className="text-3xl font-bold text-amber-400">{e.amount} &#8376;</div>
-                      <div className="text-sm text-violet-400 mt-1">{e.period}</div>
-                    </div>
-                  ))}
-                </div>
-                <p className="mt-6 text-sm text-violet-400">
-                  * 0% комиссии — вы получаете полную сумму. Реальный доход зависит от локации, цен и загрузки.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* CTA */}
-        <section className="py-20 sm:py-28 bg-gray-50">
-          <div className="max-w-2xl mx-auto px-4 sm:px-6 text-center">
-            <div className="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-1.5 text-sm font-semibold mb-4">
+        {/* CTA — dark */}
+        <section className="py-20 sm:py-28 bg-dark text-white relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(124,58,237,0.1),transparent_70%)]" />
+          <div className="relative max-w-2xl mx-auto px-4 sm:px-6 text-center">
+            <div className="inline-flex items-center gap-2 bg-accent/20 text-accent rounded-full px-4 py-1.5 text-sm font-semibold mb-4 border border-accent/20">
               Набираем первых 100 хостов
             </div>
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
-              Начните зарабатывать сегодня
+              Начните зарабатывать <span className="text-accent">сегодня</span>
             </h2>
-            <p className="mt-4 text-lg text-gray-600">
-              Первые 30 дней — <span className="font-bold text-primary">0% комиссии</span>. Регистрируйтесь и начните получать бронирования бесплатно
+            <p className="mt-4 text-lg text-dark-muted">
+              Первые 30 дней — <span className="font-bold text-accent">0% комиссии</span>. Регистрируйтесь и начните получать бронирования бесплатно
             </p>
+            <p className="font-handwritten text-xl text-rose mt-2 -rotate-1">да, совсем бесплатно!</p>
             <div className="mt-8">
               <Link
                 href="/register?role=host"
-                className="inline-flex items-center justify-center bg-primary text-white px-8 py-4 rounded-full text-base font-bold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/25"
+                className="inline-flex items-center justify-center bg-primary text-white px-8 py-4 rounded-full text-base font-bold hover:bg-primary-light transition-all active:scale-[0.97] shadow-lg shadow-primary/25"
               >
                 Зарегистрироваться как хост
                 <svg className="ml-2 w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
