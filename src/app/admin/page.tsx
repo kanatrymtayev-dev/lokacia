@@ -49,7 +49,7 @@ import { supabase } from "@/lib/supabase";
 import { downloadCSV } from "@/lib/csv";
 import type { Listing, HostVerification } from "@/lib/types";
 
-type Tab = "overview" | "bookings" | "payouts" | "featured" | "listings" | "moderation" | "verifications" | "users" | "promos" | "disputes" | "claims" | "blog" | "settings";
+type Tab = "overview" | "bookings" | "payouts" | "featured" | "listings" | "moderation" | "verifications" | "users" | "promos" | "disputes" | "claims" | "blog" | "broadcast" | "settings";
 
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
   unpaid: "Не оплачено",
@@ -241,6 +241,7 @@ export default function AdminPage() {
                 ["disputes", "Жалобы"],
                 ["claims", "Претензии"],
               ["blog", "Блог"],
+              ["broadcast", "Рассылка"],
               ["settings", "Настройки"],
               ] as const
             ).map(([key, label]) => (
@@ -610,6 +611,7 @@ export default function AdminPage() {
           {tab === "disputes" && <DisputesTab />}
           {tab === "claims" && <ClaimsTab />}
           {tab === "blog" && <BlogTab />}
+          {tab === "broadcast" && <BroadcastTab />}
           {tab === "settings" && <SettingsTab />}
         </div>
       </main>
@@ -2389,6 +2391,145 @@ function BlogTab() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function BroadcastTab() {
+  const [audience, setAudience] = useState<"all" | "hosts" | "renters">("all");
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<{ sent: number; failed: number; total: number } | null>(null);
+  const [error, setError] = useState("");
+
+  async function handleSend() {
+    if (!subject.trim() || !body.trim()) {
+      setError("Заполните тему и текст");
+      return;
+    }
+    if (!confirm(`Отправить рассылку ${audience === "all" ? "всем пользователям" : audience === "hosts" ? "всем хостам" : "всем арендаторам"}?`)) return;
+
+    setSending(true);
+    setError("");
+    setResult(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/admin/broadcast", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ subject, body, audience }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Ошибка отправки");
+      } else {
+        setResult(data);
+        setSubject("");
+        setBody("");
+      }
+    } catch {
+      setError("Ошибка сети");
+    }
+    setSending(false);
+  }
+
+  const audienceLabels = {
+    all: "Все пользователи",
+    hosts: "Только хосты",
+    renters: "Только арендаторы",
+  };
+
+  return (
+    <div className="max-w-2xl">
+      <h2 className="text-lg font-bold mb-1">Email-рассылка</h2>
+      <p className="text-sm text-gray-500 mb-6">Отправьте письмо хостам, арендаторам или всем пользователям</p>
+
+      {error && (
+        <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl mb-4">{error}</div>
+      )}
+
+      {result && (
+        <div className="bg-green-50 text-green-700 text-sm px-4 py-3 rounded-xl mb-4">
+          Отправлено: <strong>{result.sent}</strong> из {result.total}
+          {result.failed > 0 && <span className="text-red-600 ml-2">Ошибок: {result.failed}</span>}
+        </div>
+      )}
+
+      {/* Audience */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">Кому</label>
+        <div className="flex gap-2">
+          {(["all", "hosts", "renters"] as const).map((a) => (
+            <button
+              key={a}
+              type="button"
+              onClick={() => setAudience(a)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all border ${
+                audience === a
+                  ? "bg-primary text-white border-primary"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              {audienceLabels[a]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Subject */}
+      <div className="mb-4">
+        <label htmlFor="broadcast-subject" className="block text-sm font-medium text-gray-700 mb-1.5">
+          Тема письма
+        </label>
+        <input
+          id="broadcast-subject"
+          type="text"
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          placeholder="Например: Важное обновление условий"
+          className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+        />
+      </div>
+
+      {/* Body */}
+      <div className="mb-6">
+        <label htmlFor="broadcast-body" className="block text-sm font-medium text-gray-700 mb-1.5">
+          Текст письма
+        </label>
+        <textarea
+          id="broadcast-body"
+          rows={8}
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="Текст рассылки (plain text, переносы строк сохраняются)"
+          className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
+        />
+        <p className="text-xs text-gray-400 mt-1.5">Переносы строк автоматически преобразуются в абзацы</p>
+      </div>
+
+      {/* Preview */}
+      {(subject || body) && (
+        <div className="mb-6 bg-gray-50 rounded-xl border border-gray-200 p-4">
+          <div className="text-xs text-gray-400 mb-2 uppercase font-medium">Предпросмотр</div>
+          <div className="text-sm font-bold text-gray-900 mb-2">{subject || "(нет темы)"}</div>
+          <div className="text-sm text-gray-600 whitespace-pre-line">{body || "(нет текста)"}</div>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={handleSend}
+        disabled={sending || !subject.trim() || !body.trim()}
+        className="bg-primary text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-primary-dark transition-all active:scale-[0.97] disabled:opacity-50"
+      >
+        {sending ? "Отправляем..." : `Отправить — ${audienceLabels[audience].toLowerCase()}`}
+      </button>
     </div>
   );
 }
