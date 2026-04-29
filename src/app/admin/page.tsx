@@ -227,7 +227,7 @@ export default function AdminPage() {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6 w-fit">
+          <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6 overflow-x-auto scrollbar-hide">
             {(
               [
                 ["overview", "Бронирования"],
@@ -248,7 +248,7 @@ export default function AdminPage() {
               <button
                 key={key}
                 onClick={() => setTab(key)}
-                className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
                   tab === key
                     ? "bg-white shadow-sm text-gray-900"
                     : "text-gray-600 hover:text-gray-900"
