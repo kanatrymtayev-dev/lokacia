@@ -104,10 +104,15 @@ export async function POST(req: NextRequest) {
       .map((id) => ({ id, email: emailMap.get(id) }))
       .filter((r): r is { id: string; email: string } => !!r.email);
 
-    // Send emails with Resend (batch)
+    // Send emails with Resend (batch) — short notification email
     const resend = new Resend(API_KEY);
-    const html = buildHtml(subject, body.replace(/\n/g, "<br/>"));
-    const plainText = body;
+    const emailBody = `<p>Вам пришло новое сообщение от <strong>LOKACIA</strong>.</p>
+      <p style="margin:14px 0;background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;font-size:13px">
+        <strong>${subject}</strong><br/><br/>${body.replace(/\n/g, "<br/>")}
+      </p>
+      <p>Прочитайте на платформе.</p>`;
+    const html = buildHtml("Новое сообщение от LOKACIA", emailBody);
+    const plainText = `Вам пришло новое сообщение от LOKACIA.\n\n${subject}\n\n${body}\n\nПрочитайте на платформе: ${SITE}/inbox`;
 
     let sent = 0;
     let failed = 0;
@@ -144,7 +149,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Save to history
-    await supabaseAdmin.from("broadcasts").insert({
+    const { data: broadcastRecord } = await supabaseAdmin.from("broadcasts").insert({
       subject,
       body,
       audience,
@@ -152,7 +157,23 @@ export async function POST(req: NextRequest) {
       failed_count: failed,
       total_count: recipients.length,
       sent_by: user.id,
-    });
+    }).select("id").single();
+
+    // Create in-app notifications for all recipients
+    const broadcastId = (broadcastRecord as Record<string, unknown>)?.id as string | undefined;
+    const notificationRows = recipients.map((r) => ({
+      user_id: r.id,
+      title: subject,
+      body,
+      type: "broadcast" as const,
+      broadcast_id: broadcastId ?? null,
+      link: "/inbox",
+    }));
+
+    // Insert in batches of 100
+    for (let i = 0; i < notificationRows.length; i += 100) {
+      await supabaseAdmin.from("notifications").insert(notificationRows.slice(i, i + 100));
+    }
 
     return NextResponse.json({ sent, failed, total: recipients.length });
   } catch (e) {

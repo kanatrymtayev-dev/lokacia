@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useT, type Lang } from "@/lib/i18n";
-import { isAdmin, getUnreadCount, getFavoriteIds } from "@/lib/api";
+import { isAdmin, getUnreadCount, getUnreadNotificationCount, getFavoriteIds } from "@/lib/api";
 
 const browseCategoryTypes = [
   "photo_studio", "video_studio", "banquet_hall", "apartment", "sound_stage",
@@ -48,7 +48,8 @@ export default function Navbar() {
   useEffect(() => {
     if (user) {
       isAdmin(user.id).then(setAdmin);
-      getUnreadCount(user.id).then(setUnread);
+      Promise.all([getUnreadCount(user.id), getUnreadNotificationCount(user.id)])
+        .then(([msgs, notifs]) => setUnread(msgs + notifs));
       getFavoriteIds(user.id).then((s) => setFavoritesCount(s.size));
     } else {
       setAdmin(false);

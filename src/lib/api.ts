@@ -1378,6 +1378,15 @@ export async function createBookingRequest(input: {
     }
   })();
 
+  // In-app notification for host
+  void supabase.from("notifications").insert({
+    user_id: input.hostId,
+    title: "Новый запрос на бронирование",
+    body: `Арендатор отправил запрос на бронирование вашей локации.`,
+    type: "booking",
+    link: "/dashboard",
+  });
+
   return {
     data: { bookingId, conversationId: convo.id, isNewConversation: convo.isNew },
     error: null,
@@ -1473,6 +1482,18 @@ export async function respondToBooking(
     }
   })();
 
+  // In-app notification for renter
+  const renterId = (booking as Record<string, unknown>).renter_id as string;
+  void supabase.from("notifications").insert({
+    user_id: renterId,
+    title: status === "confirmed" ? "Бронь подтверждена" : "Запрос отклонён",
+    body: status === "confirmed"
+      ? "Хост подтвердил ваше бронирование. Детали и контакты доступны на платформе."
+      : "К сожалению, хост отклонил ваш запрос. Посмотрите другие локации в каталоге.",
+    type: "booking",
+    link: status === "confirmed" ? "/bookings" : "/catalog",
+  });
+
   return { error: null };
 }
 
@@ -1508,6 +1529,22 @@ export async function cancelBooking(bookingId: string, renterId: string) {
       type: "system",
       bookingId,
     });
+
+    // Notify host about cancellation
+    const { data: convo } = await supabase
+      .from("conversations")
+      .select("host_id")
+      .eq("id", conversationId)
+      .single();
+    if (convo) {
+      void supabase.from("notifications").insert({
+        user_id: (convo as Record<string, unknown>).host_id as string,
+        title: "Бронирование отменено",
+        body: "Арендатор отменил бронирование.",
+        type: "booking",
+        link: "/dashboard",
+      });
+    }
   }
 
   return { error: null };
@@ -2870,5 +2907,55 @@ export async function adminDeleteBlogPost(id: string) {
   } catch (e) {
     return { error: { message: (e as Error).message } };
   }
+}
+
+// ──────────── Notifications ────────────
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  title: string;
+  body: string;
+  type: "broadcast" | "booking" | "system";
+  is_read: boolean;
+  link: string | null;
+  broadcast_id: string | null;
+  created_at: string;
+}
+
+export async function getNotifications(userId: string): Promise<Notification[]> {
+  const { data } = await supabase
+    .from("notifications")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  return (data ?? []) as Notification[];
+}
+
+export async function getUnreadNotificationCount(userId: string): Promise<number> {
+  const { count } = await supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("is_read", false);
+
+  return count ?? 0;
+}
+
+export async function markNotificationRead(notificationId: string) {
+  await supabase
+    .from("notifications")
+    .update({ is_read: true })
+    .eq("id", notificationId);
+}
+
+export async function markAllNotificationsRead(userId: string) {
+  await supabase
+    .from("notifications")
+    .update({ is_read: true })
+    .eq("user_id", userId)
+    .eq("is_read", false);
 }
 

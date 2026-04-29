@@ -23,7 +23,11 @@ import {
   createDispute,
   sendScoutInvite,
   respondToScout,
+  getNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
 } from "@/lib/api";
+import type { Notification } from "@/lib/api";
 import type { QuoteMetadata } from "@/lib/types";
 import EmptyState from "@/components/ui/empty-state";
 
@@ -128,6 +132,8 @@ function InboxContent() {
   const [loadingConvos, setLoadingConvos] = useState(true);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [mobileShowChat, setMobileShowChat] = useState(!!initialConvoId);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = useCallback(() => {
@@ -155,7 +161,22 @@ function InboxContent() {
 
   useEffect(() => {
     loadConversations();
-  }, [loadConversations]);
+    if (user) getNotifications(user.id).then(setNotifications);
+  }, [loadConversations, user]);
+
+  const unreadNotifCount = notifications.filter((n) => !n.is_read).length;
+
+  async function handleMarkNotifRead(id: string, link: string | null) {
+    await markNotificationRead(id);
+    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n));
+    if (link) router.push(link);
+  }
+
+  async function handleMarkAllNotifsRead() {
+    if (!user) return;
+    await markAllNotificationsRead(user.id);
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+  }
 
   // Load bookings referenced by system messages
   const loadBookingsForMessages = useCallback(async (msgs: Message[]) => {
@@ -355,8 +376,77 @@ function InboxContent() {
           } flex-col w-full md:w-96 bg-white border-r border-gray-200`}
         >
           <div className="px-5 py-4 border-b border-gray-100">
-            <h1 className="text-xl font-bold">Сообщения</h1>
+            <div className="flex items-center justify-between">
+              <h1 className="text-xl font-bold">Сообщения</h1>
+              {unreadNotifCount > 0 && (
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="relative flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary-dark transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                  </svg>
+                  {unreadNotifCount}
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* Notifications section */}
+          {(showNotifications || unreadNotifCount > 0) && notifications.length > 0 && (
+            <div className="border-b border-gray-100">
+              <div className="px-5 py-2 flex items-center justify-between bg-primary/5">
+                <span className="text-xs font-semibold text-primary uppercase">Уведомления</span>
+                {unreadNotifCount > 0 && (
+                  <button
+                    onClick={handleMarkAllNotifsRead}
+                    className="text-xs text-gray-400 hover:text-gray-600"
+                  >
+                    Прочитать все
+                  </button>
+                )}
+              </div>
+              <div className="max-h-64 overflow-y-auto">
+                {notifications.slice(0, 10).map((n) => (
+                  <button
+                    key={n.id}
+                    onClick={() => handleMarkNotifRead(n.id, n.link)}
+                    className={`w-full text-left px-5 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${
+                      !n.is_read ? "bg-primary/[0.03]" : ""
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                        n.type === "broadcast" ? "bg-primary/10" : n.type === "booking" ? "bg-accent/10" : "bg-gray-100"
+                      }`}>
+                        {n.type === "broadcast" ? (
+                          <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 1 1 0-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 0 1-1.44-4.282m3.102.069a18.03 18.03 0 0 1-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 0 1 8.835 2.535M10.34 6.66a23.847 23.847 0 0 0 8.835-2.535m0 0A23.74 23.74 0 0 0 18.795 3m.38 1.125a23.91 23.91 0 0 1 1.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 0 0 1.014-5.395m0-3.46c.495.413.811 1.035.811 1.73 0 .695-.316 1.317-.811 1.73m0-3.46a24.347 24.347 0 0 1 0 3.46" />
+                          </svg>
+                        ) : (
+                          <svg className="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                          </svg>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className={`text-sm truncate ${!n.is_read ? "font-bold text-gray-900" : "text-gray-700"}`}>
+                          {n.title}
+                        </div>
+                        <div className="text-xs text-gray-500 line-clamp-1 mt-0.5">{n.body}</div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          {new Date(n.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        </div>
+                      </div>
+                      {!n.is_read && (
+                        <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-2" />
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {loadingConvos ? (
             <div className="flex-1 flex items-center justify-center">
