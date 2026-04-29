@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/navbar";
@@ -77,6 +77,28 @@ export default function AdminPage() {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
   const [tab, setTab] = useState<Tab>("overview");
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const tabsDrag = useRef({ isDown: false, startX: 0, scrollLeft: 0 });
+
+  function onTabsMouseDown(e: React.MouseEvent) {
+    const el = tabsRef.current;
+    if (!el) return;
+    tabsDrag.current = { isDown: true, startX: e.pageX - el.offsetLeft, scrollLeft: el.scrollLeft };
+    el.style.cursor = "grabbing";
+  }
+  function onTabsMouseUp() {
+    if (!tabsRef.current) return;
+    tabsDrag.current.isDown = false;
+    tabsRef.current.style.cursor = "grab";
+  }
+  function onTabsMouseMove(e: React.MouseEvent) {
+    const el = tabsRef.current;
+    if (!el || !tabsDrag.current.isDown) return;
+    e.preventDefault();
+    const x = e.pageX - el.offsetLeft;
+    const walk = (x - tabsDrag.current.startX) * 1.5;
+    el.scrollLeft = tabsDrag.current.scrollLeft - walk;
+  }
   const [bookingChatId, setBookingChatId] = useState<string | null>(null);
   const [stats, setStats] = useState<{
     payments: Array<Record<string, unknown>>;
@@ -227,7 +249,14 @@ export default function AdminPage() {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6 overflow-x-auto scrollbar-hide">
+          <div
+            ref={tabsRef}
+            onMouseDown={onTabsMouseDown}
+            onMouseUp={onTabsMouseUp}
+            onMouseLeave={onTabsMouseUp}
+            onMouseMove={onTabsMouseMove}
+            className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6 overflow-x-auto scrollbar-hide cursor-grab select-none"
+          >
             {(
               [
                 ["overview", "Бронирования"],
