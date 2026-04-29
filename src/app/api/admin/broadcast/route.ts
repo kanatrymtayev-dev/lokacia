@@ -134,11 +134,16 @@ export async function POST(req: NextRequest) {
         )
       );
 
-      for (const result of results) {
+      for (let j = 0; j < results.length; j++) {
+        const result = results[j];
         if (result.status === "fulfilled" && !result.value.error) {
           sent++;
         } else {
           failed++;
+          const reason = result.status === "rejected"
+            ? (result.reason as Error)?.message
+            : result.value?.error?.message;
+          console.error(`[broadcast] Failed to send to ${batch[j]?.email}: ${reason}`);
         }
       }
 
