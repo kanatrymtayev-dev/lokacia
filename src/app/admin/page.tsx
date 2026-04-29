@@ -2395,6 +2395,17 @@ function BlogTab() {
   );
 }
 
+interface BroadcastRecord {
+  id: string;
+  subject: string;
+  body: string;
+  audience: string;
+  sent_count: number;
+  failed_count: number;
+  total_count: number;
+  created_at: string;
+}
+
 function BroadcastTab() {
   const [audience, setAudience] = useState<"all" | "hosts" | "renters">("all");
   const [subject, setSubject] = useState("");
@@ -2402,6 +2413,18 @@ function BroadcastTab() {
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ sent: number; failed: number; total: number } | null>(null);
   const [error, setError] = useState("");
+  const [history, setHistory] = useState<BroadcastRecord[]>([]);
+
+  const loadHistory = useCallback(async () => {
+    const { data } = await supabase
+      .from("broadcasts")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (data) setHistory(data as BroadcastRecord[]);
+  }, []);
+
+  useEffect(() => { loadHistory(); }, [loadHistory]);
 
   async function handleSend() {
     if (!subject.trim() || !body.trim()) {
@@ -2432,6 +2455,7 @@ function BroadcastTab() {
         setResult(data);
         setSubject("");
         setBody("");
+        loadHistory();
       }
     } catch {
       setError("Ошибка сети");
@@ -2530,6 +2554,38 @@ function BroadcastTab() {
       >
         {sending ? "Отправляем..." : `Отправить — ${audienceLabels[audience].toLowerCase()}`}
       </button>
+
+      {/* History */}
+      {history.length > 0 && (
+        <div className="mt-12">
+          <h3 className="text-base font-bold text-gray-900 mb-4">История рассылок</h3>
+          <div className="space-y-3">
+            {history.map((h) => (
+              <div key={h.id} className="bg-white rounded-xl border border-gray-200 p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-semibold text-gray-900 text-sm">{h.subject}</h4>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    h.audience === "hosts" ? "bg-purple-100 text-purple-700"
+                    : h.audience === "renters" ? "bg-blue-100 text-blue-700"
+                    : "bg-gray-100 text-gray-700"
+                  }`}>
+                    {h.audience === "hosts" ? "Хосты" : h.audience === "renters" ? "Арендаторы" : "Все"}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-500 line-clamp-2 mb-2">{h.body}</p>
+                <div className="flex items-center gap-4 text-xs text-gray-400">
+                  <span>
+                    {new Date(h.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                  <span className="text-green-600">Отправлено: {h.sent_count}</span>
+                  {h.failed_count > 0 && <span className="text-red-500">Ошибок: {h.failed_count}</span>}
+                  <span>Всего: {h.total_count}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

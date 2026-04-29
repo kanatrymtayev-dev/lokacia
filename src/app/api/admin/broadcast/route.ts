@@ -143,6 +143,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Save to history
+    await supabaseAdmin.from("broadcasts").insert({
+      subject,
+      body,
+      audience,
+      sent_count: sent,
+      failed_count: failed,
+      total_count: recipients.length,
+      sent_by: user.id,
+    });
+
     return NextResponse.json({ sent, failed, total: recipients.length });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
