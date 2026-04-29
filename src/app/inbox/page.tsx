@@ -538,7 +538,7 @@ function InboxContent() {
                         <h3 className="text-lg font-bold text-gray-900 mb-3">{notif.title}</h3>
                         <p className="text-gray-600 leading-relaxed whitespace-pre-line">{notif.body}</p>
                       </div>
-                      {notif.link && (
+                      {notif.link && notif.link !== "/inbox" && (
                         <a
                           href={notif.link}
                           className="inline-flex items-center gap-2 mt-4 text-sm text-primary font-medium hover:underline"
