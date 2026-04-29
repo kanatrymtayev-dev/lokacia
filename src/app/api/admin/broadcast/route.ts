@@ -119,39 +119,30 @@ export async function POST(req: NextRequest) {
     let sent = 0;
     let failed = 0;
 
-    // Send in batches of 10 to avoid rate limits
-    const batchSize = 10;
-    for (let i = 0; i < recipients.length; i += batchSize) {
-      const batch = recipients.slice(i, i + batchSize);
-      const results = await Promise.allSettled(
-        batch.map((r) =>
-          resend.emails.send({
-            from: FROM,
-            to: r.email,
-            subject,
-            html,
-            text: plainText,
-            replyTo: "hello@lokacia.kz",
-          })
-        )
-      );
-
-      for (let j = 0; j < results.length; j++) {
-        const result = results[j];
-        if (result.status === "fulfilled" && !result.value.error) {
-          sent++;
-        } else {
+    // Send one by one with 600ms delay (Resend free: 2 req/sec)
+    for (let i = 0; i < recipients.length; i++) {
+      try {
+        const { error: sendErr } = await resend.emails.send({
+          from: FROM,
+          to: recipients[i].email,
+          subject,
+          html,
+          text: plainText,
+          replyTo: "hello@lokacia.kz",
+        });
+        if (sendErr) {
           failed++;
-          const reason = result.status === "rejected"
-            ? (result.reason as Error)?.message
-            : result.value?.error?.message;
-          console.error(`[broadcast] Failed to send to ${batch[j]?.email}: ${reason}`);
+          console.error(`[broadcast] Failed to send to ${recipients[i].email}: ${sendErr.message}`);
+        } else {
+          sent++;
         }
+      } catch (e) {
+        failed++;
+        console.error(`[broadcast] Failed to send to ${recipients[i].email}: ${(e as Error).message}`);
       }
-
-      // Small delay between batches
-      if (i + batchSize < recipients.length) {
-        await new Promise((r) => setTimeout(r, 500));
+      // Wait 600ms between each email to stay under 2 req/sec
+      if (i < recipients.length - 1) {
+        await new Promise((r) => setTimeout(r, 600));
       }
     }
 
