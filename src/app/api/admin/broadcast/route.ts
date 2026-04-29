@@ -104,6 +104,8 @@ export async function POST(req: NextRequest) {
       .map((id) => ({ id, email: emailMap.get(id) }))
       .filter((r): r is { id: string; email: string } => !!r.email);
 
+    console.log(`[broadcast] Sending to ${recipients.length} recipients:`, recipients.map((r) => r.email));
+
     // Send emails with Resend (batch) — short notification email
     const resend = new Resend(API_KEY);
     const emailBody = `<p>Вам пришло новое сообщение от <strong>LOKACIA</strong>.</p>
