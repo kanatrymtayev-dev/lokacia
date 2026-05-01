@@ -2946,6 +2946,28 @@ export async function getUnreadNotificationCount(userId: string): Promise<number
   return count ?? 0;
 }
 
+// Host: new booking requests
+export async function getUnreadHostNotifCount(userId: string): Promise<number> {
+  const { count } = await supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("is_read", false)
+    .eq("type", "booking");
+  return count ?? 0;
+}
+
+// Renter: booking confirmed/rejected/cancelled
+export async function getUnreadRenterNotifCount(userId: string): Promise<number> {
+  const { count } = await supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("is_read", false)
+    .in("type", ["booking_confirmed", "booking_rejected", "booking_cancelled"]);
+  return count ?? 0;
+}
+
 export async function markNotificationRead(notificationId: string) {
   await supabase
     .from("notifications")

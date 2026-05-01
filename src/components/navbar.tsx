@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useT, type Lang } from "@/lib/i18n";
-import { isAdmin, getUnreadCount, getUnreadNotificationCount, getFavoriteIds } from "@/lib/api";
+import { isAdmin, getUnreadCount, getUnreadHostNotifCount, getUnreadRenterNotifCount, getFavoriteIds } from "@/lib/api";
 
 const browseCategoryTypes = [
   "photo_studio", "video_studio", "banquet_hall", "apartment", "sound_stage",
@@ -27,7 +27,9 @@ export default function Navbar() {
   const [langOpen, setLangOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [admin, setAdmin] = useState(false);
-  const [unread, setUnread] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  const [hostUnread, setHostUnread] = useState(0);
+  const [renterUnread, setRenterUnread] = useState(0);
   const [favoritesCount, setFavoritesCount] = useState(0);
   const [scrolled, setScrolled] = useState(false);
 
@@ -48,12 +50,15 @@ export default function Navbar() {
   useEffect(() => {
     if (user) {
       isAdmin(user.id).then(setAdmin);
-      Promise.all([getUnreadCount(user.id), getUnreadNotificationCount(user.id)])
-        .then(([msgs, notifs]) => setUnread(msgs + notifs));
+      getUnreadCount(user.id).then(setUnreadMessages);
+      getUnreadHostNotifCount(user.id).then(setHostUnread);
+      getUnreadRenterNotifCount(user.id).then(setRenterUnread);
       getFavoriteIds(user.id).then((s) => setFavoritesCount(s.size));
     } else {
       setAdmin(false);
-      setUnread(0);
+      setUnreadMessages(0);
+      setHostUnread(0);
+      setRenterUnread(0);
       setFavoritesCount(0);
     }
   }, [user]);
@@ -210,9 +215,9 @@ export default function Navbar() {
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
                 </svg>
-                {unread > 0 && (
+                {unreadMessages > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold min-w-[18px] min-h-[18px] flex items-center justify-center rounded-full">
-                    {unread}
+                    {unreadMessages}
                   </span>
                 )}
               </Link>
@@ -221,12 +226,19 @@ export default function Navbar() {
               <div ref={profileRef} className="relative">
                 <button
                   onClick={() => { setProfileOpen(!profileOpen); setBrowseOpen(false); setLangOpen(false); }}
-                  className="w-9 h-9 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center hover:ring-2 hover:ring-primary/30 transition-all"
+                  className="relative w-9 h-9 rounded-full overflow-visible bg-primary/10 flex items-center justify-center hover:ring-2 hover:ring-primary/30 transition-all"
                 >
-                  {user.avatar_url && typeof user.avatar_url === 'string' && user.avatar_url.trim() !== '' ? (
-                    <Image src={user.avatar_url} alt={user.name} fill className="object-cover" sizes="36px" />
-                  ) : (
-                    <span className="text-sm font-bold text-primary">{user.name[0]}</span>
+                  <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center">
+                    {user.avatar_url && typeof user.avatar_url === 'string' && user.avatar_url.trim() !== '' ? (
+                      <Image src={user.avatar_url} alt={user.name} fill className="object-cover" sizes="36px" />
+                    ) : (
+                      <span className="text-sm font-bold text-primary">{user.name[0]}</span>
+                    )}
+                  </div>
+                  {hostUnread > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold min-w-[18px] min-h-[18px] flex items-center justify-center rounded-full z-10">
+                      {hostUnread}
+                    </span>
                   )}
                 </button>
 
@@ -246,9 +258,14 @@ export default function Navbar() {
                     <Link
                       href="/dashboard"
                       onClick={() => setProfileOpen(false)}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      className="flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                     >
                       Панель хоста
+                      {hostUnread > 0 && (
+                        <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                          {hostUnread}
+                        </span>
+                      )}
                     </Link>
                     <Link
                       href="/inbox"
@@ -256,18 +273,23 @@ export default function Navbar() {
                       className="flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                     >
                       {t("nav.messages")}
-                      {unread > 0 && (
+                      {unreadMessages > 0 && (
                         <span className="bg-primary text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
-                          {unread}
+                          {unreadMessages}
                         </span>
                       )}
                     </Link>
                     <Link
                       href="/bookings"
                       onClick={() => setProfileOpen(false)}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      className="flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                     >
                       {t("nav.bookings")}
+                      {renterUnread > 0 && (
+                        <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                          {renterUnread}
+                        </span>
+                      )}
                     </Link>
                     <Link
                       href="/favorites"
