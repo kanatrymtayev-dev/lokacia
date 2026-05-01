@@ -796,6 +796,9 @@ function ListingsTab() {
                       <Link href={`/host/${l.hostId}`} target="_blank" className="text-gray-600 hover:text-primary text-xs">
                         {l.hostName}
                       </Link>
+                      {l.hostEmail && (
+                        <div className="text-[10px] text-gray-400 truncate max-w-[180px]">{l.hostEmail}</div>
+                      )}
                     </td>
                     {/* City */}
                     <td className="px-4 py-3 text-center text-xs text-gray-500">{l.city}</td>

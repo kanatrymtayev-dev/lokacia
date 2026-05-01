@@ -2649,6 +2649,7 @@ export interface AdminListing {
   moderationNote: string | null;
   hostId: string;
   hostName: string;
+  hostEmail: string | null;
   rating: number;
   reviewCount: number;
   createdAt: string;
@@ -2657,7 +2658,7 @@ export interface AdminListing {
 export async function getAdminListings(): Promise<AdminListing[]> {
   const { data, error } = await supabase
     .from("listings")
-    .select("id, title, slug, images, city, price_per_hour, status, moderation_status, moderation_note, host_id, rating, review_count, created_at, profiles!listings_host_id_fkey(name)")
+    .select("id, title, slug, images, city, price_per_hour, status, moderation_status, moderation_note, host_id, rating, review_count, created_at, profiles!listings_host_id_fkey(name, email)")
     .order("created_at", { ascending: false });
   if (error || !data) return [];
   return (data as Array<Record<string, unknown>>).map((r) => {
@@ -2675,6 +2676,7 @@ export async function getAdminListings(): Promise<AdminListing[]> {
       moderationNote: (r.moderation_note as string | null) ?? null,
       hostId: r.host_id as string,
       hostName: (profile?.name as string) ?? "—",
+      hostEmail: (profile?.email as string | null) ?? null,
       rating: r.rating as number,
       reviewCount: r.review_count as number,
       createdAt: r.created_at as string,
