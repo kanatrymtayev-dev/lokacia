@@ -14,6 +14,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import { getHostAnalytics } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import type { WeekStat } from "@/lib/types";
 
 interface Stats {
@@ -32,6 +33,7 @@ function shortWeek(iso: string) {
 }
 
 export default function AnalyticsTab({ hostId }: { hostId: string }) {
+  const { t } = useT();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -59,25 +61,29 @@ export default function AnalyticsTab({ hostId }: { hostId: string }) {
   const totalRevenueGross = stats.revenue.reduce((s, w) => s + w.value, 0);
   const totalRevenueNet = Math.round(totalRevenueGross * 0.85);
 
+  const viewsLabel = t("analytics.viewsLabel");
+  const bookingsLabel = t("analytics.bookingsLabel");
+  const revenueLabel = t("analytics.revenueLabel");
+
   const lineData = stats.views.map((v, i) => ({
     week: shortWeek(v.weekStart),
-    Просмотры: v.value,
-    Бронирования: stats.bookings[i]?.value ?? 0,
+    [viewsLabel]: v.value,
+    [bookingsLabel]: stats.bookings[i]?.value ?? 0,
   }));
 
   const barData = stats.revenue.map((v) => ({
     week: shortWeek(v.weekStart),
-    Доход: v.value,
+    [revenueLabel]: v.value,
   }));
 
   return (
     <div className="space-y-6">
       {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Kpi label="Просмотры (8 нед.)" value={fmtNum(totalViews)} />
-        <Kpi label="Бронирования" value={fmtNum(totalBookings)} />
-        <Kpi label="Конверсия" value={`${stats.conversionRate}%`} accent />
-        <Kpi label="Доход (0% комиссии)" value={fmtMoney(totalRevenueNet)} accent />
+        <Kpi label={t("analytics.views")} value={fmtNum(totalViews)} />
+        <Kpi label={t("analytics.bookings")} value={fmtNum(totalBookings)} />
+        <Kpi label={t("analytics.conversion")} value={`${stats.conversionRate}%`} accent />
+        <Kpi label={t("analytics.revenue")} value={fmtMoney(totalRevenueNet)} accent />
       </div>
 
       {/* Views + Bookings line chart */}
@@ -96,8 +102,8 @@ export default function AnalyticsTab({ hostId }: { hostId: string }) {
                 formatter={(v) => fmtNum(Number(v ?? 0))}
               />
               <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Line type="monotone" dataKey="Просмотры" stroke="#6d28d9" strokeWidth={2} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="Бронирования" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey={viewsLabel} stroke="#6d28d9" strokeWidth={2} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey={bookingsLabel} stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -119,7 +125,7 @@ export default function AnalyticsTab({ hostId }: { hostId: string }) {
                 contentStyle={{ borderRadius: 10, border: "1px solid #e5e7eb", fontSize: 12 }}
                 formatter={(v) => fmtMoney(Number(v ?? 0))}
               />
-              <Bar dataKey="Доход" fill="#6d28d9" radius={[6, 6, 0, 0]} />
+              <Bar dataKey={revenueLabel} fill="#6d28d9" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

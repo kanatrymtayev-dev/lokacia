@@ -13,11 +13,16 @@ interface DateRange {
   end: string;
 }
 
-const DAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
-const MONTHS = [
-  "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
-  "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
-];
+const DAYS_MAP: Record<string, string[]> = {
+  ru: ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"],
+  en: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+  kz: ["Дс", "Сс", "Ср", "Бс", "Жм", "Сн", "Жс"],
+};
+const MONTHS_MAP: Record<string, string[]> = {
+  ru: ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"],
+  en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+  kz: ["Қаңтар", "Ақпан", "Наурыз", "Сәуір", "Мамыр", "Маусым", "Шілде", "Тамыз", "Қыркүйек", "Қазан", "Қараша", "Желтоқсан"],
+};
 
 function dateStr(d: Date) {
   return d.toISOString().split("T")[0];
@@ -43,7 +48,9 @@ function getMonthDays(year: number, month: number) {
 }
 
 export default function AvailabilityCalendar({ listingId }: Props) {
-  const { t } = useT();
+  const { t, lang } = useT();
+  const DAYS = DAYS_MAP[lang] || DAYS_MAP.ru;
+  const MONTHS = MONTHS_MAP[lang] || MONTHS_MAP.ru;
   const [booked, setBooked] = useState<DateRange[]>([]);
   const [blocked, setBlocked] = useState<DateRange[]>([]);
   const [offset, setOffset] = useState(0); // 0 = current month, 1 = next, etc.

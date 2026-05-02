@@ -56,7 +56,7 @@ export default function HostForm() {
         </p>
         <div className="mt-6 p-4 bg-primary/5 rounded-xl">
           <p className="text-sm text-primary font-medium">
-            Вы в числе первых 100 хостов — 0% комиссии на 6 месяцев гарантировано
+            Вы в числе первых 100 хостов — бесплатная фотосъёмка + приоритетное размещение
           </p>
         </div>
       </div>

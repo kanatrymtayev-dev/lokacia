@@ -1,8 +1,11 @@
+"use client";
+
+import { useT } from "@/lib/i18n";
+
 /**
  * Verified badge — shows a shield icon + "Verified" text.
  * Renders nothing if idVerified is false.
  */
-
 export default function VerifiedBadge({ idVerified }: { idVerified?: boolean }) {
   if (!idVerified) return null;
 
@@ -28,23 +31,30 @@ export function TrustSection({
   phoneVerified?: boolean;
   idVerified?: boolean;
   reviewCount?: number;
-  memberSince?: string; // ISO date
+  memberSince?: string;
 }) {
+  const { t, lang } = useT();
+  const dateLocale = lang === "kz" ? "kk-KZ" : lang === "en" ? "en-US" : "ru-RU";
+
   const sinceDate = memberSince ? new Date(memberSince) : null;
   const sinceLabel = sinceDate
-    ? sinceDate.toLocaleDateString("ru-RU", { month: "long", year: "numeric" })
+    ? sinceDate.toLocaleDateString(dateLocale, { month: "long", year: "numeric" })
+    : null;
+
+  const reviewLabel = reviewCount !== undefined
+    ? `${reviewCount} ${reviewCount === 1 ? t("trust.review1") : t("trust.reviewsPlural")}`
     : null;
 
   const items = [
-    { label: "Телефон подтверждён", done: !!phoneVerified },
-    { label: "Личность проверена", done: !!idVerified },
-    ...(reviewCount !== undefined ? [{ label: `${reviewCount} ${reviewCount === 1 ? "отзыв" : reviewCount < 5 ? "отзыва" : "отзывов"}`, done: reviewCount > 0 }] : []),
-    ...(sinceLabel ? [{ label: `На платформе с ${sinceLabel}`, done: true }] : []),
+    { label: t("trust.phoneVerified"), done: !!phoneVerified },
+    { label: t("trust.idVerified"), done: !!idVerified },
+    ...(reviewLabel ? [{ label: reviewLabel, done: (reviewCount ?? 0) > 0 }] : []),
+    ...(sinceLabel ? [{ label: `${t("trust.memberSince")} ${sinceLabel}`, done: true }] : []),
   ];
 
   return (
     <div className="bg-gray-50 rounded-xl p-5">
-      <h3 className="font-semibold text-gray-900 mb-3 text-sm">Доверие и безопасность</h3>
+      <h3 className="font-semibold text-gray-900 mb-3 text-sm">{t("trust.title")}</h3>
       <ul className="space-y-2.5">
         {items.map((item) => (
           <li key={item.label} className="flex items-center gap-2.5 text-sm">

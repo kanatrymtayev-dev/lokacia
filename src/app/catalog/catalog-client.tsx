@@ -14,6 +14,7 @@ import ListingCard from "@/components/listing-card";
 import { useAuth } from "@/lib/auth-context";
 import { addFavorite, removeFavorite, getFavoriteIds } from "@/lib/api";
 import EmptyState from "@/components/ui/empty-state";
+import { useT } from "@/lib/i18n";
 
 // Карта — только на клиенте, без SSR (внутри идёт обращение к window)
 const Map2GIS = dynamic(() => import("@/components/map"), {
@@ -39,6 +40,7 @@ function CatalogInner({ listings }: { listings: Listing[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
+  const { t } = useT();
 
   // ── URL-state фильтров ────────────────────────────────
   const search = searchParams.get("q") ?? "";
@@ -172,7 +174,7 @@ function CatalogInner({ listings }: { listings: Listing[] }) {
               </svg>
               <input
                 type="text"
-                placeholder="Поиск: циклорама, лофт, вид на горы..."
+                placeholder={t("catalog.searchPh")}
                 value={search}
                 onChange={(e) => updateParam("q", e.target.value)}
                 className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-gray-900 bg-white"
@@ -279,7 +281,7 @@ function CatalogInner({ listings }: { listings: Listing[] }) {
                 </label>
                 {activeFilterCount > 0 && (
                   <button onClick={clearFilters} className="text-sm text-primary hover:underline ml-auto">
-                    Сбросить фильтры
+                    {t("catalog.resetFilters")}
                   </button>
                 )}
               </div>
@@ -351,8 +353,8 @@ function CatalogInner({ listings }: { listings: Listing[] }) {
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm text-gray-500">
               {filtered.length === 0
-                ? "Ничего не найдено"
-                : `Найдено ${filtered.length} ${filtered.length === 1 ? "локация" : "локаций"}`}
+                ? t("catalog.notFound")
+                : `${t("catalog.found")} ${filtered.length} ${filtered.length === 1 ? t("catalog.location") : t("catalog.locations")}`}
             </p>
           </div>
 
@@ -375,9 +377,9 @@ function CatalogInner({ listings }: { listings: Listing[] }) {
           ) : (
             <EmptyState
               icon="search"
-              title="Локации не найдены"
-              description="Попробуйте изменить фильтры или поисковый запрос"
-              action={{ label: "Сбросить фильтры", onClick: clearFilters }}
+              title={t("catalog.emptyTitle")}
+              description={t("catalog.emptyDesc")}
+              action={{ label: t("catalog.resetFilters"), onClick: clearFilters }}
             />
           )}
         </div>
@@ -434,7 +436,7 @@ function CatalogInner({ listings }: { listings: Listing[] }) {
                   )}
                   <button
                     onClick={() => handleToggleCompare(l.id)}
-                    aria-label="Убрать из сравнения"
+                    aria-label={t("catalog.removeCompare")}
                     className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs hover:bg-red-500 transition-colors"
                   >
                     ×

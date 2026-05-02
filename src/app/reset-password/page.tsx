@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import Navbar from "@/components/navbar";
 import { supabase } from "@/lib/supabase";
 import { validatePassword } from "@/lib/validate-password";
+import { useT } from "@/lib/i18n";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
+  const { t } = useT();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
@@ -72,7 +74,7 @@ export default function ResetPasswordPage() {
       return;
     }
     if (password !== confirm) {
-      setError("Пароли не совпадают");
+      setError(t("auth.reset.noMatch"));
       return;
     }
 
@@ -80,7 +82,7 @@ export default function ResetPasswordPage() {
     const { data: { session } } = await supabase.auth.getSession();
 
     if (!session) {
-      setError("Сессия истекла. Запросите сброс пароля ещё раз.");
+      setError(t("auth.reset.expired"));
       setLoading(false);
       return;
     }
@@ -147,16 +149,16 @@ export default function ResetPasswordPage() {
                   minLength={8}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Минимум 8 символов"
+                  placeholder={t("auth.password.min8")}
                   className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-gray-900"
                 />
                 {password.length > 0 && (
                   <ul className="mt-2 space-y-1 text-xs">
                     {([
-                      { test: password.length >= 8, label: "Минимум 8 символов" },
-                      { test: /[A-ZА-ЯЁ]/.test(password), label: "Заглавная буква" },
-                      { test: /\d/.test(password), label: "Цифра" },
-                      { test: /[!@#$%^&*()_+\-=]/.test(password), label: "Спецсимвол (!@#$%^&*)" },
+                      { test: password.length >= 8, label: t("auth.password.min8") },
+                      { test: /[A-ZА-ЯЁ]/.test(password), label: t("auth.password.uppercase") },
+                      { test: /\d/.test(password), label: t("auth.password.digit") },
+                      { test: /[!@#$%^&*()_+\-=]/.test(password), label: t("auth.password.special") },
                     ] as const).map(({ test, label }) => (
                       <li key={label} className={`flex items-center gap-1.5 ${test ? "text-green-600" : "text-gray-400"}`}>
                         {test ? (
@@ -186,7 +188,7 @@ export default function ResetPasswordPage() {
                   minLength={8}
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
-                  placeholder="Повторите пароль"
+                  placeholder={t("auth.reset.confirmPh")}
                   className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-gray-900"
                 />
               </div>
@@ -196,7 +198,7 @@ export default function ResetPasswordPage() {
                 disabled={loading}
                 className="w-full bg-primary text-white py-3.5 rounded-xl text-sm font-bold hover:bg-primary-dark transition-colors disabled:opacity-50"
               >
-                {loading ? "Сохраняем..." : "Сохранить пароль"}
+                {loading ? t("auth.reset.submitting") : t("auth.reset.submit")}
               </button>
             </form>
           )}

@@ -103,9 +103,9 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<Uint8Array>
 
   // Итоги
   const total = data.booking.total_price;
-  const serviceFee = Math.round(total * 0.075);
-  const baseAmount = total - serviceFee;
-  const commissionRate = data.booking.commission_rate ?? 0.15;
+  const serviceFee = 0;
+  const baseAmount = total;
+  const commissionRate = data.booking.commission_rate ?? 0;
   const commissionAmount = Math.round(baseAmount * commissionRate);
   const hostNet = baseAmount - commissionAmount;
   const vat = Math.round(total / 1.12 * 0.12); // 12% НДС включён в total
@@ -119,9 +119,9 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<Uint8Array>
     drawRight(page, strong ? bold : regular, 11, A4_W - MARGIN - 6, totalsY, val, TEXT);
     totalsY -= lineH;
   }
-  totalLine("Базовая стоимость", fmtMoney(baseAmount));
-  totalLine("Сервисный сбор Lokacia (7.5%)", fmtMoney(serviceFee));
-  totalLine(`Комиссия Lokacia (${(commissionRate * 100).toFixed(0)}%)`, fmtMoney(commissionAmount));
+  totalLine("Стоимость бронир��вания", fmtMoney(baseAmount));
+  totalLine("Сервисный сбор Lokacia", "Бесплат��о");
+  totalLine("��омиссия Lokacia", "0%");
   totalLine("В т.ч. НДС 12%", fmtMoney(vat));
   totalsY -= 4;
   page.drawLine({

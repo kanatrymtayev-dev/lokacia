@@ -30,13 +30,7 @@ import {
 import type { Notification } from "@/lib/api";
 import type { QuoteMetadata } from "@/lib/types";
 import EmptyState from "@/components/ui/empty-state";
-
-const ACTIVITY_LABELS_MAP: Record<string, string> = {
-  production: "Продакшн",
-  event: "Мероприятие",
-  meeting: "Встреча",
-  leisure: "Отдых",
-};
+import { useT } from "@/lib/i18n";
 
 // Скрываем номера телефонов и email пока бронь не подтверждена
 function maskContacts(text: string): string {
@@ -108,6 +102,7 @@ export default function InboxPage() {
 }
 
 function InboxContent() {
+  const { t } = useT();
   const { user, loading: authLoading } = useAuth();
   const searchParams = useSearchParams();
   const initialConvoId = searchParams.get("c");
@@ -345,7 +340,7 @@ function InboxContent() {
     const isGuest = convo.guest_id === user.id;
     const person = isGuest ? convo.host : convo.guest;
     return {
-      name: person?.name ?? "Пользователь",
+      name: person?.name ?? t("inbox.user"),
       avatar: person?.avatar_url ?? "",
     };
   }
@@ -355,7 +350,7 @@ function InboxContent() {
     const now = new Date();
     const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000);
     if (diffDays === 0) return d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
-    if (diffDays === 1) return "Вчера";
+    if (diffDays === 1) return t("inbox.yesterday");
     if (diffDays < 7) return d.toLocaleDateString("ru-RU", { weekday: "short" });
     return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
   }
@@ -383,7 +378,7 @@ function InboxContent() {
         >
           <div className="px-5 py-4 border-b border-gray-100">
             <div className="flex items-center justify-between">
-              <h1 className="text-xl font-bold">Сообщения</h1>
+              <h1 className="text-xl font-bold">{t("inbox.messages")}</h1>
               {unreadNotifCount > 0 && (
                 <span className="bg-primary text-white text-xs font-bold px-2 py-0.5 rounded-full">{unreadNotifCount}</span>
               )}
@@ -394,13 +389,13 @@ function InboxContent() {
           {notifications.length > 0 && (
             <div className="border-b border-gray-200">
               <div className="px-5 py-2 flex items-center justify-between bg-primary/5">
-                <span className="text-xs font-semibold text-primary uppercase">Уведомления от LOKACIA</span>
+                <span className="text-xs font-semibold text-primary uppercase">{t("inbox.notifTitle")}</span>
                 {unreadNotifCount > 0 && (
                   <button
                     onClick={handleMarkAllNotifsRead}
                     className="text-xs text-gray-400 hover:text-gray-600"
                   >
-                    Прочитать все
+                    {t("inbox.readAll")}
                   </button>
                 )}
               </div>
@@ -446,15 +441,15 @@ function InboxContent() {
 
           {loadingConvos ? (
             <div className="flex-1 flex items-center justify-center">
-              <div className="animate-pulse text-gray-400 text-sm">Загрузка...</div>
+              <div className="animate-pulse text-gray-400 text-sm">{t("inbox.loading")}</div>
             </div>
           ) : conversations.length === 0 ? (
             <div className="flex-1 flex items-center justify-center">
               <EmptyState
                 icon="inbox"
-                title="Пока нет сообщений"
-                description="Напишите хосту на странице локации"
-                action={{ label: "Найти локацию", href: "/catalog" }}
+                title={t("inbox.emptyTitle")}
+                description={t("inbox.emptyDesc")}
+                action={{ label: t("inbox.findLocation"), href: "/catalog" }}
               />
             </div>
           ) : (
@@ -485,7 +480,7 @@ function InboxContent() {
                         </span>
                       </div>
                       <div className="text-xs text-gray-500 truncate mt-0.5">
-                        {convo.listings?.title ?? "Локация"}
+                        {convo.listings?.title ?? t("inbox.location")}
                       </div>
                     </div>
                   </button>
@@ -524,7 +519,7 @@ function InboxContent() {
                     <div className="flex-1 min-w-0">
                       <h2 className="font-semibold text-gray-900 truncate">LOKACIA</h2>
                       <p className="text-xs text-gray-500">
-                        {notif.type === "broadcast" ? "Рассылка" : notif.type === "booking" ? "Бронирование" : "Уведомление"}
+                        {notif.type === "broadcast" ? t("inbox.broadcast") : notif.type === "booking" ? t("inbox.bookingNotif") : t("inbox.notification")}
                       </p>
                     </div>
                   </div>
@@ -543,7 +538,7 @@ function InboxContent() {
                           href={notif.link}
                           className="inline-flex items-center gap-2 mt-4 text-sm text-primary font-medium hover:underline"
                         >
-                          Перейти
+                          {t("inbox.goTo")}
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
                           </svg>
@@ -612,7 +607,7 @@ function InboxContent() {
                   <button
                     onClick={() => { setDisputeOpen(true); setDisputeSent(false); setDisputeReason(""); }}
                     className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
-                    title="Пожаловаться"
+                    title={t("inbox.report")}
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5" />
@@ -632,20 +627,20 @@ function InboxContent() {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                           </svg>
                         </div>
-                        <h3 className="font-bold text-lg">Жалоба отправлена</h3>
-                        <p className="text-sm text-gray-500 mt-2">Мы разберёмся в ситуации и свяжемся с вами.</p>
+                        <h3 className="font-bold text-lg">{t("inbox.reportSent")}</h3>
+                        <p className="text-sm text-gray-500 mt-2">{t("inbox.reportSentDesc")}</p>
                         <button onClick={() => setDisputeOpen(false)} className="mt-4 px-6 py-2 rounded-lg bg-primary text-white text-sm font-semibold">
-                          Закрыть
+                          {t("inbox.close")}
                         </button>
                       </div>
                     ) : (
                       <>
-                        <h3 className="font-bold text-lg mb-2">Пожаловаться</h3>
-                        <p className="text-sm text-gray-500 mb-4">Опишите проблему — мы разберёмся и примем меры.</p>
+                        <h3 className="font-bold text-lg mb-2">{t("inbox.report")}</h3>
+                        <p className="text-sm text-gray-500 mb-4">{t("inbox.reportDesc")}</p>
                         <textarea
                           value={disputeReason}
                           onChange={(e) => setDisputeReason(e.target.value)}
-                          placeholder="Что произошло?"
+                          placeholder={t("inbox.reportPh")}
                           rows={4}
                           className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none resize-none mb-4"
                         />
@@ -654,7 +649,7 @@ function InboxContent() {
                             onClick={() => setDisputeOpen(false)}
                             className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50"
                           >
-                            Отмена
+                            {t("inbox.cancel")}
                           </button>
                           <button
                             onClick={async () => {
@@ -671,7 +666,7 @@ function InboxContent() {
                             disabled={disputeSending || !disputeReason.trim()}
                             className="flex-1 py-2.5 rounded-lg bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:opacity-50"
                           >
-                            {disputeSending ? "Отправка..." : "Отправить жалобу"}
+                            {disputeSending ? t("inbox.reportSending") : t("inbox.reportSubmit")}
                           </button>
                         </div>
                       </>
@@ -684,11 +679,11 @@ function InboxContent() {
               <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 bg-gray-50">
                 {loadingMsgs ? (
                   <div className="flex items-center justify-center h-full">
-                    <div className="animate-pulse text-gray-400 text-sm">Загрузка...</div>
+                    <div className="animate-pulse text-gray-400 text-sm">{t("inbox.loading")}</div>
                   </div>
                 ) : messages.length === 0 ? (
                   <div className="flex items-center justify-center h-full">
-                    <p className="text-gray-400 text-sm">Начните диалог</p>
+                    <p className="text-gray-400 text-sm">{t("inbox.startChat")}</p>
                   </div>
                 ) : (
                   <>
@@ -698,7 +693,7 @@ function InboxContent() {
                         <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clipRule="evenodd" />
                         </svg>
-                        Обмен контактами откроется после подтверждения бронирования
+                        {t("inbox.contactBanner")}
                       </div>
                     )}
 
@@ -708,7 +703,7 @@ function InboxContent() {
                         <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 6a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 6Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
                         </svg>
-                        Контакты скрыты. Подтвердите бронирование для обмена контактами.
+                        {t("inbox.contactBlocked")}
                       </div>
                     )}
 
@@ -782,7 +777,7 @@ function InboxContent() {
                       // Scout invite card
                       if (msg.type === "system" && (msg.metadata as Record<string, unknown>)?.type === "scout_invite") {
                         const meta = msg.metadata as Record<string, unknown>;
-                        const address = activeConvo?.listings?.address ?? "Адрес будет доступен";
+                        const address = activeConvo?.listings?.address ?? t("inbox.addressHidden");
                         return (
                           <div key={msg.id}>
                             {dateHeader}
@@ -792,13 +787,13 @@ function InboxContent() {
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
                                 </svg>
-                                Приглашение на скаут
+                                {t("inbox.scoutInvite")}
                               </div>
                               <div className="text-sm text-gray-700 font-medium">{address}</div>
                               <div className="text-sm text-gray-500">
                                 {meta.date as string} в {meta.time as string}
                               </div>
-                              <div className="text-xs text-gray-400">Хост ждёт вас для осмотра локации</div>
+                              <div className="text-xs text-gray-400">{t("inbox.scoutHostWaiting")}</div>
                             </div>
                           </div>
                         );
@@ -817,8 +812,8 @@ function InboxContent() {
                                 : "bg-gray-50 border border-gray-200 text-gray-600"
                             }`}>
                               {isBook
-                                ? "Арендатор хочет забронировать после скаута"
-                                : `Локация не подошла${meta.reason ? `: ${meta.reason}` : ""}`}
+                                ? t("inbox.renterWantsBook")
+                                : `${t("inbox.scoutDeclined")}${meta.reason ? `: ${meta.reason}` : ""}`}
                             </div>
                           </div>
                         );
@@ -858,7 +853,7 @@ function InboxContent() {
                     {!hasConfirmedBooking && (
                       <div className="text-center">
                         <span className="text-[11px] text-gray-400 bg-amber-50 border border-amber-100 px-3 py-1 rounded-full">
-                          🔒 Контакты будут открыты после подтверждения бронирования
+                          🔒 {t("inbox.contactLocked")}
                         </span>
                       </div>
                     )}
@@ -870,7 +865,7 @@ function InboxContent() {
               {/* Scout response bar — for renter after scout invite */}
               {activeConvo?.scout_status === "invited" && activeConvo.guest_id === user.id && (
                 <div className="px-4 py-3 border-t border-gray-200 bg-primary/5">
-                  <p className="text-sm font-medium text-gray-700 mb-2">Как прошёл скаут?</p>
+                  <p className="text-sm font-medium text-gray-700 mb-2">{t("inbox.scoutHow")}</p>
                   <div className="flex gap-2">
                     <button
                       type="button"
@@ -885,7 +880,7 @@ function InboxContent() {
                       }}
                       className="flex-1 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary-dark transition-colors disabled:opacity-50"
                     >
-                      Забронировать
+                      {t("inbox.scoutBook")}
                     </button>
                     <button
                       type="button"
@@ -893,7 +888,7 @@ function InboxContent() {
                       onClick={() => setScoutDeclineModalOpen(true)}
                       className="flex-1 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
                     >
-                      Не подошла
+                      {t("inbox.scoutNotFit")}
                     </button>
                   </div>
                 </div>
@@ -909,7 +904,7 @@ function InboxContent() {
                         <button
                           type="button"
                           onClick={() => setScoutModalOpen(true)}
-                          title="Пригласить на скаут"
+                          title={t("inbox.inviteScout")}
                           className="w-10 h-10 flex items-center justify-center rounded-xl border border-gray-200 text-gray-600 hover:border-primary hover:text-primary transition-colors"
                         >
                           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
@@ -921,7 +916,7 @@ function InboxContent() {
                       <button
                         type="button"
                         onClick={() => setQuoteModalOpen(true)}
-                        title="Отправить смету"
+                        title={t("inbox.sendEstimate")}
                         className="w-10 h-10 flex items-center justify-center rounded-xl border border-gray-200 text-gray-600 hover:border-primary hover:text-primary transition-colors"
                       >
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
@@ -939,7 +934,7 @@ function InboxContent() {
                         handleSend(e);
                       }
                     }}
-                    placeholder="Напишите сообщение..."
+                    placeholder={t("inbox.msgPh")}
                     rows={1}
                     className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm resize-none max-h-32"
                     style={{ minHeight: "42px" }}
@@ -969,9 +964,9 @@ function InboxContent() {
               <svg className="w-20 h-20 text-gray-200 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={0.8}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
               </svg>
-              <h2 className="text-lg font-semibold text-gray-400">Выберите беседу</h2>
+              <h2 className="text-lg font-semibold text-gray-400">{t("inbox.selectConvo")}</h2>
               <p className="mt-1 text-sm text-gray-400">
-                Выберите диалог слева или напишите хосту со страницы локации
+                {t("inbox.selectConvoDesc")}
               </p>
             </div>
           )}
@@ -1010,10 +1005,10 @@ function InboxContent() {
       {scoutModalOpen && activeId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={() => setScoutModalOpen(false)}>
           <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-gray-900">Пригласить на скаут</h3>
-            <p className="text-sm text-gray-500">Арендатор увидит точный адрес вашей локации</p>
+            <h3 className="text-lg font-bold text-gray-900">{t("inbox.inviteScout")}</h3>
+            <p className="text-sm text-gray-500">{t("inbox.scoutRenterSees")}</p>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Дата</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("inbox.scoutDate")}</label>
               <input
                 type="date"
                 value={scoutDate}
@@ -1023,7 +1018,7 @@ function InboxContent() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Время</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("inbox.scoutTime")}</label>
               <input
                 type="time"
                 value={scoutTime}
@@ -1037,7 +1032,7 @@ function InboxContent() {
                 onClick={() => setScoutModalOpen(false)}
                 className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                Отмена
+                {t("inbox.cancel")}
               </button>
               <button
                 type="button"
@@ -1058,7 +1053,7 @@ function InboxContent() {
                 }}
                 className="flex-1 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary-dark transition-colors disabled:opacity-50"
               >
-                {scoutBusy ? "..." : "Отправить"}
+                {scoutBusy ? "..." : t("inbox.send")}
               </button>
             </div>
           </div>
@@ -1069,14 +1064,14 @@ function InboxContent() {
       {scoutDeclineModalOpen && activeId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={() => setScoutDeclineModalOpen(false)}>
           <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-gray-900">Локация не подошла</h3>
+            <h3 className="text-lg font-bold text-gray-900">{t("inbox.scoutDeclineTitle")}</h3>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Причина (необязательно)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("inbox.scoutDeclineLabel")}</label>
               <textarea
                 value={scoutDeclineReason}
                 onChange={(e) => setScoutDeclineReason(e.target.value)}
                 rows={3}
-                placeholder="Что не подошло?"
+                placeholder={t("inbox.scoutDeclinePh")}
                 className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
               />
             </div>
@@ -1086,7 +1081,7 @@ function InboxContent() {
                 onClick={() => { setScoutDeclineModalOpen(false); setScoutDeclineReason(""); }}
                 className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                Отмена
+                {t("inbox.cancel")}
               </button>
               <button
                 type="button"
@@ -1106,7 +1101,7 @@ function InboxContent() {
                 }}
                 className="flex-1 py-2.5 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
               >
-                {scoutBusy ? "..." : "Отправить"}
+                {scoutBusy ? "..." : t("inbox.send")}
               </button>
             </div>
           </div>
@@ -1133,6 +1128,7 @@ function ReviewModal({
   onClose: () => void;
   onSubmitted: () => void;
 }) {
+  const { t } = useT();
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [text, setText] = useState("");
@@ -1142,11 +1138,11 @@ function ReviewModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (rating < 1) {
-      setError("Поставьте оценку от 1 до 5 звёзд");
+      setError(t("inbox.rateStars"));
       return;
     }
     if (text.trim().length < 10) {
-      setError("Напишите хотя бы пару предложений (минимум 10 символов)");
+      setError(t("inbox.reviewMinChars"));
       return;
     }
     setSaving(true);
@@ -1161,7 +1157,7 @@ function ReviewModal({
       targetUserId,
     });
     if (e2) {
-      setError("Не удалось отправить отзыв. Попробуйте снова.");
+      setError(t("inbox.reviewError"));
       setSaving(false);
       return;
     }
@@ -1189,12 +1185,12 @@ function ReviewModal({
         </button>
 
         <h3 className="text-lg font-bold pr-8">
-          {targetType === "guest" ? "Оценить гостя" : "Оставить отзыв"}
+          {targetType === "guest" ? t("inbox.rateGuest") : t("inbox.leaveReview")}
         </h3>
         <p className="mt-1 text-sm text-gray-500">
           {targetType === "guest"
-            ? "Был ли гость аккуратен и соблюдал правила?"
-            : "Поделитесь впечатлениями — это поможет другим арендаторам."}
+            ? t("inbox.guestQ")
+            : t("inbox.reviewQ")}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
@@ -1224,11 +1220,11 @@ function ReviewModal({
               ))}
             </div>
             <div className="text-xs text-gray-500 h-4">
-              {display === 1 && "Ужасно"}
-              {display === 2 && "Плохо"}
-              {display === 3 && "Нормально"}
-              {display === 4 && "Хорошо"}
-              {display === 5 && "Отлично"}
+              {display === 1 && t("inbox.star1")}
+              {display === 2 && t("inbox.star2")}
+              {display === 3 && t("inbox.star3")}
+              {display === 4 && t("inbox.star4")}
+              {display === 5 && t("inbox.star5")}
             </div>
           </div>
 
@@ -1236,7 +1232,7 @@ function ReviewModal({
             rows={5}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Что понравилось, что можно улучшить, как прошла съёмка..."
+            placeholder={t("inbox.reviewPh")}
             className="w-full px-3 py-2.5 rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm resize-none"
           />
 
@@ -1251,7 +1247,7 @@ function ReviewModal({
             disabled={saving}
             className="w-full bg-primary text-white py-3 rounded-xl text-sm font-bold hover:bg-primary-dark transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            {saving ? "Отправка..." : "Отправить отзыв"}
+            {saving ? t("inbox.reviewSending") : t("inbox.reviewSubmit")}
           </button>
         </form>
       </div>
@@ -1278,6 +1274,15 @@ function BookingCard({
   guestReviewed: boolean;
   onReviewGuest: (bookingId: string, listingId: string, renterId: string) => void;
 }) {
+  const { t } = useT();
+
+  const actLabels: Record<string, string> = {
+    production: t("search.production"),
+    event: t("search.event"),
+    meeting: t("search.meeting"),
+    leisure: t("search.leisure"),
+  };
+
   if (!booking) {
     return (
       <div className="mx-auto max-w-md rounded-xl border border-gray-200 bg-white px-4 py-3 text-center text-sm text-gray-500">
@@ -1291,21 +1296,21 @@ function BookingCard({
     month: "long",
     year: "numeric",
   });
-  const activityLabel = ACTIVITY_LABELS_MAP[booking.activity_type] ?? booking.activity_type;
+  const activityLabel = actLabels[booking.activity_type] ?? booking.activity_type;
   const priceStr = new Intl.NumberFormat("ru-RU").format(booking.total_price) + " ₸";
 
   const palette = (() => {
     switch (booking.status) {
       case "confirmed":
-        return { bg: "bg-green-50", border: "border-green-200", title: "Бронь подтверждена ✓", titleClr: "text-green-700" };
+        return { bg: "bg-green-50", border: "border-green-200", title: t("inbox.statusConfirmed"), titleClr: "text-green-700" };
       case "rejected":
-        return { bg: "bg-red-50", border: "border-red-200", title: "Запрос отклонён", titleClr: "text-red-700" };
+        return { bg: "bg-red-50", border: "border-red-200", title: t("inbox.statusRejected"), titleClr: "text-red-700" };
       case "cancelled":
-        return { bg: "bg-gray-50", border: "border-gray-200", title: "Бронь отменена", titleClr: "text-gray-600" };
+        return { bg: "bg-gray-50", border: "border-gray-200", title: t("inbox.statusCancelled"), titleClr: "text-gray-600" };
       case "completed":
-        return { bg: "bg-blue-50", border: "border-blue-200", title: "Бронирование завершено", titleClr: "text-blue-700" };
+        return { bg: "bg-blue-50", border: "border-blue-200", title: t("inbox.statusCompleted"), titleClr: "text-blue-700" };
       default:
-        return { bg: "bg-amber-50", border: "border-amber-200", title: "Запрос на бронирование", titleClr: "text-amber-800" };
+        return { bg: "bg-amber-50", border: "border-amber-200", title: t("inbox.statusPending"), titleClr: "text-amber-800" };
     }
   })();
 
@@ -1322,24 +1327,24 @@ function BookingCard({
 
       <dl className="mt-3 space-y-1.5 text-sm text-gray-700">
         <div className="flex justify-between gap-2">
-          <dt className="text-gray-500">Дата</dt>
+          <dt className="text-gray-500">{t("inbox.bookingDate")}</dt>
           <dd className="font-medium text-right">{dateStr}</dd>
         </div>
         <div className="flex justify-between gap-2">
-          <dt className="text-gray-500">Время</dt>
+          <dt className="text-gray-500">{t("inbox.bookingTime")}</dt>
           <dd className="font-medium">{booking.start_time}–{booking.end_time}</dd>
         </div>
         <div className="flex justify-between gap-2">
-          <dt className="text-gray-500">Активность</dt>
+          <dt className="text-gray-500">{t("inbox.bookingActivity")}</dt>
           <dd className="font-medium">{activityLabel}</dd>
         </div>
         <div className="flex justify-between gap-2">
-          <dt className="text-gray-500">Гостей</dt>
+          <dt className="text-gray-500">{t("inbox.bookingGuests")}</dt>
           <dd className="font-medium">{booking.guest_count}</dd>
         </div>
         {booking.metadata?.add_ons_snapshot && booking.metadata.add_ons_snapshot.length > 0 && (
           <div className="pt-2 border-t border-black/5">
-            <div className="text-xs text-gray-500 mb-1">Доп. услуги:</div>
+            <div className="text-xs text-gray-500 mb-1">{t("inbox.bookingAddOns")}</div>
             <ul className="space-y-0.5">
               {booking.metadata.add_ons_snapshot.map((a) => (
                 <li key={a.id} className="flex justify-between text-xs text-gray-500">
@@ -1352,22 +1357,22 @@ function BookingCard({
         )}
 
         <div className="flex justify-between gap-2 pt-2 border-t border-black/5">
-          <dt className="text-gray-500">Сумма</dt>
+          <dt className="text-gray-500">{t("inbox.bookingTotal")}</dt>
           <dd className="font-bold">{priceStr}</dd>
         </div>
         {booking.status === "confirmed" && (
           <div className="flex justify-between gap-2 pt-1">
-            <dt className="text-gray-500">Оплата</dt>
+            <dt className="text-gray-500">{t("inbox.bookingPayment")}</dt>
             <dd>
               {booking.payment_status === "paid" ? (
                 <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clipRule="evenodd" />
                   </svg>
-                  Оплачено
+                  {t("inbox.bookingPaid")}
                 </span>
               ) : (
-                <span className="text-xs text-amber-600 font-medium">Ожидает оплаты</span>
+                <span className="text-xs text-amber-600 font-medium">{t("inbox.bookingPendingPay")}</span>
               )}
             </dd>
           </div>
@@ -1380,13 +1385,13 @@ function BookingCard({
             onClick={() => onRespond(booking.id, "rejected")}
             className="flex-1 py-2.5 rounded-xl border-2 border-gray-200 text-sm font-semibold text-gray-700 hover:border-red-300 hover:text-red-600 transition-colors"
           >
-            Отклонить
+            {t("inbox.bookingReject")}
           </button>
           <button
             onClick={() => onRespond(booking.id, "confirmed")}
             className="flex-1 py-2.5 rounded-xl bg-green-600 text-white text-sm font-bold hover:bg-green-700 transition-colors"
           >
-            Подтвердить
+            {t("inbox.bookingConfirm")}
           </button>
         </div>
       )}
@@ -1400,14 +1405,14 @@ function BookingCard({
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
             </svg>
-            Оплатить бронирование
+            {t("inbox.payBooking")}
           </Link>
         </div>
       )}
 
       {!isHost && booking.status === "pending" && (
         <div className="mt-3 text-xs text-amber-700/80 text-center">
-          Хост получил ваш запрос. Обычно отвечают в течение нескольких часов.
+          {t("inbox.hostPending")}
         </div>
       )}
 
@@ -1418,7 +1423,7 @@ function BookingCard({
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.957a1 1 0 0 0 .95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.366 2.446a1 1 0 0 0-.364 1.118l1.286 3.957c.3.921-.755 1.688-1.54 1.118l-3.366-2.446a1 1 0 0 0-1.176 0l-3.366 2.446c-.784.57-1.838-.197-1.539-1.118l1.286-3.957a1 1 0 0 0-.364-1.118L2.05 9.384c-.783-.57-.38-1.81.588-1.81h4.162a1 1 0 0 0 .95-.69l1.286-3.957Z" />
               </svg>
-              Вы уже оставили отзыв на эту локацию
+              {t("inbox.alreadyReviewed")}
             </div>
           ) : (
             <button
@@ -1428,7 +1433,7 @@ function BookingCard({
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.957a1 1 0 0 0 .95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.366 2.446a1 1 0 0 0-.364 1.118l1.286 3.957c.3.921-.755 1.688-1.54 1.118l-3.366-2.446a1 1 0 0 0-1.176 0l-3.366 2.446c-.784.57-1.838-.197-1.539-1.118l1.286-3.957a1 1 0 0 0-.364-1.118L2.05 9.384c-.783-.57-.38-1.81.588-1.81h4.162a1 1 0 0 0 .95-.69l1.286-3.957Z" />
               </svg>
-              Оценить локацию
+              {t("inbox.rateLocation")}
             </button>
           )}
         </div>
@@ -1441,7 +1446,7 @@ function BookingCard({
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.957a1 1 0 0 0 .95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.366 2.446a1 1 0 0 0-.364 1.118l1.286 3.957c.3.921-.755 1.688-1.54 1.118l-3.366-2.446a1 1 0 0 0-1.176 0l-3.366 2.446c-.784.57-1.838-.197-1.539-1.118l1.286-3.957a1 1 0 0 0-.364-1.118L2.05 9.384c-.783-.57-.38-1.81.588-1.81h4.162a1 1 0 0 0 .95-.69l1.286-3.957Z" />
               </svg>
-              Вы уже оценили гостя
+              {t("inbox.alreadyRatedGuest")}
             </div>
           ) : (
             <button
@@ -1451,7 +1456,7 @@ function BookingCard({
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.957a1 1 0 0 0 .95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.366 2.446a1 1 0 0 0-.364 1.118l1.286 3.957c.3.921-.755 1.688-1.54 1.118l-3.366-2.446a1 1 0 0 0-1.176 0l-3.366 2.446c-.784.57-1.838-.197-1.539-1.118l1.286-3.957a1 1 0 0 0-.364-1.118L2.05 9.384c-.783-.57-.38-1.81.588-1.81h4.162a1 1 0 0 0 .95-.69l1.286-3.957Z" />
               </svg>
-              Оценить гостя
+              {t("inbox.rateGuestBtn")}
             </button>
           )}
         </div>
@@ -1472,6 +1477,7 @@ function QuoteCard({
   onAccept: () => void;
   onReject: () => void;
 }) {
+  const { t } = useT();
   const priceStr = new Intl.NumberFormat("ru-RU").format(meta.price) + " ₸";
   const validUntil = meta.valid_until
     ? new Date(meta.valid_until).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
@@ -1480,11 +1486,11 @@ function QuoteCard({
   const palette = (() => {
     switch (meta.status) {
       case "accepted":
-        return { bg: "bg-green-50", border: "border-green-200", title: "Смета принята ✓", titleClr: "text-green-700" };
+        return { bg: "bg-green-50", border: "border-green-200", title: t("inbox.estimateAccepted"), titleClr: "text-green-700" };
       case "rejected":
-        return { bg: "bg-gray-50", border: "border-gray-200", title: "Смета отклонена", titleClr: "text-gray-600" };
+        return { bg: "bg-gray-50", border: "border-gray-200", title: t("inbox.estimateRejected"), titleClr: "text-gray-600" };
       default:
-        return { bg: "bg-blue-50", border: "border-blue-200", title: "Смета от хоста", titleClr: "text-blue-800" };
+        return { bg: "bg-blue-50", border: "border-blue-200", title: t("inbox.estimateFrom"), titleClr: "text-blue-800" };
     }
   })();
 
@@ -1501,9 +1507,9 @@ function QuoteCard({
 
       <div className="mt-4 text-center">
         <div className="text-2xl font-bold text-gray-900">{priceStr}</div>
-        <div className="text-sm text-gray-600 mt-1">за {meta.hours} ч</div>
+        <div className="text-sm text-gray-600 mt-1">{t("inbox.estimateFor", { h: String(meta.hours) })}</div>
         {validUntil && (
-          <div className="text-xs text-gray-500 mt-2">Действует до {validUntil}</div>
+          <div className="text-xs text-gray-500 mt-2">{t("inbox.estimateValidDate", { d: validUntil })}</div>
         )}
       </div>
 
@@ -1513,20 +1519,20 @@ function QuoteCard({
             onClick={onReject}
             className="flex-1 py-2.5 rounded-xl border-2 border-gray-200 text-sm font-semibold text-gray-700 hover:border-gray-300 hover:text-gray-900 transition-colors"
           >
-            Отклонить
+            {t("inbox.estimateDecline")}
           </button>
           <button
             onClick={onAccept}
             className="flex-1 py-2.5 rounded-xl bg-green-600 text-white text-sm font-bold hover:bg-green-700 transition-colors"
           >
-            Принять
+            {t("inbox.estimateAccept")}
           </button>
         </div>
       )}
 
       {viewerIsHost && meta.status === "pending" && (
         <div className="mt-3 text-xs text-blue-700/80 text-center">
-          Ожидаем ответа клиента
+          {t("inbox.estimateWaiting")}
         </div>
       )}
     </div>
@@ -1544,6 +1550,7 @@ function QuoteModal({
   onClose: () => void;
   onSent: () => void;
 }) {
+  const { t } = useT();
   const [price, setPrice] = useState<number>(0);
   const [hours, setHours] = useState<number>(2);
   const [validUntil, setValidUntil] = useState<string>("");
@@ -1553,7 +1560,7 @@ function QuoteModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (price < 1 || hours < 1) {
-      setError("Цена и часы должны быть больше нуля");
+      setError(t("inbox.estimateError"));
       return;
     }
     setSaving(true);
@@ -1564,7 +1571,7 @@ function QuoteModal({
       validUntil: validUntil || undefined,
     });
     if (err) {
-      setError("Не удалось отправить. Возможно, миграция БД не применена.");
+      setError(t("inbox.estimateSaveError"));
       setSaving(false);
       return;
     }
@@ -1586,12 +1593,12 @@ function QuoteModal({
           </svg>
         </button>
 
-        <h3 className="text-lg font-bold pr-8">Отправить смету</h3>
-        <p className="text-sm text-gray-500 mt-1">Кастомная цена для этого клиента</p>
+        <h3 className="text-lg font-bold pr-8">{t("inbox.sendEstimate")}</h3>
+        <p className="text-sm text-gray-500 mt-1">{t("inbox.estimateDesc")}</p>
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Цена (₸)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("inbox.estimatePrice")}</label>
             <input
               type="number"
               required
@@ -1604,7 +1611,7 @@ function QuoteModal({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Часов</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("inbox.estimateHours")}</label>
             <input
               type="number"
               required
@@ -1616,7 +1623,7 @@ function QuoteModal({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Действует до (опционально)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("inbox.estimateValidUntil")}</label>
             <input
               type="date"
               value={validUntil}
@@ -1635,7 +1642,7 @@ function QuoteModal({
             disabled={saving}
             className="w-full bg-primary text-white py-3 rounded-xl text-sm font-bold hover:bg-primary-dark transition-colors disabled:opacity-50"
           >
-            {saving ? "Отправка..." : "Отправить смету"}
+            {saving ? t("inbox.estimateSending") : t("inbox.estimateSubmit")}
           </button>
         </form>
       </div>

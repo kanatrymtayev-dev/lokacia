@@ -6,6 +6,7 @@ import Image from "next/image";
 import Navbar from "@/components/navbar";
 import { useAuth } from "@/lib/auth-context";
 import { getListingById, updateListing, uploadListingImages } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { SPACE_TYPE_LABELS, ACTIVITY_TYPE_LABELS, CITY_LABELS, STYLE_LABELS } from "@/lib/types";
 import type { SpaceType, ActivityType, City, Style, Listing } from "@/lib/types";
 
@@ -14,17 +15,14 @@ const activityTypes = Object.entries(ACTIVITY_TYPE_LABELS) as [ActivityType, str
 const cities = Object.entries(CITY_LABELS) as [City, string][];
 const stylesList = Object.entries(STYLE_LABELS) as [Style, string][];
 
-const AMENITY_OPTIONS = [
-  "Wi-Fi", "Парковка", "Кондиционер", "Кухня", "Гримёрная",
-  "Естественный свет", "Звукоизоляция", "Проектор", "Сцена",
-  "Генератор", "Зелёный экран", "Циклорама", "LED-панели",
-  "Бар", "Терраса", "Камин", "Танцпол",
-];
+const AMENITY_KEYS = ["wifi","parking","ac","kitchen","dressing","daylight","soundproof","projector","stage","generator","greenscreen","cyclorama","led","bar","terrace","fireplace","dancefloor"];
 
 export default function EditListingPage() {
+  const { t } = useT();
   const { user } = useAuth();
   const router = useRouter();
   const params = useParams();
+  const AMENITY_OPTIONS = AMENITY_KEYS.map(k => t(`amenity.${k}`));
   const listingId = params.id as string;
 
   const [listing, setListing] = useState<Listing | null>(null);
@@ -103,7 +101,7 @@ export default function EditListingPage() {
     const files = Array.from(e.target.files ?? []);
     const totalImages = existingImages.length + newImageFiles.length + files.length;
     if (totalImages > 10) {
-      setError("Максимум 10 фото");
+      setError(t("newListing.maxPhotos"));
       return;
     }
     setNewImageFiles((prev) => [...prev, ...files]);
@@ -131,7 +129,7 @@ export default function EditListingPage() {
 
     const totalImages = existingImages.length + newImageFiles.length;
     if (totalImages === 0) {
-      setError("Добавьте хотя бы одно фото");
+      setError(t("newListing.minPhoto"));
       return;
     }
 
@@ -157,16 +155,24 @@ export default function EditListingPage() {
       });
 
       if (updateError) {
-        setError("Ошибка сохранения: " + updateError.message);
+        setError(t("newListing.saveError") + ": " + updateError.message);
         setSaving(false);
         return;
       }
 
       await fetch("/api/revalidate", { method: "POST" });
+
+      // Auto-translate listing content (async, non-blocking)
+      fetch("/api/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ listingId: listing.id }),
+      }).catch(() => {/* silent — translation is best-effort */});
+
       setSaved(true);
       setTimeout(() => router.push(`/listing/${listing.slug}`), 1500);
     } catch {
-      setError("Произошла ошибка. Попробуйте снова.");
+      setError(t("newListing.genericError"));
     } finally {
       setSaving(false);
     }
@@ -295,7 +301,7 @@ export default function EditListingPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Цена за день (₸)</label>
-                  <input type="number" min={0} step={1000} value={pricePerDay} onChange={(e) => setPricePerDay(Number(e.target.value))} placeholder="Опционально" className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-gray-900" />
+                  <input type="number" min={0} step={1000} value={pricePerDay} onChange={(e) => setPricePerDay(Number(e.target.value))} placeholder={t("newListing.priceOptional")} className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-gray-900" />
                 </div>
               </div>
               <div>
@@ -321,7 +327,7 @@ export default function EditListingPage() {
             <section className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
               <h2 className="text-lg font-bold">Разрешения</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {([["alcohol", "Алкоголь"], ["loudMusic", "Громкая музыка"], ["pets", "Животные"], ["smoking", "Курение"], ["food", "Еда"]] as const).map(([key, label]) => (
+                {([["alcohol", t("listing.rule.alcohol")], ["loudMusic", t("listing.rule.loudMusic")], ["pets", t("listing.rule.pets")], ["smoking", t("listing.rule.smoking")], ["food", t("listing.rule.food")]] as [keyof typeof allows, string][]).map(([key, label]) => (
                   <label key={key} className="flex items-center gap-2 cursor-pointer select-none">
                     <input type="checkbox" checked={allows[key]} onChange={(e) => setAllows({ ...allows, [key]: e.target.checked })} className="w-4 h-4 rounded border-gray-300 accent-primary" />
                     <span className="text-sm">{label}</span>
@@ -333,7 +339,7 @@ export default function EditListingPage() {
             {/* Rules */}
             <section className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
               <h2 className="text-lg font-bold">Правила</h2>
-              <textarea rows={4} value={rules} onChange={(e) => setRules(e.target.value)} placeholder={"Каждое правило с новой строки"} className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-gray-900 resize-none" />
+              <textarea rows={4} value={rules} onChange={(e) => setRules(e.target.value)} placeholder={t("editListing.rulesPh")} className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-gray-900 resize-none" />
             </section>
 
             {/* Photos */}
@@ -384,7 +390,7 @@ export default function EditListingPage() {
             {/* Submit */}
             <div className="flex gap-3">
               <button type="submit" disabled={saving || saved} className="flex-1 bg-primary text-white py-4 rounded-xl text-base font-bold hover:bg-primary-dark transition-colors disabled:opacity-50">
-                {saving ? "Сохранение..." : saved ? "Сохранено!" : "Сохранить изменения"}
+                {saving ? t("editListing.saving") : saved ? t("editListing.saved") : t("editListing.save")}
               </button>
               <button type="button" onClick={() => router.push(`/listing/${listing.slug}`)} className="px-6 py-4 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors">
                 Отмена

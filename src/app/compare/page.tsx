@@ -10,6 +10,7 @@ import { getListingsByIds } from "@/lib/api";
 import type { Listing } from "@/lib/types";
 import { CITY_LABELS, SPACE_TYPE_LABELS } from "@/lib/types";
 import { formatPrice, formatRating } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 export default function ComparePage() {
   return (
@@ -27,6 +28,7 @@ export default function ComparePage() {
 }
 
 function CompareInner() {
+  const { t } = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
   const idsParam = searchParams.get("ids") ?? "";
@@ -74,10 +76,10 @@ function CompareInner() {
         <Navbar />
         <main className="flex-1 bg-gray-50">
           <div className="max-w-4xl mx-auto px-4 py-20 text-center">
-            <h1 className="text-2xl font-bold mb-2">Нечего сравнивать</h1>
-            <p className="text-gray-500 mb-6">Выберите минимум 2 локации в каталоге, отметив их кнопкой «Сравнить».</p>
+            <h1 className="text-2xl font-bold mb-2">{t("compare.empty")}</h1>
+            <p className="text-gray-500 mb-6">{t("compare.emptyDesc")}</p>
             <Link href="/catalog" className="inline-block bg-primary text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-primary-dark transition-colors">
-              Перейти в каталог
+              {t("compare.goToCatalog")}
             </Link>
           </div>
         </main>
@@ -89,22 +91,22 @@ function CompareInner() {
   // Строки сравнения: метка + функция получения значения
   type Row = { label: string; render: (l: Listing) => React.ReactNode };
   const rows: Row[] = [
-    { label: "Город", render: (l) => `${CITY_LABELS[l.city]}, ${l.district}` },
-    { label: "Тип помещения", render: (l) => SPACE_TYPE_LABELS[l.spaceType] },
-    { label: "Цена / час", render: (l) => <span className="font-bold">{formatPrice(l.pricePerHour)}</span> },
-    { label: "Цена / день", render: (l) => l.pricePerDay ? formatPrice(l.pricePerDay) : "—" },
-    { label: "Минимум часов", render: (l) => `${l.minHours} ч` },
-    { label: "Площадь", render: (l) => `${l.area} м²` },
-    { label: "Вместимость", render: (l) => `до ${l.capacity} чел.` },
-    { label: "Высота потолков", render: (l) => l.ceilingHeight ? `${l.ceilingHeight} м` : "—" },
-    { label: "Рейтинг", render: (l) => l.reviewCount > 0 ? `${formatRating(l.rating)} (${l.reviewCount})` : "Нет отзывов" },
-    { label: "Мгновенное бронирование", render: (l) => l.instantBook ? "✓" : "—" },
-    { label: "Суперхост", render: (l) => l.superhost ? "✓" : "—" },
-    { label: "Алкоголь", render: (l) => l.allows.alcohol ? "✓" : "—" },
-    { label: "Громкая музыка", render: (l) => l.allows.loudMusic ? "✓" : "—" },
-    { label: "Питомцы", render: (l) => l.allows.pets ? "✓" : "—" },
-    { label: "Курение", render: (l) => l.allows.smoking ? "✓" : "—" },
-    { label: "Еда", render: (l) => l.allows.food ? "✓" : "—" },
+    { label: t("compare.city"), render: (l) => `${CITY_LABELS[l.city]}, ${l.district}` },
+    { label: t("compare.spaceType"), render: (l) => SPACE_TYPE_LABELS[l.spaceType] },
+    { label: t("compare.priceHour"), render: (l) => <span className="font-bold">{formatPrice(l.pricePerHour)}</span> },
+    { label: t("compare.priceDay"), render: (l) => l.pricePerDay ? formatPrice(l.pricePerDay) : "—" },
+    { label: t("compare.minHours"), render: (l) => `${l.minHours} ч` },
+    { label: t("compare.area"), render: (l) => `${l.area} м²` },
+    { label: t("compare.capacity"), render: (l) => `до ${l.capacity} чел.` },
+    { label: t("compare.ceilingHeight"), render: (l) => l.ceilingHeight ? `${l.ceilingHeight} м` : "—" },
+    { label: t("compare.rating"), render: (l) => l.reviewCount > 0 ? `${formatRating(l.rating)} (${l.reviewCount})` : t("compare.noReviews") },
+    { label: t("compare.instantBook"), render: (l) => l.instantBook ? "✓" : "—" },
+    { label: t("compare.superhost"), render: (l) => l.superhost ? "✓" : "—" },
+    { label: t("compare.alcohol"), render: (l) => l.allows.alcohol ? "✓" : "—" },
+    { label: t("compare.loudMusic"), render: (l) => l.allows.loudMusic ? "✓" : "—" },
+    { label: t("compare.pets"), render: (l) => l.allows.pets ? "✓" : "—" },
+    { label: t("compare.smoking"), render: (l) => l.allows.smoking ? "✓" : "—" },
+    { label: t("compare.food"), render: (l) => l.allows.food ? "✓" : "—" },
   ];
 
   return (
@@ -114,11 +116,11 @@ function CompareInner() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-6 flex items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Сравнение локаций</h1>
-              <p className="mt-1 text-sm text-gray-600">{listings.length} из 3 возможных</p>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t("compare.title")}</h1>
+              <p className="mt-1 text-sm text-gray-600">{t("compare.outOf", { n: String(listings.length) })}</p>
             </div>
             <Link href="/catalog" className="text-sm text-primary hover:underline whitespace-nowrap">
-              ← В каталог
+              {t("compare.backToCatalog")}
             </Link>
           </div>
 
@@ -128,7 +130,7 @@ function CompareInner() {
               <thead>
                 <tr className="border-b border-gray-100">
                   <th className="text-left text-xs font-medium text-gray-400 uppercase px-4 py-3 sticky left-0 bg-white z-10 w-40 sm:w-52">
-                    Характеристика
+                    {t("compare.characteristic")}
                   </th>
                   {listings.map((l) => (
                     <th key={l.id} className="text-left px-4 py-3 align-top">
@@ -137,7 +139,7 @@ function CompareInner() {
                           {l.images[0] && typeof l.images[0] === 'string' && l.images[0].trim() !== '' ? (
                             <Image src={l.images[0]} alt={l.title} fill className="object-cover" sizes="220px" />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">Нет фото</div>
+                            <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">{t("compare.noPhoto")}</div>
                           )}
                           <button
                             onClick={() => removeListing(l.id)}
@@ -178,7 +180,7 @@ function CompareInner() {
                         href={`/listing/${l.slug}`}
                         className="block text-center bg-primary text-white py-2.5 rounded-lg text-sm font-bold hover:bg-primary-dark transition-colors"
                       >
-                        Открыть
+                        {t("compare.open")}
                       </Link>
                     </td>
                   ))}

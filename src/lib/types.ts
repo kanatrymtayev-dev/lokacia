@@ -113,6 +113,15 @@ export interface Listing {
   moderationStatus?: "pending_review" | "approved" | "rejected";
   moderationNote?: string | null;
   createdAt: string;
+  // Translations (auto-generated)
+  titleEn?: string | null;
+  titleKz?: string | null;
+  descriptionEn?: string | null;
+  descriptionKz?: string | null;
+  amenitiesEn?: string[];
+  amenitiesKz?: string[];
+  rulesEn?: string[];
+  rulesKz?: string[];
 }
 
 export interface HostVerification {

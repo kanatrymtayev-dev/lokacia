@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { Listing } from "@/lib/types";
 import { CITY_LABELS, SPACE_TYPE_LABELS } from "@/lib/types";
 import { formatPrice, formatRating } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 export default function ListingCard({
   listing,
@@ -31,6 +32,7 @@ export default function ListingCard({
   );
   const hasMultiple = images.length > 1;
   const [activeIdx, setActiveIdx] = useState(0);
+  const { t } = useT();
 
   function handleAction(e: React.MouseEvent, fn?: () => void) {
     e.preventDefault();
@@ -75,7 +77,7 @@ export default function ListingCard({
                   type="button"
                   onClick={(e) => goTo(e, (activeIdx - 1 + images.length) % images.length)}
                   className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white shadow-sm"
-                  aria-label="Назад"
+                  aria-label={t("listingCard.prev")}
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
@@ -85,7 +87,7 @@ export default function ListingCard({
                   type="button"
                   onClick={(e) => goTo(e, (activeIdx + 1) % images.length)}
                   className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white shadow-sm"
-                  aria-label="Вперёд"
+                  aria-label={t("listingCard.next")}
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
@@ -143,7 +145,7 @@ export default function ListingCard({
             </span>
           )}
           {listing.hostIdVerified && (
-            <span className="bg-emerald-500 text-white text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1" title="Хост прошёл ID-верификацию">
+            <span className="bg-emerald-500 text-white text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1" title={t("listingCard.verified")}>
               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clipRule="evenodd"/>
               </svg>
@@ -156,7 +158,7 @@ export default function ListingCard({
           <button
             type="button"
             onClick={(e) => handleAction(e, onToggleFavorite)}
-            aria-label={isFavorite ? "Убрать из избранного" : "Добавить в избранное"}
+            aria-label={isFavorite ? t("listingCard.removeFav") : t("listingCard.addFav")}
             className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm hover:scale-110 transition-transform"
           >
             <svg
@@ -250,7 +252,7 @@ export default function ListingCard({
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 7.5h18M3 12h18m-9 4.5h9" />
               )}
             </svg>
-            {inCompare ? "В сравнении" : "Сравнить"}
+            {inCompare ? t("listingCard.inCompare") : t("listingCard.compare")}
           </button>
         )}
       </div>

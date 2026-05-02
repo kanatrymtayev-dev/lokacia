@@ -18,17 +18,21 @@ const AnalyticsTab = dynamic(() => import("./analytics-tab"), {
 
 import VerificationTab from "./verification-tab";
 import ProductionModal from "./production-modal";
-import { ACTIVITY_TYPE_LABELS } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 import type { Listing, BookingRequest, HostBlackout } from "@/lib/types";
+import { useLabels } from "@/lib/use-labels";
 import { formatPrice } from "@/lib/utils";
 
-const STATUS_LABELS: Record<BookingRequest["status"], string> = {
-  pending: "Ожидает",
-  confirmed: "Подтверждено",
-  rejected: "Отклонено",
-  completed: "Завершено",
-  cancelled: "Отменено",
-};
+function useStatusLabels(): Record<BookingRequest["status"], string> {
+  const { t } = useT();
+  return {
+    pending: t("dash.status.pending"),
+    confirmed: t("dash.status.confirmed"),
+    rejected: t("dash.status.rejected"),
+    completed: t("dash.status.completed"),
+    cancelled: t("dash.status.cancelled"),
+  };
+}
 
 const STATUS_COLORS: Record<BookingRequest["status"], string> = {
   pending: "bg-amber-100 text-amber-700",
@@ -39,6 +43,9 @@ const STATUS_COLORS: Record<BookingRequest["status"], string> = {
 };
 
 export default function DashboardPage() {
+  const { t } = useT();
+  const STATUS_LABELS = useStatusLabels();
+  const { activityTypeLabels } = useLabels();
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [bookings, setBookings] = useState<Array<Record<string, unknown>>>([]);
@@ -84,7 +91,7 @@ export default function DashboardPage() {
       <div className="flex flex-col min-h-screen">
         <Navbar />
         <main className="flex-1 flex items-center justify-center">
-          <div className="animate-pulse text-gray-400">Загрузка...</div>
+          <div className="animate-pulse text-gray-400">{t("dash.loading")}</div>
         </main>
       </div>
     );
@@ -103,8 +110,8 @@ export default function DashboardPage() {
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
             <div>
-              <h1 className="text-2xl font-bold">Панель хоста</h1>
-              <p className="text-gray-600">Добро пожаловать, {user.name}</p>
+              <h1 className="text-2xl font-bold">{t("dash.title")}</h1>
+              <p className="text-gray-600">{t("dash.welcome")} {user.name}</p>
             </div>
             <Link
               href="/dashboard/new"
@@ -113,28 +120,28 @@ export default function DashboardPage() {
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
-              Добавить локацию
+              {t("dash.addLocation")}
             </Link>
           </div>
 
           {/* Stats */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <div className="text-sm text-gray-500">Мои локации</div>
+              <div className="text-sm text-gray-500">{t("dash.myLocations")}</div>
               <div className="text-2xl font-bold mt-1">{myListings.length}</div>
             </div>
             <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <div className="text-sm text-gray-500">Всего бронирований</div>
+              <div className="text-sm text-gray-500">{t("dash.totalBookings")}</div>
               <div className="text-2xl font-bold mt-1">{bookings.length}</div>
             </div>
             <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <div className="text-sm text-gray-500">Ожидают ответа</div>
+              <div className="text-sm text-gray-500">{t("dash.pendingResponse")}</div>
               <div className="text-2xl font-bold mt-1 text-amber-600">{pendingCount}</div>
             </div>
             <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <div className="text-sm text-gray-500">Доход</div>
-              <div className="text-2xl font-bold mt-1 text-green-600">{formatPrice(Math.round(totalRevenue * 0.85))}</div>
-              <div className="text-xs text-gray-400">после комиссии 15%</div>
+              <div className="text-sm text-gray-500">{t("dash.revenue")}</div>
+              <div className="text-2xl font-bold mt-1 text-green-600">{formatPrice(totalRevenue)}</div>
+              <div className="text-xs text-gray-400">{t("dash.noCommission")}</div>
             </div>
           </div>
 
@@ -146,7 +153,7 @@ export default function DashboardPage() {
                 tab === "bookings" ? "bg-white shadow-sm text-gray-900" : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              Бронирования {pendingCount > 0 && (
+              {t("dash.tab.bookings")} {pendingCount > 0 && (
                 <span className="ml-1 bg-amber-100 text-amber-700 text-xs px-1.5 py-0.5 rounded-full">
                   {pendingCount}
                 </span>
@@ -158,7 +165,7 @@ export default function DashboardPage() {
                 tab === "listings" ? "bg-white shadow-sm text-gray-900" : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              Мои локации
+              {t("dash.tab.listings")}
             </button>
             <button
               onClick={() => setTab("calendar")}
@@ -166,7 +173,7 @@ export default function DashboardPage() {
                 tab === "calendar" ? "bg-white shadow-sm text-gray-900" : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              Календарь
+              {t("dash.tab.calendar")}
             </button>
             <button
               onClick={() => setTab("availability")}
@@ -174,7 +181,7 @@ export default function DashboardPage() {
                 tab === "availability" ? "bg-white shadow-sm text-gray-900" : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              Доступность
+              {t("dash.tab.availability")}
             </button>
             <button
               onClick={() => setTab("discounts")}
@@ -182,7 +189,7 @@ export default function DashboardPage() {
                 tab === "discounts" ? "bg-white shadow-sm text-gray-900" : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              Скидки
+              {t("dash.tab.discounts")}
             </button>
             <button
               onClick={() => setTab("analytics")}
@@ -190,7 +197,7 @@ export default function DashboardPage() {
                 tab === "analytics" ? "bg-white shadow-sm text-gray-900" : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              Аналитика
+              {t("dash.tab.analytics")}
             </button>
             <button
               onClick={() => setTab("verification")}
@@ -198,7 +205,7 @@ export default function DashboardPage() {
                 tab === "verification" ? "bg-white shadow-sm text-gray-900" : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              Верификация
+              {t("dash.tab.verification")}
             </button>
           </div>
 
@@ -218,7 +225,7 @@ export default function DashboardPage() {
             <div className="space-y-4">
               {bookings.length === 0 ? (
                 <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-                  <p className="text-gray-500">Пока нет бронирований</p>
+                  <p className="text-gray-500">{t("dash.noBookings")}</p>
                 </div>
               ) : (
                 bookings.map((booking) => {
@@ -228,6 +235,10 @@ export default function DashboardPage() {
                   const slug = (bl?.slug as string) ?? "";
                   const status = booking.status as BookingRequest["status"];
                   const activityType = (booking.activity_type as string) ?? "production";
+                  const renterProfile = booking.profiles as Record<string, unknown> | null;
+                  const renterName = (renterProfile?.name as string) ?? "";
+                  const renterAvatar = (renterProfile?.avatar_url as string) ?? "";
+                  const renterId = booking.renter_id as string;
                   return (
                     <div
                       key={booking.id as string}
@@ -252,14 +263,27 @@ export default function DashboardPage() {
                           <div className="flex items-start justify-between gap-2">
                             <div>
                               <h3 className="font-semibold line-clamp-1">{title}</h3>
+                              {renterName && (
+                                <Link
+                                  href={`/guest/${renterId}`}
+                                  className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-primary transition-colors mt-1"
+                                >
+                                  {renterAvatar ? (
+                                    <Image src={renterAvatar} alt={renterName} width={20} height={20} className="rounded-full object-cover" />
+                                  ) : (
+                                    <span className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-[10px] text-gray-500 font-bold">{renterName[0]}</span>
+                                  )}
+                                  <span>{t("dash.renter")}: <span className="font-medium">{renterName}</span></span>
+                                </Link>
+                              )}
                               <div className="flex flex-wrap items-center gap-2 mt-1 text-sm text-gray-500">
                                 <span>{booking.date as string}</span>
                                 <span>•</span>
                                 <span>{booking.start_time as string} — {booking.end_time as string}</span>
                                 <span>•</span>
-                                <span>{booking.guest_count as number} чел.</span>
+                                <span>{booking.guest_count as number} {t("dash.people")}</span>
                                 <span>•</span>
-                                <span>{ACTIVITY_TYPE_LABELS[activityType as keyof typeof ACTIVITY_TYPE_LABELS] ?? activityType}</span>
+                                <span>{activityTypeLabels[activityType as keyof typeof activityTypeLabels] ?? activityType}</span>
                               </div>
                             </div>
                             <span className={`text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 ${STATUS_COLORS[status]}`}>
@@ -278,13 +302,13 @@ export default function DashboardPage() {
                                   onClick={() => handleBookingAction(booking.id as string, "confirmed")}
                                   className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors"
                                 >
-                                  Принять
+                                  {t("dash.accept")}
                                 </button>
                                 <button
                                   onClick={() => handleBookingAction(booking.id as string, "rejected")}
                                   className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors"
                                 >
-                                  Отклонить
+                                  {t("dash.reject")}
                                 </button>
                               </div>
                             )}
@@ -297,7 +321,7 @@ export default function DashboardPage() {
                                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
                                   </svg>
-                                  Скачать счёт
+                                  {t("dash.invoice")}
                                 </a>
                                 <button
                                   onClick={() => {
@@ -316,7 +340,7 @@ export default function DashboardPage() {
                                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
                                   </svg>
-                                  Претензия
+                                  {t("dash.claim")}
                                 </button>
                               </div>
                             )}
@@ -357,7 +381,7 @@ export default function DashboardPage() {
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                     </svg>
-                    Добавить локацию
+                    {t("dash.addLocation")}
                   </Link>
                 </div>
               ) : (
@@ -462,7 +486,7 @@ export default function DashboardPage() {
                     <textarea
                       value={claimDesc}
                       onChange={(e) => setClaimDesc(e.target.value)}
-                      placeholder="Что было повреждено?"
+                      placeholder={t("dash.claimPh")}
                       rows={3}
                       className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none resize-none"
                     />
@@ -524,7 +548,7 @@ export default function DashboardPage() {
                     disabled={claimSending || !claimDesc.trim() || !claimAmount}
                     className="flex-1 py-2.5 rounded-lg bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:opacity-50"
                   >
-                    {claimSending ? "Отправка..." : "Отправить претензию"}
+                    {claimSending ? t("dash.claimSending") : t("dash.claimSubmit")}
                   </button>
                 </div>
               </>
@@ -538,6 +562,7 @@ export default function DashboardPage() {
 }
 
 function DiscountsTab({ listings }: { listings: Listing[] }) {
+  const { t } = useT();
   const [selectedListingId, setSelectedListingId] = useState(listings[0]?.id ?? "");
   const [discounts, setDiscounts] = useState<ListingDiscount[]>([]);
   const [loading, setLoading] = useState(false);
@@ -558,13 +583,13 @@ function DiscountsTab({ listings }: { listings: Listing[] }) {
   useEffect(() => { loadDiscounts(); }, [loadDiscounts]);
 
   async function handleCreate() {
-    if (!startDate || !endDate) { setError("Выберите даты"); return; }
-    if (endDate < startDate) { setError("Дата окончания не может быть раньше начала"); return; }
+    if (!startDate || !endDate) { setError(t("dash.discount.selectDates")); return; }
+    if (endDate < startDate) { setError(t("dash.discount.endBeforeStart")); return; }
     setSaving(true);
     setError("");
     const { error: err } = await createListingDiscount(selectedListingId, startDate, endDate, percent);
     if (err) {
-      setError("Ошибка создания. Возможно, скидка на эти даты уже существует.");
+      setError(t("dash.discount.createError"));
     } else {
       setShowForm(false);
       setStartDate("");
@@ -610,14 +635,14 @@ function DiscountsTab({ listings }: { listings: Listing[] }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-bold">Скидки на даты</h3>
+          <h3 className="font-bold">{t("dash.discountsTitle")}</h3>
           <p className="text-xs text-gray-500 mt-0.5">Установите скидки на непиковые дни чтобы привлечь больше арендаторов</p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
           className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
         >
-          {showForm ? "Отмена" : "+ Добавить скидку"}
+          {showForm ? t("dash.discount.cancel") : t("dash.discount.add")}
         </button>
       </div>
 
@@ -664,7 +689,7 @@ function DiscountsTab({ listings }: { listings: Listing[] }) {
             disabled={saving || !startDate || !endDate}
             className="mt-4 px-6 py-2.5 rounded-lg bg-green-600 text-white text-sm font-bold hover:bg-green-700 disabled:opacity-50"
           >
-            {saving ? "Создание..." : "Создать скидку"}
+            {saving ? t("dash.discount.creating") : t("dash.discount.create")}
           </button>
         </div>
       )}
@@ -731,6 +756,9 @@ function DiscountsTab({ listings }: { listings: Listing[] }) {
 }
 
 function CalendarTab({ bookings }: { bookings: Array<Record<string, unknown>> }) {
+  const { t } = useT();
+  const STATUS_LABELS = useStatusLabels();
+  const { activityTypeLabels } = useLabels();
   // Только активные брони, не в прошлом, отсортированы по дате+времени и сгруппированы по дню
   const grouped = useMemo(() => {
     const todayStr = new Date().toISOString().split("T")[0];
@@ -794,7 +822,7 @@ function CalendarTab({ bookings }: { bookings: Array<Record<string, unknown>> })
           <div className="space-y-2">
             {items.map((b) => {
               const bl = b.listings as Record<string, unknown> | null;
-              const title = (bl?.title as string) ?? "Локация";
+              const title = (bl?.title as string) ?? t("dash.location");
               const slug = (bl?.slug as string) ?? "";
               const status = b.status as BookingRequest["status"];
               const activity = (b.activity_type as string) ?? "";
@@ -838,7 +866,7 @@ function CalendarTab({ bookings }: { bookings: Array<Record<string, unknown>> })
                       {activity && (
                         <>
                           <span>•</span>
-                          <span>{ACTIVITY_TYPE_LABELS[activity as keyof typeof ACTIVITY_TYPE_LABELS] ?? activity}</span>
+                          <span>{activityTypeLabels[activity as keyof typeof activityTypeLabels] ?? activity}</span>
                         </>
                       )}
                       <span>•</span>
@@ -856,6 +884,7 @@ function CalendarTab({ bookings }: { bookings: Array<Record<string, unknown>> })
 }
 
 function AvailabilityTab({ listings, hostId }: { listings: Listing[]; hostId: string }) {
+  const { t } = useT();
   const [blackouts, setBlackouts] = useState<HostBlackout[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -919,7 +948,7 @@ function AvailabilityTab({ listings, hostId }: { listings: Listing[]; hostId: st
             onClick={copyIcal}
             className="inline-flex items-center gap-2 border border-gray-300 px-4 py-2 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
           >
-            {icalCopied ? "✓ Скопировано" : "Скопировать ссылку"}
+            {icalCopied ? t("dash.icalCopied") : t("dash.icalCopy")}
           </button>
         </div>
         <div className="mt-3 text-xs text-gray-500">
@@ -1013,22 +1042,23 @@ function BlackoutModal({
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const { t } = useT();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!listingId || !startDate || !endDate) {
-      setError("Заполните локацию и обе даты");
+      setError(t("dash.blackout.fillAll"));
       return;
     }
     if (endDate < startDate) {
-      setError("Дата окончания не может быть раньше начала");
+      setError(t("dash.blackout.endBeforeStart"));
       return;
     }
     setSaving(true);
     setError("");
     const { error: err } = await createBlackout({ listingId, startDate, endDate, reason });
     if (err) {
-      setError("Не удалось сохранить. Возможно, миграция БД не применена.");
+      setError(t("dash.blackout.saveError"));
       setSaving(false);
       return;
     }
@@ -1097,7 +1127,7 @@ function BlackoutModal({
               type="text"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Отпуск, ремонт, частное событие..."
+              placeholder={t("dash.blackout.reasonPh")}
               className="w-full px-3 py-2.5 rounded-lg border border-gray-300 outline-none text-sm"
             />
           </div>
@@ -1111,7 +1141,7 @@ function BlackoutModal({
             disabled={saving}
             className="w-full bg-primary text-white py-3 rounded-xl text-sm font-bold hover:bg-primary-dark transition-colors disabled:opacity-50"
           >
-            {saving ? "Сохранение..." : "Заблокировать"}
+            {saving ? t("dash.blackout.saving") : t("dash.blackout.save")}
           </button>
         </form>
       </div>

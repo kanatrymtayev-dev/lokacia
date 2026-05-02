@@ -6,6 +6,7 @@ import Image from "next/image";
 import Navbar from "@/components/navbar";
 import { useAuth } from "@/lib/auth-context";
 import { createListing, uploadListingImages } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { SPACE_TYPE_LABELS, ACTIVITY_TYPE_LABELS, CITY_LABELS, STYLE_LABELS } from "@/lib/types";
 import type { SpaceType, ActivityType, City, Style } from "@/lib/types";
 
@@ -14,16 +15,13 @@ const activityTypes = Object.entries(ACTIVITY_TYPE_LABELS) as [ActivityType, str
 const cities = Object.entries(CITY_LABELS) as [City, string][];
 const styles = Object.entries(STYLE_LABELS) as [Style, string][];
 
-const AMENITY_OPTIONS = [
-  "Wi-Fi", "Парковка", "Кондиционер", "Кухня", "Гримёрная",
-  "Естественный свет", "Звукоизоляция", "Проектор", "Сцена",
-  "Генератор", "Зелёный экран", "Циклорама", "LED-панели",
-  "Бар", "Терраса", "Камин", "Танцпол",
-];
+const AMENITY_KEYS = ["wifi","parking","ac","kitchen","dressing","daylight","soundproof","projector","stage","generator","greenscreen","cyclorama","led","bar","terrace","fireplace","dancefloor"];
 
 export default function NewListingPage() {
+  const { t } = useT();
   const { user } = useAuth();
   const router = useRouter();
+  const AMENITY_OPTIONS = AMENITY_KEYS.map(k => t(`amenity.${k}`));
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -58,7 +56,7 @@ export default function NewListingPage() {
   function handleImageChange(e: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     if (files.length + imageFiles.length > 10) {
-      setError("Максимум 10 фото");
+      setError(t("newListing.maxPhotos"));
       return;
     }
     setImageFiles((prev) => [...prev, ...files]);
@@ -80,7 +78,7 @@ export default function NewListingPage() {
     e.preventDefault();
     if (!user) return;
     if (imageFiles.length === 0) {
-      setError("Добавьте хотя бы одно фото");
+      setError(t("newListing.minPhoto"));
       return;
     }
 
@@ -90,7 +88,7 @@ export default function NewListingPage() {
     try {
       const imageUrls = await uploadListingImages(imageFiles, user.id);
       if (imageUrls.length === 0) {
-        setError("Ошибка загрузки фото. Попробуйте снова.");
+        setError(t("newListing.uploadError"));
         setSaving(false);
         return;
       }
@@ -106,7 +104,7 @@ export default function NewListingPage() {
       });
 
       if (dbError) {
-        setError("Ошибка сохранения: " + dbError.message);
+        setError(t("newListing.saveError") + ": " + dbError.message);
         setSaving(false);
         return;
       }
@@ -114,10 +112,19 @@ export default function NewListingPage() {
       // Bust Next.js cache
       await fetch("/api/revalidate", { method: "POST" });
 
+      // Auto-translate listing content (async, non-blocking)
+      if (newListing?.id) {
+        fetch("/api/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ listingId: newListing.id }),
+        }).catch(() => {/* silent — translation is best-effort */});
+      }
+
       // Show moderation success screen
       setSubmitted(true);
     } catch {
-      setError("Произошла ошибка. Попробуйте снова.");
+      setError(t("newListing.genericError"));
     } finally {
       setSaving(false);
     }
@@ -200,7 +207,7 @@ export default function NewListingPage() {
                   rows={5}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Расскажите подробно: что есть в помещении, для чего подходит, что делает его уникальным..."
+                  placeholder={t("newListing.descPh")}
                   className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-gray-900 resize-none"
                 />
               </div>
@@ -223,11 +230,11 @@ export default function NewListingPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Район *</label>
-                  <input type="text" required value={district} onChange={(e) => setDistrict(e.target.value)} placeholder="Медеуский" className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-gray-900" />
+                  <input type="text" required value={district} onChange={(e) => setDistrict(e.target.value)} placeholder={t("newListing.districtPh")} className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-gray-900" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Адрес *</label>
-                  <input type="text" required value={address} onChange={(e) => setAddress(e.target.value)} placeholder="ул. Панфилова 78" className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-gray-900" />
+                  <input type="text" required value={address} onChange={(e) => setAddress(e.target.value)} placeholder={t("newListing.addressPh")} className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-gray-900" />
                 </div>
               </div>
 
@@ -307,7 +314,7 @@ export default function NewListingPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Цена за день (₸)</label>
-                  <input type="number" min={0} step={1000} value={pricePerDay} onChange={(e) => setPricePerDay(Number(e.target.value))} placeholder="Опционально" className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-gray-900" />
+                  <input type="number" min={0} step={1000} value={pricePerDay} onChange={(e) => setPricePerDay(Number(e.target.value))} placeholder={t("newListing.priceOptional")} className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-gray-900" />
                 </div>
               </div>
               <div>
@@ -345,12 +352,12 @@ export default function NewListingPage() {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {(
                   [
-                    ["alcohol", "Алкоголь"],
-                    ["loudMusic", "Громкая музыка"],
-                    ["pets", "Животные"],
-                    ["smoking", "Курение"],
-                    ["food", "Еда"],
-                  ] as const
+                    ["alcohol", t("listing.rule.alcohol")],
+                    ["loudMusic", t("listing.rule.loudMusic")],
+                    ["pets", t("listing.rule.pets")],
+                    ["smoking", t("listing.rule.smoking")],
+                    ["food", t("listing.rule.food")],
+                  ] as [keyof typeof allows, string][]
                 ).map(([key, label]) => (
                   <label key={key} className="flex items-center gap-2 cursor-pointer select-none">
                     <input
@@ -372,7 +379,7 @@ export default function NewListingPage() {
                 rows={4}
                 value={rules}
                 onChange={(e) => setRules(e.target.value)}
-                placeholder={"Каждое правило с новой строки:\nБез обуви на циклораме\nТишина после 22:00\nЗалог 50 000 ₸"}
+                placeholder={t("newListing.rulesPh")}
                 className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-gray-900 resize-none"
               />
             </section>
@@ -431,7 +438,7 @@ export default function NewListingPage() {
                 disabled={saving}
                 className="flex-1 bg-primary text-white py-4 rounded-xl text-base font-bold hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {saving ? "Сохранение..." : "Опубликовать локацию"}
+                {saving ? t("newListing.saving") : t("newListing.publish")}
               </button>
               <button
                 type="button"

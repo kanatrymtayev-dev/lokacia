@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/lib/supabase";
+import { useT } from "@/lib/i18n";
 import Navbar from "@/components/navbar";
 
 export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
+  const { t } = useT();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -26,13 +28,13 @@ export default function LoginPage() {
     if (result.ok) {
       router.replace("/dashboard");
     } else {
-      setError(result.error || "Неверный email или пароль");
+      setError(result.error || t("auth.login.wrongCreds"));
     }
   }
 
   async function handleResetPassword(e: FormEvent) {
     e.preventDefault();
-    if (!email) { setError("Введите email"); return; }
+    if (!email) { setError(t("auth.login.enterEmail")); return; }
     setError("");
     setLoading(true);
 
@@ -40,7 +42,7 @@ export default function LoginPage() {
     const { data: exists } = await supabase.rpc("check_email_exists", { check_email: email });
 
     if (!exists) {
-      setError("Этот email не зарегистрирован. Создайте аккаунт.");
+      setError(t("auth.login.notRegistered"));
       setLoading(false);
       return;
     }
@@ -64,12 +66,12 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold">
-              {resetMode ? "Сброс пароля" : "Вход в LOKACIA"}
+              {resetMode ? t("auth.login.resetTitle") : t("auth.login.title")}
             </h1>
             <p className="mt-2 text-gray-600">
               {resetMode
-                ? "Введите email и мы отправим ссылку для сброса"
-                : "Войдите чтобы управлять локациями или бронированиями"}
+                ? t("auth.login.resetSubtitle")
+                : t("auth.login.subtitle")}
             </p>
           </div>
 
@@ -119,7 +121,7 @@ export default function LoginPage() {
                     disabled={loading}
                     className="w-full bg-primary text-white py-3.5 rounded-xl text-sm font-bold hover:bg-primary-dark transition-colors disabled:opacity-50"
                   >
-                    {loading ? "Отправляем..." : "Сбросить пароль"}
+                    {loading ? t("auth.login.resetSubmitting") : t("auth.login.resetSubmit")}
                   </button>
                   <button
                     type="button"
@@ -176,7 +178,7 @@ export default function LoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Введите пароль"
+                  placeholder={t("auth.login.passwordPh")}
                   className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-gray-900"
                 />
               </div>
@@ -186,7 +188,7 @@ export default function LoginPage() {
                 disabled={loading}
                 className="w-full bg-primary text-white py-3.5 rounded-xl text-sm font-bold hover:bg-primary-dark transition-colors disabled:opacity-50"
               >
-                {loading ? "Входим..." : "Войти"}
+                {loading ? t("auth.login.submitting") : t("auth.login.submit")}
               </button>
 
               <p className="text-center text-sm text-gray-500">

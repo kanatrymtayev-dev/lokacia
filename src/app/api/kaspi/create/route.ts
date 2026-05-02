@@ -52,9 +52,9 @@ export async function POST(req: NextRequest) {
 
   // Create payment using existing schema
   const amount = row.total_price as number;
-  const commissionRate = (row.commission_rate as number) ?? 0.15;
-  const serviceFee = Math.round(amount * 0.075);
-  const baseAmount = amount - serviceFee;
+  const commissionRate = (row.commission_rate as number) ?? 0;
+  const serviceFee = 0;
+  const baseAmount = amount;
   const commissionAmount = Math.round(baseAmount * commissionRate);
   const hostAmount = baseAmount - commissionAmount;
 

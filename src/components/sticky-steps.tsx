@@ -2,39 +2,24 @@
 
 import { useEffect, useRef } from "react";
 import { IllustrationCamera, IllustrationParty, IllustrationHouse, IllustrationFilm } from "@/components/illustrations";
+import { useT } from "@/lib/i18n";
 
-const steps = [
-  {
-    num: "01",
-    title: "Разместите",
-    desc: "Добавьте фото, описание, цену и правила вашего помещения. Публикация бесплатная — займёт 5 минут.",
-    note: "← это бесплатно!",
-    illustration: <IllustrationCamera className="w-48 h-48 sm:w-64 sm:h-64" />,
-  },
-  {
-    num: "02",
-    title: "Получите запрос",
-    desc: "Арендаторы находят вас через каталог, фильтры и карту. Отправляют запрос на бронирование.",
-    note: "без звонков!",
-    illustration: <IllustrationParty className="w-48 h-48 sm:w-64 sm:h-64" />,
-  },
-  {
-    num: "03",
-    title: "Подтвердите",
-    desc: "Примите бронирование — деньги замораживаются на escrow. Общайтесь с арендатором в чате.",
-    note: "безопасно ✓",
-    illustration: <IllustrationHouse className="w-48 h-48 sm:w-64 sm:h-64" />,
-  },
-  {
-    num: "04",
-    title: "Зарабатывайте",
-    desc: "После мероприятия деньги поступают на ваш счёт за 3-5 дней. Отслеживайте доход в дашборде.",
-    note: "быстрая выплата →",
-    illustration: <IllustrationFilm className="w-48 h-48 sm:w-64 sm:h-64" />,
-  },
+const illustrations = [
+  <IllustrationCamera key="cam" className="w-48 h-48 sm:w-64 sm:h-64" />,
+  <IllustrationParty key="party" className="w-48 h-48 sm:w-64 sm:h-64" />,
+  <IllustrationHouse key="house" className="w-48 h-48 sm:w-64 sm:h-64" />,
+  <IllustrationFilm key="film" className="w-48 h-48 sm:w-64 sm:h-64" />,
 ];
 
 export default function StickySteps() {
+  const { t } = useT();
+  const steps = [1, 2, 3, 4].map((i) => ({
+    num: `0${i}`,
+    title: t(`steps.${i}.title`),
+    desc: t(`steps.${i}.desc`),
+    note: t(`steps.${i}.note`),
+    illustration: illustrations[i - 1],
+  }));
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

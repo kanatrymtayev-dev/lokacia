@@ -90,6 +90,14 @@ function rowToListing(row: Record<string, unknown>): Listing {
     moderationStatus: (row.moderation_status as Listing["moderationStatus"]) ?? "approved",
     moderationNote: (row.moderation_note as string | null) ?? null,
     createdAt: row.created_at as string,
+    titleEn: (row.title_en as string | null) ?? null,
+    titleKz: (row.title_kz as string | null) ?? null,
+    descriptionEn: (row.description_en as string | null) ?? null,
+    descriptionKz: (row.description_kz as string | null) ?? null,
+    amenitiesEn: (row.amenities_en as string[]) ?? [],
+    amenitiesKz: (row.amenities_kz as string[]) ?? [],
+    rulesEn: (row.rules_en as string[]) ?? [],
+    rulesKz: (row.rules_kz as string[]) ?? [],
   };
 }
 
@@ -785,7 +793,7 @@ export async function createBooking(booking: {
   totalPrice: number;
   status: string;
 }) {
-  const commissionRate = 0.15;
+  const commissionRate = 0;
   const { data, error } = await supabase.from("bookings").insert({
     listing_id: booking.listingId,
     renter_id: booking.renterId,
@@ -808,7 +816,7 @@ export async function createBooking(booking: {
 export async function getHostBookings(hostId: string) {
   const { data, error } = await supabase
     .from("bookings")
-    .select("*, listings!bookings_listing_id_fkey(title, slug, images, host_id)")
+    .select("*, listings!bookings_listing_id_fkey(title, slug, images, host_id), profiles!bookings_renter_id_fkey(name, avatar_url)")
     .order("created_at", { ascending: false });
 
   if (error || !data) return [];

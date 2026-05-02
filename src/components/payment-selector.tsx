@@ -2,48 +2,15 @@
 
 import { useState } from "react";
 import { formatPrice } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 type ProviderKey = "kaspi" | "halyk_qr" | "halyk_card";
 
-const providers: Array<{
-  key: ProviderKey;
-  label: string;
-  subtitle: string;
-  icon: React.ReactNode;
-}> = [
-  {
-    key: "kaspi",
-    label: "Kaspi QR",
-    subtitle: "Оплата через Kaspi.kz",
-    icon: (
-      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-sm">
-        K
-      </div>
-    ),
-  },
-  {
-    key: "halyk_qr",
-    label: "Halyk QR",
-    subtitle: "Оплата через Halyk Bank",
-    icon: (
-      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white font-bold text-sm">
-        H
-      </div>
-    ),
-  },
-  {
-    key: "halyk_card",
-    label: "Банковская карта",
-    subtitle: "Visa, Mastercard, любой банк",
-    icon: (
-      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white">
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75a2.25 2.25 0 0 0-2.25-2.25h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
-        </svg>
-      </div>
-    ),
-  },
-];
+const providerIcons: Record<ProviderKey, React.ReactNode> = {
+  kaspi: <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-sm">K</div>,
+  halyk_qr: <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white font-bold text-sm">H</div>,
+  halyk_card: <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75a2.25 2.25 0 0 0-2.25-2.25h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" /></svg></div>,
+};
 
 interface PaymentSelectorProps {
   bookingId: string;
@@ -58,6 +25,12 @@ export default function PaymentSelector({
 }: PaymentSelectorProps) {
   const [loading, setLoading] = useState<ProviderKey | null>(null);
   const [error, setError] = useState("");
+  const { t } = useT();
+  const providers: Array<{ key: ProviderKey; label: string; subtitle: string; icon: React.ReactNode }> = [
+    { key: "kaspi", label: "Kaspi QR", subtitle: t("payment.kaspiSub"), icon: providerIcons.kaspi },
+    { key: "halyk_qr", label: "Halyk QR", subtitle: t("payment.halykSub"), icon: providerIcons.halyk_qr },
+    { key: "halyk_card", label: t("payment.cardLabel"), subtitle: "Visa, Mastercard", icon: providerIcons.halyk_card },
+  ];
 
   async function handlePay(provider: ProviderKey) {
     setLoading(provider);
@@ -80,7 +53,7 @@ export default function PaymentSelector({
       }
 
       if (!res.ok) {
-        setError((data.error as string) || "Ошибка создания платежа");
+        setError((data.error as string) || t("payment.createError"));
         setLoading(null);
         return;
       }
@@ -90,11 +63,11 @@ export default function PaymentSelector({
         onSuccess?.();
         window.location.href = paymentUrl;
       } else {
-        setError("Не удалось получить ссылку на оплату");
+        setError(t("payment.linkError"));
         setLoading(null);
       }
     } catch {
-      setError("Ошибка сети");
+      setError(t("payment.networkError"));
       setLoading(null);
     }
   }
@@ -171,7 +144,7 @@ export default function PaymentSelector({
       </div>
 
       <p className="text-center text-xs text-gray-400">
-        Безопасная оплата. 0% комиссии.
+        {t("payment.safePay")}
       </p>
     </div>
   );
