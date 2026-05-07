@@ -25,6 +25,7 @@ export default function NewListingPage() {
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [ownershipConfirmed, setOwnershipConfirmed] = useState(false);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
@@ -79,6 +80,10 @@ export default function NewListingPage() {
     if (!user) return;
     if (imageFiles.length === 0) {
       setError(t("newListing.minPhoto"));
+      return;
+    }
+    if (!ownershipConfirmed) {
+      setError(t("newListing.ownershipRequired"));
       return;
     }
 
@@ -431,11 +436,24 @@ export default function NewListingPage() {
               </div>
             )}
 
+            {/* Ownership confirmation */}
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={ownershipConfirmed}
+                onChange={(e) => setOwnershipConfirmed(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <span className="text-sm text-gray-600 leading-relaxed">
+                {t("newListing.ownershipConsent")}
+              </span>
+            </label>
+
             {/* Submit */}
             <div className="flex gap-3">
               <button
                 type="submit"
-                disabled={saving}
+                disabled={saving || !ownershipConfirmed}
                 className="flex-1 bg-primary text-white py-4 rounded-xl text-base font-bold hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? t("newListing.saving") : t("newListing.publish")}
