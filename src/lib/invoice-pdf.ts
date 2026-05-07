@@ -119,9 +119,9 @@ export async function generateInvoicePdf(data: InvoiceData): Promise<Uint8Array>
     drawRight(page, strong ? bold : regular, 11, A4_W - MARGIN - 6, totalsY, val, TEXT);
     totalsY -= lineH;
   }
-  totalLine("Стоимость бронир��вания", fmtMoney(baseAmount));
-  totalLine("Сервисный сбор Lokacia", "Бесплат��о");
-  totalLine("��омиссия Lokacia", "0%");
+  totalLine("Стоимость бронирования", fmtMoney(baseAmount));
+  totalLine("Сервисный сбор Lokacia", "Бесплатно");
+  totalLine("Комиссия Lokacia", "0%");
   totalLine("В т.ч. НДС 12%", fmtMoney(vat));
   totalsY -= 4;
   page.drawLine({
